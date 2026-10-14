@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Filter } from 'lucide-react';
 import type { ProjectRow, StageRow } from '@/lib/crm';
 import { KanbanColumn } from './kanban-column';
+import { useRealtime } from '@/lib/realtime';
 
 type Props = {
   rows: ProjectRow[];
@@ -16,6 +17,18 @@ export function KanbanBoard({ rows, stages, onMove, onCreate }: Props) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStageId, setOverStageId] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const { on } = useRealtime();
+
+  useEffect(() => {
+    const unsub = on('deal:stage-changed', (event) => {
+      const id = event.payload?.id;
+      if (!id) return;
+      setHighlightedId(id);
+      window.setTimeout(() => setHighlightedId(null), 2500);
+    });
+    return unsub;
+  }, [on]);
 
   const owners = useMemo(() => {
     const set = new Set<string>();
@@ -42,6 +55,7 @@ export function KanbanBoard({ rows, stages, onMove, onCreate }: Props) {
     });
     return map;
   }, [filtered, stages]);
+  
 
   function handleDrop(stageId: string) {
     const id = dragId;
@@ -92,6 +106,7 @@ export function KanbanBoard({ rows, stages, onMove, onCreate }: Props) {
             deals={byStage.get(stage.id) ?? []}
             dragId={dragId}
             isOver={overStageId === stage.id}
+            highlightedId={highlightedId} 
             onDragOver={() => setOverStageId(stage.id)}
             onDragLeave={() => setOverStageId((cur) => (cur === stage.id ? null : cur))}
             onDrop={() => handleDrop(stage.id)}
