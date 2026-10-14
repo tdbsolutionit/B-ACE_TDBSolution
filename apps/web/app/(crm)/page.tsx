@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { TodayWidget } from '@/components/dashboard/today-widget';
+import { useRealtime } from '@/lib/realtime';
 import { HotDealsWidget } from '@/components/dashboard/hot-deals-widget';
 import { useEffect, useState } from 'react';
 import { ArrowRight, ArrowUpRight, CalendarDays, Check, Target, TrendingUp, UsersRound, Wallet } from 'lucide-react';
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState('');
   const parts = (session?.user.name || '').trim().split(/\s+/);
+  const { on } = useRealtime();
   const first = parts.slice(-2).join(' ');
   const hour = new Date().getHours();
   const hello = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
@@ -37,6 +39,23 @@ export default function DashboardPage() {
   useEffect(() => {
     api<Dash>('/dashboard').then(setData).catch((err: Error) => setError(err.message));
   }, []);
+
+  // Realtime: refresh dashboard khi có bất kỳ event nào
+  useEffect(() => {
+    const refresh = () => {
+      api<Dash>('/dashboard').then(setData).catch(() => { });
+    };
+    const unsubs = [
+      on('task:created', refresh),
+      on('task:updated', refresh),
+      on('deal:created', refresh),
+      on('deal:stage-changed', refresh),
+      on('customer:created', refresh),
+    ];
+    return () => {
+      unsubs.forEach((fn) => fn());
+    };
+  }, [on]);
 
   async function toggle(task: Dash['tasks'][number]) {
     await api(`/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ status: task.done ? 'pending' : 'done' }) });

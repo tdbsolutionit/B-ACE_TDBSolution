@@ -6,6 +6,7 @@ import { api } from '@/lib/auth';
 import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
 import { compactMoney } from '@/lib/utils';
 import { KanbanBoard } from '@/components/kanban/kanban-board';
+import { useRealtime } from '@/lib/realtime';
 import { CurrencyInput } from '@/components/ui/currency-input';
 
 const STATUS: Record<string, string> = { open: 'Đang mở', won: 'Thắng', lost: 'Thua' };
@@ -21,6 +22,7 @@ export default function ProjectsPage() {
   const [reason, setReason] = useState('');
   const [presetStageId, setPresetStageId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const { on } = useRealtime();
 
   function load() {
     return api<ProjectRow[]>('/opportunities').then(setRows);
@@ -31,6 +33,19 @@ export default function ProjectsPage() {
     api<CustomerRow[]>('/customers').then(setCustomers).catch(() => setCustomers([]));
     api<StageRow[]>('/opportunities/stages').then(setStages).catch(() => setStages([]));
   }, []);
+
+  // Realtime: cập nhật Kanban khi có deal mới/đổi stage
+  useEffect(() => {
+    const refresh = () => {
+      load().catch(() => { });
+    };
+    const unsub1 = on('deal:created', refresh);
+    const unsub2 = on('deal:stage-changed', refresh);
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [on]);
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

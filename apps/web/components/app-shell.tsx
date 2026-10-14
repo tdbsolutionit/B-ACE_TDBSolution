@@ -29,6 +29,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { api, useAuth } from '@/lib/auth';
+import { useRealtime } from '@/lib/realtime';
 import { type TaskRow } from '@/lib/crm';
 import { initials, roleLabel } from '@/lib/utils';
 
@@ -36,6 +37,8 @@ import { useRef } from 'react';
 import { useGotoSequence } from '@/hooks/use-goto-sequence';
 import { ShortcutsHelp } from '@/components/shortcuts-help';
 import { useMediaQuery } from '@/hooks/use-media-query';
+
+import { Celebration } from '@/components/celebration';
 const NAV = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/khach-hang', label: 'Khách hàng', icon: UsersRound },
@@ -63,7 +66,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [ring, setRing] = useState(false);
   const [overdue, setOverdue] = useState<TaskRow[]>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [celebration, setCelebration] = useState<{ dealName: string; value?: number; owner?: string; at: string } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const { on } = useRealtime();
 
   // Phím tắt G → X
   useGotoSequence(
@@ -114,21 +119,49 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('pointerdown', unlock);
   }, []);
 
+  // Realtime: cập nhật chuông khi có task mới/cập nhật
   useEffect(() => {
     if (!session) return;
-    api<TaskRow[]>('/tasks')
-      .then((rows) => {
-        const next = rows.filter((row) => row.overdue || row.dueToday || row.dueTomorrow);
-        setOverdue(next);
-        const signature = next.map((row) => row.id).sort().join(',');
-        if (!signature || sessionStorage.getItem(NOTICE_SEEN) === signature) return;
-        sessionStorage.setItem(NOTICE_SEEN, signature);
-        setRing(true);
-        window.setTimeout(() => setRing(false), 1800);
-        playChime();
-      })
-      .catch(() => setOverdue([]));
-  }, [session, pathname]);
+
+    const refresh = () => {
+      api<TaskRow[]>('/tasks')
+        .then((rows) => {
+          const next = rows.filter((row) => row.overdue || row.dueToday || row.dueTomorrow);
+          setOverdue(next);
+
+          const signature = next.map((row) => row.id).sort().join(',');
+          const seen = sessionStorage.getItem(NOTICE_SEEN);
+          if (signature && seen !== signature) {
+            setRing(true);
+            window.setTimeout(() => setRing(false), 1800);
+            playChime();
+          }
+        })
+        .catch(() => { });
+    };
+
+    const unsub1 = on('task:created', refresh);
+    const unsub2 = on('task:updated', refresh);
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [session, on]);
+
+  // Celebration khi deal chốt thắng
+  useEffect(() => {
+    if (!session) return;
+    const unsub = on('deal:stage-changed', (event) => {
+      if (event.payload?.status !== 'won') return;
+      setCelebration({
+        dealName: event.payload.name,
+        value: event.payload.value,
+        owner: event.payload.owner,
+        at: event.at,
+      });
+    });
+    return unsub;
+  }, [session, on]);
 
   const label = useMemo(() => {
     if (pathname.startsWith('/khach-hang')) return 'Khách hàng';
@@ -160,6 +193,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <CommandPalette />
       <ShortcutsHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <Celebration
+        open={!!celebration}
+        data={celebration}
+        onClose={() => setCelebration(null)}
+      />
       <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
         <aside className="app-sidebar">
           <Link href="/" className="brand">

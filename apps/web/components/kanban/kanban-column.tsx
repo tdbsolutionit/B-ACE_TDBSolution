@@ -10,6 +10,7 @@ type Props = {
   deals: ProjectRow[];
   dragId: string | null;
   isOver: boolean;
+  highlightedId: string | null;
   onDragOver: () => void;
   onDragLeave: () => void;
   onDrop: () => void;
@@ -23,6 +24,7 @@ export function KanbanColumn({
   deals,
   dragId,
   isOver,
+  highlightedId,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -86,6 +88,7 @@ export function KanbanColumn({
             key={deal.id}
             deal={deal}
             dragging={dragId === deal.id}
+            highlighted={highlightedId === deal.id}
             onDragStart={() => onDragStart(deal.id)}
             onDragEnd={onDragEnd}
           />

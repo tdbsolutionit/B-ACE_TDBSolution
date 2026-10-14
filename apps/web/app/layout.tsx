@@ -3,6 +3,8 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth';
 import { RealtimeProvider } from '@/lib/realtime';
 import { Toaster } from '@/components/ui/toast';
+import { ChatProvider } from '@/lib/chat';
+import { ChatWidget } from '@/components/chat/chat-widget';
 
 export const metadata: Metadata = {
   title: 'B-ACE SME',
@@ -20,7 +22,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           <RealtimeProvider>
-            {children}
+            <ChatProvider>
+              {children}
+              <ChatWidget />
+            </ChatProvider>
           </RealtimeProvider>
         </AuthProvider>
         <Toaster />

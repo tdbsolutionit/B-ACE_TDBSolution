@@ -8,11 +8,12 @@ import { compactMoney, initials } from '@/lib/utils';
 type Props = {
   deal: ProjectRow;
   dragging: boolean;
+  highlighted?: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
 };
 
-export function KanbanCard({ deal, dragging, onDragStart, onDragEnd }: Props) {
+export function KanbanCard({ deal, dragging, highlighted, onDragStart, onDragEnd }: Props) {
   const router = useRouter();
   const prob = deal.probability ?? 0;
   const probColor = prob >= 70 ? 'bg-green-500' : prob >= 40 ? 'bg-amber-500' : 'bg-red-400';
@@ -34,7 +35,9 @@ export function KanbanCard({ deal, dragging, onDragStart, onDragEnd }: Props) {
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={() => router.push(`/du-an/${deal.id}`)}
-      className={`kanban-card group cursor-grab active:cursor-grabbing ${dragging ? 'dragging' : ''}`}
+      className={`kanban-card group cursor-grab active:cursor-grabbing ${dragging ? 'dragging' : ''
+        } ${highlighted ? 'ring-2 ring-primary animate-pulse' : ''    // ← THÊM
+        }`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="line-clamp-2 text-sm font-semibold leading-snug">{deal.name}</p>
