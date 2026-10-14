@@ -1,5 +1,6 @@
 'use client';
 
+import { LoadingRows } from '@/components/loading';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -30,6 +31,7 @@ type Props = {
   rows: CustomerRow[];
   loading?: boolean;
   density?: Density;
+  activeId?: string;
   selected: Set<string>;
   onToggle: (id: string, index?: number, shiftKey?: boolean) => void;
   onSelectAll: () => void;
@@ -48,6 +50,7 @@ export function CustomerTable({
   onClearSelection,
   isAllSelected,
   isPartial,
+  activeId,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -170,8 +173,8 @@ export function CustomerTable({
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
-                Đang tải khách hàng…
+              <td colSpan={9} className="p-0">
+                <LoadingRows count={6} />
               </td>
             </tr>
           )}
@@ -196,12 +199,14 @@ export function CustomerTable({
                   ref={(el) => { rowRefs.current[index] = el; }}
                   onClick={() => setFocusedIdx(index)}
                   className={`group border-b border-border/60 transition-colors ${
-                    isSel
-                      ? 'bg-primary/5'
-                      : isFocus
-                        ? 'bg-accent'
-                        : 'hover:bg-accent/50'
-                  }`}
+                    activeId === row.id
+                      ? 'bg-primary/10 border-l-2 border-l-primary'
+                      : isSel
+                        ? 'bg-primary/5'
+                        : isFocus
+                          ? 'bg-accent'
+                          : 'hover:bg-accent/50'
+                    }`}
                 >
                   <td className={`${cellPy} px-3`}>
                     <button

@@ -1,5 +1,6 @@
 'use client';
 
+import { Loading } from '@/components/loading';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -31,6 +32,10 @@ import { api, useAuth } from '@/lib/auth';
 import { type TaskRow } from '@/lib/crm';
 import { initials, roleLabel } from '@/lib/utils';
 
+import { useRef } from 'react';
+import { useGotoSequence } from '@/hooks/use-goto-sequence';
+import { ShortcutsHelp } from '@/components/shortcuts-help';
+import { useMediaQuery } from '@/hooks/use-media-query';
 const NAV = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/khach-hang', label: 'Khách hàng', icon: UsersRound },
@@ -46,11 +51,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { ready, session, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const isNarrow = useMediaQuery('(max-width: 1100px)');
+
+  // Tự động collapse khi màn hình nhỏ
+  useEffect(() => {
+    setCollapsed(isNarrow);
+  }, [isNarrow]);
   const [help, setHelp] = useState(false);
-  const [menu, setMenu] = useState(false);  
+  const [menu, setMenu] = useState(false);
   const [bell, setBell] = useState(false);
   const [ring, setRing] = useState(false);
   const [overdue, setOverdue] = useState<TaskRow[]>([]);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Phím tắt G → X
+  useGotoSequence(
+    {
+      h: '/',
+      c: '/khach-hang',
+      d: '/du-an',
+      o: '/co-hoi',
+      t: '/cong-viec',
+      r: '/bao-cao',
+    },
+    (path) => router.push(path),
+  );
+
+  // Phím tắt / và ?
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement;
+      const inInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable;
+
+      // `/` focus search
+      if (event.key === '/' && !inInput) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      // `?` mở help (Shift + /)
+      if (event.key === '?' && !inInput) {
+        event.preventDefault();
+        setShowShortcuts(true);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     if (ready && !session) router.replace('/login');
@@ -92,7 +144,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   if (!ready || !session) {
-    return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">Đang mở không gian làm việc…</div>;
+    return <Loading text="Đang mở không gian làm việc" fullscreen />;
   }
 
   const user = session.user;
@@ -104,172 +156,182 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     year: 'numeric',
   }).format(new Date());
 
-   return (
+  return (
     <>
       <CommandPalette />
+      <ShortcutsHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
-      <aside className="app-sidebar">
-        <Link href="/" className="brand">
-          <span className="brand-symbol"><Layers3 size={22} /></span>
-          <span className="brand-name text-lg font-bold">
-            B-ACE<span className="font-normal text-muted-foreground"> SME</span>
-          </span>
-        </Link>
-        <div className="workspace-label">{collapsed ? 'SME' : 'KHÔNG GIAN LÀM VIỆC'}</div>
-        <nav className="space-y-1.5 px-3">
-          {items.map((item) => {
-            const active = item.href === '/'
-              ? pathname === '/'
-              : item.href === '/du-an'
-                ? pathname.startsWith('/du-an') || pathname.startsWith('/bao-gia')
-                : pathname.startsWith(item.href);
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} href={item.href} title={item.label} className={active ? 'nav-item nav-active' : 'nav-item'}>
-                <Icon size={19} />
-                <span className="flex-1">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="sidebar-bottom">
-          {!collapsed && (
-            <div className="team-note">
-              <span className="flex items-center gap-2 text-xs font-semibold">
-                <Sparkles size={15} color="#C9A961" />
-                Cùng nhau tăng trưởng
-              </span>
-              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                Mỗi kết nối hôm nay,<br />một cơ hội cho ngày mai.
-              </p>
-              <Link href="/bao-cao" className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-[#C9A961]">
-                Xem hiệu quả kinh doanh <ArrowUpRight size={13} />
-              </Link>
-            </div>
-          )}
-          <button type="button" onClick={() => setHelp(true)} className="inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-accent">
-            <CircleHelp size={18} />
-            {!collapsed && <span>Trợ giúp & hỗ trợ</span>}
-          </button>
-          <button type="button" onClick={() => setCollapsed((value) => !value)} className="mt-1 inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-accent">
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-            {!collapsed && <span>Thu gọn thanh bên</span>}
-          </button>
-          <div className="sidebar-meta relative mt-4 flex items-center gap-3 border-t border-border pt-5">
-            <button type="button" onClick={() => setMenu((value) => !value)} className="flex w-full items-center gap-2 rounded-md px-1 py-1 hover:bg-accent">
-              <span className="avatar-initials avatar-profile inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                {initials(user.name)}
-              </span>
-              {!collapsed && (
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block truncate text-xs font-semibold">{user.name}</span>
-                  <span className="mt-0.5 block text-[10px] text-muted-foreground">{roleLabel(user.role)}</span>
-                </span>
-              )}
-              {!collapsed && <ChevronsUpDown size={14} className="text-muted-foreground" />}
-            </button>
-            {menu && (
-              <div className="absolute bottom-full left-0 z-50 mb-2 w-48 rounded-xl border border-border bg-card py-1 shadow-lg">
-                <div className="border-b border-border px-3 py-2">
-                  <p className="truncate text-xs font-semibold">{user.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{roleLabel(user.role)}</p>
-                </div>
-                <Link href="/tai-khoan" className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent" onClick={() => setMenu(false)}>
-                  <UserPen size={14} /> Tài khoản của tôi
+        <aside className="app-sidebar">
+          <Link href="/" className="brand">
+            <span className="brand-symbol"><Layers3 size={22} /></span>
+            <span className="brand-name text-lg font-bold">
+              B-ACE<span className="font-normal text-muted-foreground"> SME</span>
+            </span>
+          </Link>
+          <div className="workspace-label">{collapsed ? 'SME' : 'KHÔNG GIAN LÀM VIỆC'}</div>
+          <nav className="space-y-1.5 px-3">
+            {items.map((item) => {
+              const active = item.href === '/'
+                ? pathname === '/'
+                : item.href === '/du-an'
+                  ? pathname.startsWith('/du-an') || pathname.startsWith('/bao-gia')
+                  : pathname.startsWith(item.href);
+              const Icon = item.icon;
+              return (
+                <Link key={item.href} href={item.href} title={item.label} className={active ? 'nav-item nav-active' : 'nav-item'}>
+                  <Icon size={19} />
+                  <span className="flex-1">{item.label}</span>
                 </Link>
-                {user.role === 'admin' && (
-                  <Link href="/quan-ly/nguoi-dung" className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent" onClick={() => setMenu(false)}>
-                    <ShieldCheck size={14} /> Quản lý người dùng
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-red-50"
-                  onClick={() => {
-                    logout();
-                    router.replace('/login');
-                  }}
-                >
-                  <LogOut size={14} /> Đăng xuất
-                </button>
+              );
+            })}
+          </nav>
+          <div className="sidebar-bottom">
+            {!collapsed && (
+              <div className="team-note">
+                <span className="flex items-center gap-2 text-xs font-semibold">
+                  <Sparkles size={15} color="#C9A961" />
+                  Cùng nhau tăng trưởng
+                </span>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Mỗi kết nối hôm nay,<br />một cơ hội cho ngày mai.
+                </p>
+                <Link href="/bao-cao" className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-[#C9A961]">
+                  Xem hiệu quả kinh doanh <ArrowUpRight size={13} />
+                </Link>
               </div>
             )}
-          </div>
-        </div>
-      </aside>
-      <div className="app-main">
-        <header className="app-header">
-             <button
-               type="button"
-               onClick={() => {
-                 const evt = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
-                 window.dispatchEvent(evt);
-               }}
-               className="global-search group"
-             >
-               <Search size={17} />
-               <span className="flex-1 text-left text-sm text-muted-foreground">
-                 Tìm khách hàng, cơ hội, công việc...
-               </span>
-               <span className="search-key"><Command size={10} /> K</span>
-             </button>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-xs capitalize text-muted-foreground xl:block">{dateLabel}</span>
-            <span className="mx-1 hidden h-5 border-l border-border sm:block" />
-            <div className="relative">
-              <button type="button" className="relative inline-flex size-9 items-center justify-center rounded-md hover:bg-accent" aria-label="Thông báo" onClick={() => { flushChime(); setBell((value) => !value); }}>
-                <Bell size={19} className={ring ? 'bell-swing' : undefined} />
-                {(overdue.some((task) => task.overdue) || overdue.some((task) => task.dueToday || task.dueTomorrow)) && (
-                  <span className={overdue.some((task) => task.overdue) ? 'notification-dot' : 'notification-dot notification-dot-soon'} />
+            <button type="button" onClick={() => setHelp(true)} className="inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-accent">
+              <CircleHelp size={18} />
+              {!collapsed && <span>Trợ giúp & hỗ trợ</span>}
+            </button>
+            <button type="button" onClick={() => setCollapsed((value) => !value)} className="mt-1 inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-accent">
+              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              {!collapsed && <span>Thu gọn thanh bên</span>}
+            </button>
+            <div className="sidebar-meta relative mt-4 flex items-center gap-3 border-t border-border pt-5">
+              <button type="button" onClick={() => setMenu((value) => !value)} className="flex w-full items-center gap-2 rounded-md px-1 py-1 hover:bg-accent">
+                <span className="avatar-initials avatar-profile inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                  {initials(user.name)}
+                </span>
+                {!collapsed && (
+                  <span className="min-w-0 flex-1 text-left">
+                    <span className="block truncate text-xs font-semibold">{user.name}</span>
+                    <span className="mt-0.5 block text-[10px] text-muted-foreground">{roleLabel(user.role)}</span>
+                  </span>
                 )}
+                {!collapsed && <ChevronsUpDown size={14} className="text-muted-foreground" />}
               </button>
-              {bell && (
-                <div className="notice-panel absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
-                  <div className="border-b border-border px-4 py-3">
-                    <p className="text-sm font-semibold">Nhắc việc</p>
-                    <p className="text-[11px] text-muted-foreground">Quá hạn, hôm nay và ngày mai</p>
+              {menu && (
+                <div className="absolute bottom-full left-0 z-50 mb-2 w-48 rounded-xl border border-border bg-card py-1 shadow-lg">
+                  <div className="border-b border-border px-3 py-2">
+                    <p className="truncate text-xs font-semibold">{user.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{roleLabel(user.role)}</p>
                   </div>
-                  <div className="max-h-80 overflow-y-auto p-2">
-                    {overdue.length === 0 && <p className="px-2 py-4 text-xs text-muted-foreground">Không có nhắc việc.</p>}
-                    <NoticeGroup title="Quá hạn" tone="bg-red-500" tasks={overdue.filter((task) => task.overdue)} onPick={() => setBell(false)} />
-                    <NoticeGroup title="Hôm nay" tone="bg-primary" tasks={overdue.filter((task) => task.dueToday)} onPick={() => setBell(false)} />
-                    <NoticeGroup title="Ngày mai" tone="bg-amber-400" tasks={overdue.filter((task) => task.dueTomorrow)} onPick={() => setBell(false)} />
-                  </div>
+                  <Link href="/tai-khoan" className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent" onClick={() => setMenu(false)}>
+                    <UserPen size={14} /> Tài khoản của tôi
+                  </Link>
+                  {user.role === 'admin' && (
+                    <Link href="/quan-ly/nguoi-dung" className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent" onClick={() => setMenu(false)}>
+                      <ShieldCheck size={14} /> Quản lý người dùng
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-red-50"
+                    onClick={() => {
+                      logout();
+                      router.replace('/login');
+                    }}
+                  >
+                    <LogOut size={14} /> Đăng xuất
+                  </button>
                 </div>
               )}
             </div>
-            <Link href="/tai-khoan" className="inline-flex items-center gap-2 rounded-md px-1 hover:bg-accent">
-              <span className="avatar-initials avatar-profile inline-flex size-8 items-center justify-center rounded-full text-xs font-semibold">{initials(user.name)}</span>
-              <ChevronDown size={13} />
-            </Link>
           </div>
-        </header>
-        <main className="page-content">
-          <div className="breadcrumb">
-            <span>Không gian làm việc</span>
-            <ChevronRight size={12} />
-            <span className="text-foreground">{label}</span>
-          </div>
-          {children}
-        </main>
-      </div>
-      {help && (
-        <>
-          <div className="modal-backdrop" onClick={() => setHelp(false)} />
-          <div className="modal-card">
-            <h2 className="text-lg font-semibold">Trợ giúp & hỗ trợ</h2>
-            <p className="mt-1 text-sm text-muted-foreground">B-ACE · Không gian làm việc của đội ngũ kinh doanh</p>
-            <p className="mt-4 text-sm leading-7">
-              Quản lý khách hàng, theo dõi cơ hội và công việc của bạn tại một nơi.
-              Dữ liệu được lưu trong cơ sở dữ liệu của công ty.
-            </p>
-            <button type="button" onClick={() => setHelp(false)} className="mt-5 inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
-              Đã hiểu
+        </aside>
+        <div className="app-main">
+          <header className="app-header">
+            <button
+              type="button"
+              onClick={() => {
+                const evt = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
+                window.dispatchEvent(evt);
+              }}
+              className="global-search group"
+            >
+              <Search size={17} />
+              <span className="flex-1 text-left text-sm text-muted-foreground">
+                Tìm khách hàng, cơ hội, công việc...
+              </span>
+              <span className="search-key"><Command size={10} /> K</span>
             </button>
-          </div>
-        </>
-      )}
-    </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(true)}
+                className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+                title="Phím tắt (?)"
+                aria-label="Phím tắt"
+              >
+                <CircleHelp size={18} />
+              </button>
+              <span className="hidden text-xs capitalize text-muted-foreground xl:block">{dateLabel}</span>
+              <span className="mx-1 hidden h-5 border-l border-border sm:block" />
+              <div className="relative">
+                <button type="button" className="relative inline-flex size-9 items-center justify-center rounded-md hover:bg-accent" aria-label="Thông báo" onClick={() => { flushChime(); setBell((value) => !value); }}>
+                  <Bell size={19} className={ring ? 'bell-swing' : undefined} />
+                  {(overdue.some((task) => task.overdue) || overdue.some((task) => task.dueToday || task.dueTomorrow)) && (
+                    <span className={overdue.some((task) => task.overdue) ? 'notification-dot' : 'notification-dot notification-dot-soon'} />
+                  )}
+                </button>
+                {bell && (
+                  <div className="notice-panel absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+                    <div className="border-b border-border px-4 py-3">
+                      <p className="text-sm font-semibold">Nhắc việc</p>
+                      <p className="text-[11px] text-muted-foreground">Quá hạn, hôm nay và ngày mai</p>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto p-2">
+                      {overdue.length === 0 && <p className="px-2 py-4 text-xs text-muted-foreground">Không có nhắc việc.</p>}
+                      <NoticeGroup title="Quá hạn" tone="bg-red-500" tasks={overdue.filter((task) => task.overdue)} onPick={() => setBell(false)} />
+                      <NoticeGroup title="Hôm nay" tone="bg-primary" tasks={overdue.filter((task) => task.dueToday)} onPick={() => setBell(false)} />
+                      <NoticeGroup title="Ngày mai" tone="bg-amber-400" tasks={overdue.filter((task) => task.dueTomorrow)} onPick={() => setBell(false)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Link href="/tai-khoan" className="inline-flex items-center gap-2 rounded-md px-1 hover:bg-accent">
+                <span className="avatar-initials avatar-profile inline-flex size-8 items-center justify-center rounded-full text-xs font-semibold">{initials(user.name)}</span>
+                <ChevronDown size={13} />
+              </Link>
+            </div>
+          </header>
+          <main className={`page-content ${pathname.startsWith('/khach-hang') ? 'split-view-active' : ''}`}>
+            <div className="breadcrumb">
+              <span>Không gian làm việc</span>
+              <ChevronRight size={12} />
+              <span className="text-foreground">{label}</span>
+            </div>
+            {children}
+          </main>
+        </div>
+        {help && (
+          <>
+            <div className="modal-backdrop" onClick={() => setHelp(false)} />
+            <div className="modal-card">
+              <h2 className="text-lg font-semibold">Trợ giúp & hỗ trợ</h2>
+              <p className="mt-1 text-sm text-muted-foreground">B-ACE · Không gian làm việc của đội ngũ kinh doanh</p>
+              <p className="mt-4 text-sm leading-7">
+                Quản lý khách hàng, theo dõi cơ hội và công việc của bạn tại một nơi.
+                Dữ liệu được lưu trong cơ sở dữ liệu của công ty.
+              </p>
+              <button type="button" onClick={() => setHelp(false)} className="mt-5 inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
+                Đã hiểu
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }
