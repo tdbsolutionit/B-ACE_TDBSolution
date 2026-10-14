@@ -1,3 +1,4 @@
+import { RealtimeService } from '../realtime/realtime.service';
 import { BadRequestException, Body, Controller, Delete, Get, Module, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -118,7 +119,10 @@ function present(row: {
 @ApiBearerAuth()
 @Controller('opportunities')
 export class OpportunitiesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   @Get('stages')
   stages(@CurrentUser() user: AuthUser) {
@@ -182,9 +186,9 @@ export class OpportunitiesController {
     });
   }
 
-  @Post()
-  create(@CurrentUser() user: AuthUser, @Body() dto: OpportunityDto) {
-    return this.prisma.withTenant(user.tenantId, async (tx) => {
+    @Post()
+  async create(@CurrentUser() user: AuthUser, @Body() dto: OpportunityDto) {
+    const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
       await tx.customer.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.customerId }) });
       const stage = dto.stageId
         ? await tx.stage.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.stageId }) })
@@ -221,11 +225,24 @@ export class OpportunitiesController {
       });
       return present(created, new Map([[user.sub, user.name]]));
     });
+
+    this.realtime.emit(
+      'deal:created',
+      {
+        id: result.id,
+        name: result.name,
+        value: result.value,
+        customer: result.customer,
+      },
+      { tenantId: user.tenantId },
+    );
+
+    return result;
   }
 
   @Patch(':id/stage')
-  move(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: MoveDto) {
-    return this.prisma.withTenant(user.tenantId, async (tx) => {
+  async move(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: MoveDto) {
+    const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
       const stage = await tx.stage.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.stageId }) });
       const current = await tx.opportunity.findFirstOrThrow({ where: owned(user, { id }) });
       if (stage.isLost && !dto.lostReason?.trim()) {
@@ -250,6 +267,20 @@ export class OpportunitiesController {
       });
       return present(updated, await this.names(tx, user.tenantId));
     });
+
+    this.realtime.emit(
+      'deal:stage-changed',
+      {
+        id: result.id,
+        name: result.name,
+        stage: result.stage,
+        stageColor: result.stageColor,
+        status: result.status,
+      },
+      { tenantId: user.tenantId },
+    );
+
+    return result;
   }
 
   @Patch(':id')

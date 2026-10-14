@@ -14,9 +14,11 @@ import { ActivitiesModule } from './activities/activities.module';
 import { FilesModule } from './files/files.module';
 import { HealthController } from './health.controller';
 import { JwtAuthGuard } from './common/guards';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
+    RealtimeModule,
     PrismaModule,
     JwtModule.register({
       global: true,
