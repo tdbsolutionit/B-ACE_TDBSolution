@@ -1,12 +1,14 @@
 'use client';
 
-import Link from 'next/link';
+import { CustomerTable } from '@/components/customer-table';
+import { BulkActionBar } from '@/components/bulk-action-bar';
+import { useBulkSelection } from '@/hooks/use-bulk-selection';
+import { LayoutGrid, Rows } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FileUp, Plus, Search, UserCheck, UserMinus, UserPlus, UsersRound } from 'lucide-react';
 import { api } from '@/lib/auth';
 import { type CustomerRow } from '@/lib/crm';
-import { initials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Suspense } from 'react';
@@ -34,6 +36,7 @@ function CustomersScreen() {
   const [error, setError] = useState('');
   const [dupes, setDupes] = useState<Array<{ id: string; name: string }>>([]);
   const [importNote, setImportNote] = useState('');
+  const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
   const csvInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -72,6 +75,8 @@ function CustomersScreen() {
       return blob.includes(q.toLowerCase());
     });
   }, [rows, tab, q, status, source]);
+
+  const bulk = useBulkSelection(filtered);
 
   const stats = {
     total: rows.length,
@@ -149,6 +154,28 @@ function CustomersScreen() {
             event.target.value = '';
             if (file) importCsv(file).catch((err: Error) => setImportNote(err.message));
           }} />
+          <BulkActionBar
+            count={bulk.count}
+            onClear={bulk.clear}
+            onExport={() => {
+              const rowsToExport = filtered.filter((r) => bulk.selected.has(r.id));
+              const csv = [
+                ['Tên', 'Công ty', 'SĐT', 'Email', 'Trạng thái'].join(','),
+                ...rowsToExport.map((r) =>
+                  [r.name, r.company || '', r.phone || '', r.email || '', r.status]
+                    .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+                    .join(','),
+                ),
+              ].join('\n');
+              const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `khach-hang-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          />
           <Button onClick={() => setOpen(true)}><Plus size={16} /> Thêm khách hàng</Button>
         </div>
       </div>
@@ -183,54 +210,29 @@ function CustomersScreen() {
             <option value="active">Đang hoạt động</option>
             <option value="inactive">Ngừng hoạt động</option>
           </select>
+          <button
+            type="button"
+            onClick={() => setDensity((d) => (d === 'compact' ? 'comfortable' : 'compact'))}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium hover:bg-accent"
+            title={density === 'compact' ? 'Chuyển sang thoáng' : 'Chuyển sang gọn'}
+          >
+            {density === 'compact' ? <LayoutGrid size={14} /> : <Rows size={14} />}
+            {density === 'compact' ? 'Thoáng' : 'Gọn'}
+          </button>
         </div>
         {error && !open && <p className="mb-3 text-sm text-destructive">{error}</p>}
         {loading && <p className="py-8 text-center text-sm text-muted-foreground">Đang tải khách hàng…</p>}
-        <div className="overflow-x-auto">
-          <table className="crm-table">
-            <thead>
-              <tr>
-                <th>LOẠI</th><th>KHÁCH HÀNG / CÔNG TY</th><th>LIÊN HỆ</th><th>NGUỒN</th><th>TRẠNG THÁI</th><th>CƠ HỘI</th><th>PHỤ TRÁCH</th><th>NGÀY TẠO</th><th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row, index) => (
-                <tr key={row.id} className="cursor-pointer">
-                  <td><span className={row.type === 'business' ? 'status-badge status-blue' : 'status-badge status-success'}>{row.type === 'business' ? 'Doanh nghiệp' : 'Cá nhân'}</span></td>
-                  <td>
-                    <Link href={`/khach-hang/${row.id}`} className="flex items-center gap-3">
-                      <span className={`avatar-initials avatar-tone-${index % 4} inline-flex size-9 items-center justify-center rounded-full text-xs font-semibold`}>{initials(row.name)}</span>
-                      <span>
-                        <span className="block font-semibold">{row.name}</span>
-                        <span className="mt-1 block text-[11px] text-muted-foreground">{row.company || '—'}</span>
-                      </span>
-                    </Link>
-                  </td>
-                  <td>
-                    <p className="text-xs">{row.phone || '—'}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{row.email || '—'}</p>
-                  </td>
-                  <td><span className="source-badge">{row.sourceName || '—'}</span></td>
-                  <td><span className={row.status === 'active' ? 'status-badge status-success' : row.status === 'inactive' ? 'status-badge status-warning' : 'status-badge status-blue'}>{STATUS[row.status]}</span></td>
-                  <td>
-                    {row.openOppCount > 0 ? (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">{row.openOppCount} đang mở</span>
-                    ) : row.oppCount > 0 ? (
-                      <span className="text-xs text-muted-foreground">({row.oppCount} lead)</span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="text-xs">{row.assigneeName || '—'}</td>
-                  <td className="text-xs text-muted-foreground">{row.createdAt.slice(0, 10)}</td>
-                  <td>
-                    <Link href={`/khach-hang/${row.id}`} className="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent" title="Xem chi tiết">→</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CustomerTable
+          rows={filtered}
+          loading={loading}
+          density={density}
+          selected={bulk.selected}
+          onToggle={bulk.toggle}
+          onSelectAll={bulk.selectAll}
+          onClearSelection={bulk.clear}
+          isAllSelected={bulk.isAllSelected}
+          isPartial={bulk.isPartial}
+        />
       </section>
       {open && (
         <>
