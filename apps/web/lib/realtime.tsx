@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from '@/components/ui/toast';
 import { useAuth } from '@/lib/auth';
 
@@ -22,8 +22,8 @@ type RealtimeContextValue = {
 const RealtimeContext = createContext<RealtimeContextValue>({
   connected: false,
   toastEnabled: true,
-  setToastEnabled: () => {},
-  on: () => () => {},
+  setToastEnabled: () => { },
+  on: () => () => { },
 });
 
 export function useRealtime() {
@@ -39,7 +39,17 @@ const TOAST_MAP: Record<string, (p: any) => string | null> = {
   'deal:created': (p) => `💼 Cơ hội mới: ${p.name}`,
   'deal:stage-changed': (p) => `🔄 Deal "${p.name}" → ${p.stage}`,
   'customer:created': (p) => `👤 Khách hàng mới: ${p.name}`,
+  // Chat events — chỉ listen, KHÔNG toast (để UI tự handle)
+  'message:created': () => null,
+  'message:updated': () => null,
+  'message:deleted': () => null,
+  'message:reaction': () => null,
+  'user:typing': () => null,
+  'room:read': () => null,
 };
+
+// Tất cả events cần đăng ký SSE listener
+const ALL_EVENTS = Object.keys(TOAST_MAP);
 
 // ─── Đọc setting từ localStorage ───────────────────────────────
 function readToastSetting(): boolean {
@@ -117,11 +127,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  function setToastEnabled(value: boolean) {
+  const setToastEnabled = useCallback((value: boolean) => {
     window.localStorage.setItem(TOAST_KEY, String(value));
     setToastEnabledState(value);
     toastEnabledRef.current = value;
-  }
+  }, []);
 
   // ─── SSE Connection ──────────────────────────────────────────
   useEffect(() => {
@@ -141,19 +151,35 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
 
-    const knownEvents = Object.keys(TOAST_MAP);
-    for (const type of knownEvents) {
+    for (const type of ALL_EVENTS) {
       es.addEventListener(type, (e) => {
         try {
           const data = JSON.parse((e as MessageEvent).data) as RealtimeEvent;
 
-          // Toast (có thể bị tắt)
-          pushToast(type, data.payload, toastEnabledRef.current);
+          // Toast (chỉ với events có trong TOAST_MAP trả string, không phải null)
+          const toastFn = TOAST_MAP[type];
+          const msg = toastFn ? toastFn(data.payload) : null;
+          if (msg) {
+            pushToast(type, data.payload, toastEnabledRef.current);
+          }
 
-          // Custom listeners luôn chạy
+          // Lưu vào activity feed (chỉ với events chính, không phải chat)
+          if (!type.startsWith('message:') && !type.startsWith('user:') && !type.startsWith('room:')) {
+            setEvents((prev) => {
+              const item: ActivityItem = {
+                id: `${data.at}-${Math.random()}`,
+                type: data.type,
+                payload: data.payload,
+                at: data.at,
+              };
+              return [item, ...prev].slice(0, 30);
+            });
+          }
+
+          // Custom listeners LUÔN chạy
           const set = listenersRef.current.get(type);
           set?.forEach((fn) => fn(data));
-        } catch {}
+        } catch { }
       });
     }
 
@@ -164,7 +190,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [session]);
 
-  function on(type: string, listener: Listener) {
+  const on = useCallback((type: string, listener: Listener) => {
     if (!listenersRef.current.has(type)) {
       listenersRef.current.set(type, new Set());
     }
@@ -172,7 +198,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     return () => {
       listenersRef.current.get(type)?.delete(listener);
     };
-  }
+  }, []);
 
   return (
     <RealtimeContext.Provider

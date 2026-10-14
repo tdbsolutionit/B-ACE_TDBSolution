@@ -290,6 +290,45 @@ async function main() {
       });
     }
   }
+    // ═══════════════════════════════════════════════════════════
+  // SEED CHAT ROOM #general
+  // ═══════════════════════════════════════════════════════════
+  const generalRoomId = `general-${tenant.id}`;
+
+  const generalRoom = await prisma.chatRoom.upsert({
+    where: { id: generalRoomId },
+    update: {},
+    create: {
+      id: generalRoomId,
+      tenantId: tenant.id,
+      name: 'Chung',
+      type: 'general',
+      createdBy: admin.id,
+    },
+  });
+
+  // Add tất cả users trong tenant
+  const allUsers = await prisma.user.findMany({
+    where: { tenantId: tenant.id },
+  });
+
+  for (const u of allUsers) {
+    await prisma.chatMember.upsert({
+      where: {
+        roomId_userId: {
+          roomId: generalRoom.id,
+          userId: u.id,
+        },
+      },
+      update: {},
+      create: {
+        roomId: generalRoom.id,
+        userId: u.id,
+      },
+    });
+  }
+
+  console.log(`✅ Chat room "${generalRoom.name}" với ${allUsers.length} members`);
 }
 
 main()

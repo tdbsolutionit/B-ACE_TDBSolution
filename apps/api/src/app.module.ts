@@ -12,6 +12,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { SearchModule } from './search/search.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { FilesModule } from './files/files.module';
+import { ChatModule } from './chat/chat.module';
 import { HealthController } from './health.controller';
 import { JwtAuthGuard } from './common/guards';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -35,6 +36,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     SearchModule,
     ActivitiesModule,
     FilesModule,
+    ChatModule,
   ],
   controllers: [HealthController],
   providers: [
