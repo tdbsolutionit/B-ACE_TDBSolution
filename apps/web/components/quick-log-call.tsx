@@ -8,7 +8,7 @@ import { toast } from '@/components/ui/toast';
 type Props = {
   open: boolean;
   onClose: () => void;
-  customer: { id: string; name: string; phone?: string } | null;
+  customer: { id: string; name: string; phone?: string | null } | null;
   onSaved?: () => void;
 };
 

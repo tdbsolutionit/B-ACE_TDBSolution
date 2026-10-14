@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/auth';
 import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
 import { compactMoney } from '@/lib/utils';
+import { KanbanBoard } from '@/components/kanban/kanban-board';
+import { CurrencyInput } from '@/components/ui/currency-input';
 
 const STATUS: Record<string, string> = { open: 'Đang mở', won: 'Thắng', lost: 'Thua' };
 
@@ -15,10 +17,9 @@ export default function ProjectsPage() {
   const [stages, setStages] = useState<StageRow[]>([]);
   const [view, setView] = useState<'pipeline' | 'list'>('pipeline');
   const [open, setOpen] = useState(false);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [over, setOver] = useState<string | null>(null);
   const [lost, setLost] = useState<{ id: string; stageId: string } | null>(null);
   const [reason, setReason] = useState('');
+  const [presetStageId, setPresetStageId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   function load() {
@@ -39,7 +40,7 @@ export default function ProjectsPage() {
       body: JSON.stringify({
         name: String(data.get('name') || ''),
         customerId: String(data.get('customerId') || ''),
-        stageId: String(data.get('stageId') || ''),
+        stageId: String(data.get('stageId') || presetStageId || stages[0]?.id || ''),
         value: Number(data.get('value') || 0),
         probability: Number(data.get('probability') || 0),
         expectedCloseDate: String(data.get('closeDate') || ''),
@@ -62,17 +63,6 @@ export default function ProjectsPage() {
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...updated } : row)));
     setLost(null);
   }
-
-  function dropOn(stageId: string) {
-    const id = dragId;
-    setOver(null);
-    setDragId(null);
-    if (!id) return;
-    const project = rows.find((row) => row.id === id);
-    if (!project || project.stageId === stageId) return;
-    move(id, stageId).catch((err: Error) => setError(err.message));
-  }
-
   return (
     <>
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
@@ -90,50 +80,17 @@ export default function ProjectsPage() {
       </div>
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
       {view === 'pipeline' ? (
-        <div className="kanban-board">
-          {stages.map((stage) => {
-            const cards = rows.filter((row) => row.stageId === stage.id || (!row.stageId && row.stage === stage.name));
-            return (
-              <section
-                key={stage.id}
-                className={over === stage.id ? 'kanban-col over' : 'kanban-col'}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setOver(stage.id);
-                }}
-                onDragLeave={() => setOver((current) => (current === stage.id ? null : current))}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  dropOn(stage.id);
-                }}
-              >
-                <header className="mb-3 flex items-center justify-between px-1">
-                  <span className="text-xs font-semibold" style={{ color: stage.color }}>{stage.name}</span>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-muted-foreground">{cards.length}</span>
-                </header>
-                <div className="space-y-2">
-                  {cards.map((project) => (
-                    <article
-                      key={project.id}
-                      draggable
-                      onDragStart={() => setDragId(project.id)}
-                      onDragEnd={() => { setDragId(null); setOver(null); }}
-                      onClick={() => router.push(`/du-an/${project.id}`)}
-                      className={dragId === project.id ? 'kanban-card dragging' : 'kanban-card'}
-                    >
-                      <p className="text-sm font-semibold">{project.name}</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">{project.customer}</p>
-                      <div className="mt-3 flex items-center justify-between text-xs">
-                        <span className="font-medium">{compactMoney(project.value)}</span>
-                        <span className="text-muted-foreground">{project.probability}%</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+        <KanbanBoard
+          rows={rows}
+          stages={stages}
+          onMove={(dealId, stageId) => {
+            move(dealId, stageId).catch((err: Error) => setError(err.message));
+          }}
+          onCreate={(stageId) => {
+            setPresetStageId(stageId);
+            setOpen(true);
+          }}
+        />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((project) => (
@@ -167,26 +124,139 @@ export default function ProjectsPage() {
       )}
       {open && (
         <>
-          <div className="modal-backdrop" onClick={() => setOpen(false)} />
-          <form className="modal-card" onSubmit={(event) => create(event).catch((err: Error) => setError(err.message))}>
+          <div
+            className="modal-backdrop"
+            onClick={() => {
+              setOpen(false);
+              setPresetStageId(null);
+            }}
+          />
+          <form
+            className="modal-card"
+            onSubmit={(event) => create(event).catch((err: Error) => setError(err.message))}
+          >
             <h2 className="text-base font-semibold">Thêm dự án</h2>
-            <div className="mt-4 grid gap-3">
-              <input name="name" required className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Tên dự án" />
-              <select name="customerId" required className="crm-select">
-                <option value="">Chọn khách hàng</option>
-                {customers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
-              </select>
-              <select name="stageId" className="crm-select">
-                {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-              </select>
-              <div className="grid grid-cols-2 gap-3">
-                <input name="value" className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Giá trị" defaultValue="0" />
-                <input name="probability" className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Xác suất %" defaultValue="10" />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Điền thông tin cơ hội / dự án mới
+            </p>
+
+            <div className="mt-5 grid gap-4">
+              {/* Tên dự án */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Tên dự án <span className="text-destructive">*</span>
+                </label>
+                <input
+                  name="name"
+                  required
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                  placeholder="VD: Hợp đồng thi công nhà xưởng"
+                />
               </div>
-              <input name="closeDate" type="date" className="h-10 rounded-md border border-input px-3 text-sm" />
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setOpen(false)} className="h-9 rounded-md border px-4 text-sm">Hủy</button>
-                <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Lưu</button>
+
+              {/* Khách hàng */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Khách hàng <span className="text-destructive">*</span>
+                </label>
+                <select
+                  name="customerId"
+                  required
+                  defaultValue=""
+                  className="crm-select w-full"
+                >
+                  <option value="" disabled>-- Chọn khách hàng --</option>
+                  {customers.map((row) => (
+                    <option key={row.id} value={row.id}>{row.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Giai đoạn */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Giai đoạn
+                </label>
+                <select
+                  name="stageId"
+                  className="crm-select w-full"
+                  defaultValue={presetStageId || ''}
+                >
+                  <option value="">-- Chọn giai đoạn --</option>
+                  {stages.map((stage) => (
+                    <option key={stage.id} value={stage.id}>{stage.name}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Bỏ trống sẽ dùng giai đoạn &quot;{stages[0]?.name || 'Lead mới'}&quot;
+                </p>
+              </div>
+
+              {/* Giá trị + Xác suất — cùng hàng */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Giá trị dự kiến (VND)
+                  </label>
+                  <CurrencyInput
+                    name="value"
+                    defaultValue={0}
+                    placeholder="0"
+                    showPreview
+                  />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    VD: gõ 1000000 → hiển thị 1.000.000
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Xác suất (%)
+                  </label>
+                  <input
+                    name="probability"
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="10"
+                    defaultValue="10"
+                  />
+                </div>
+              </div>
+
+              {/* Ngày dự kiến chốt */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Ngày dự kiến chốt
+                </label>
+                <input
+                  name="closeDate"
+                  type="date"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Để trống nếu chưa xác định
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setPresetStageId(null);
+                  }}
+                  className="h-9 rounded-md border border-input bg-background px-4 text-sm hover:bg-accent"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Tạo dự án
+                </button>
               </div>
             </div>
           </form>

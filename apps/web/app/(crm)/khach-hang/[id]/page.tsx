@@ -9,6 +9,7 @@ import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
 import { compactMoney, initials } from '@/lib/utils';
 import { ActivityForm } from '@/components/activity-form';
 import { Loading } from '@/components/loading';
+import { CurrencyInput } from '@/components/ui/currency-input';
 
 const STATUS: Record<string, string> = { lead: 'Lead', active: 'Đang hoạt động', inactive: 'Ngừng hoạt động' };
 const OPP: Record<string, string> = { open: 'Đang mở', won: 'Thắng', lost: 'Thua' };
@@ -105,20 +106,20 @@ export default function CustomerDetailPage() {
     setTab(`Dự án (${projects.length + 1})`);
   }
 
-if (error) {
-  return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="max-w-md rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-center">
-        <p className="text-sm font-medium text-destructive">Không tải được dữ liệu</p>
-        <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="max-w-md rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-center">
+          <p className="text-sm font-medium text-destructive">Không tải được dữ liệu</p>
+          <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-if (!customer) {
-  return <Loading text="Đang tải hồ sơ khách hàng" />;
-}
+  if (!customer) {
+    return <Loading text="Đang tải hồ sơ khách hàng" />;
+  }
 
   return (
     <div className="w-full px-5 py-4">
@@ -306,8 +307,12 @@ if (!customer) {
             <h2 className="text-base font-semibold">Thêm dự án</h2>
             <div className="mt-4 grid gap-3">
               <input className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Tên dự án" value={projectName} onChange={(event) => setProjectName(event.target.value)} />
-              <input className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Giá trị" value={projectValue} onChange={(event) => setProjectValue(event.target.value)} />
-              <div className="flex justify-end gap-2">
+              <CurrencyInput
+                name="value"
+                defaultValue={projectValue}
+                placeholder="0"
+                showPreview
+              />              <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setAdding(false)} className="h-9 rounded-md border px-4 text-sm">Hủy</button>
                 <button type="button" onClick={() => addProject().catch((err: Error) => setError(err.message))} className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Lưu</button>
               </div>

@@ -93,8 +93,14 @@ export default function OpportunitiesPage() {
                 <option value="">Chọn khách hàng</option>
                 {customers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
               </select>
-              <select name="stageId" className="crm-select">
-                {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+              <select
+                name="stageId"
+                className="crm-select"
+                defaultValue={stages[0]?.id || ''}
+              >
+                {stages.map((stage) => (
+                  <option key={stage.id} value={stage.id}>{stage.name}</option>
+                ))}
               </select>
               <div className="grid grid-cols-2 gap-3">
                 <input name="value" className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Giá trị" defaultValue="0" />
