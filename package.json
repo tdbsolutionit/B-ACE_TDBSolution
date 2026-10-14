@@ -14,9 +14,9 @@
     "build": "npm run build -w @bace/shared && npm run build -w @bace/api && npm run build -w @bace/web",
     "test": "npm run test -w @bace/api",
     "lint": "npm run lint --workspaces --if-present",
-    "db:generate": "npm run prisma:generate -w @bace/api",
-    "db:migrate": "npm run prisma:migrate -w @bace/api",
-    "db:seed": "npm run prisma:seed -w @bace/api",
+    "db:generate": "node scripts/with-env.cjs -- npm run prisma:generate -w @bace/api",
+    "db:migrate": "node scripts/with-env.cjs -- npm run prisma:deploy -w @bace/api",
+    "db:seed": "node scripts/with-env.cjs -- npm run prisma:seed -w @bace/api",
     "docker:up": "docker compose up -d postgres",
     "docker:down": "docker compose down"
   },

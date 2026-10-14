@@ -4,7 +4,11 @@ CRM nội bộ, chuẩn bị cho multi-tenant. Giao diện port từ B-ACE SME. 
 
 ## Chạy local
 
+Cần Node 20 trở lên (`nvm use` nếu có nvm) và Docker Desktop.
+
 ```bash
+git clone https://github.com/tdbsolutionit/B-ACE_TDBSolution.git
+cd B-ACE_TDBSolution
 cp .env.example .env
 docker compose up -d postgres
 npm install
@@ -12,6 +16,11 @@ npm run build -w @bace/shared
 npm run db:generate
 npm run db:migrate
 npm run db:seed
+```
+
+Mở hai terminal trong cùng thư mục:
+
+```bash
 npm run dev:api
 npm run dev:web
 ```
