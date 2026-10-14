@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser, owned, scope } from '../common/auth';
 import { CurrentUser } from '../common/current-user.decorator';
 import { logActivity } from '../common/activity';
+import { RealtimeService } from '../realtime/realtime.service';
 
 class CustomerDto {
   @IsString()
@@ -193,7 +194,10 @@ function sameEmail(left?: string | null, right?: string | null) {
 @ApiBearerAuth()
 @Controller('customers')
 export class CustomersController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   @Get()
   list(
@@ -260,56 +264,52 @@ export class CustomersController {
     });
   }
 
-  @Post('import')
-  importRows(@CurrentUser() user: AuthUser, @Body() dto: ImportDto) {
-    return this.prisma.withTenant(user.tenantId, async (tx) => {
-      const existing = await tx.customer.findMany({
-        where: scope(user.tenantId),
-        select: { name: true, phone: true, email: true, contactPhone: true, contactEmail: true },
+  @Post()
+  async create(@CurrentUser() user: AuthUser, @Body() dto: CustomerDto) {
+    const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
+      const created = await tx.customer.create({
+        data: {
+          tenantId: user.tenantId,
+          name: dto.name.trim(),
+          company: blank(dto.company),
+          phone: blank(dto.phone),
+          email: blank(dto.email),
+          address: blank(dto.address),
+          taxCode: blank(dto.taxCode),
+          industry: blank(dto.industry),
+          contactName: blank(dto.contactName),
+          contactPhone: blank(dto.contactPhone),
+          contactEmail: blank(dto.contactEmail),
+          type: dbType(dto.type),
+          status: dto.status ?? 'lead',
+          sourceName: blank(dto.sourceName),
+          notes: blank(dto.notes),
+          assignedTo: user.sub,
+          createdBy: user.sub,
+        },
+        include: { opportunities: { select: { id: true, status: true, stage: { select: { name: true } } } } },
       });
-      const skipped: Array<{ name: string; reason: string }> = [];
-      let created = 0;
-      for (const row of dto.rows.slice(0, 500)) {
-        const name = row.name.trim();
-        if (!name) continue;
-        const clash = existing.find(
-          (item) =>
-            sameContact(row.phone, item.phone) ||
-            sameContact(row.phone, item.contactPhone) ||
-            sameEmail(row.email, item.email) ||
-            sameEmail(row.email, item.contactEmail),
-        );
-        if (clash) {
-          skipped.push({ name, reason: `Trùng ${clash.name}` });
-          continue;
-        }
-        const saved = await tx.customer.create({
-          data: {
-            tenantId: user.tenantId,
-            name,
-            company: blank(row.company),
-            phone: blank(row.phone),
-            email: blank(row.email),
-            taxCode: blank(row.taxCode),
-            type: 'business',
-            status: 'lead',
-            assignedTo: user.sub,
-            createdBy: user.sub,
-          },
-        });
-        existing.push(saved);
-        created += 1;
-      }
-      if (created > 0) {
-        await logActivity(tx, user, {
-          type: 'note',
-          subject: 'Nhập khách từ CSV',
-          content: `${created} khách mới`,
-          relatedType: 'customer',
-        });
-      }
-      return { created, skipped: skipped.slice(0, 20) };
+      await logActivity(tx, user, {
+        type: 'note',
+        subject: 'Tạo khách hàng',
+        content: created.name,
+        relatedType: 'customer',
+        relatedId: created.id,
+      });
+      return this.present(created, new Map([[user.sub, user.name]]));
     });
+
+    this.realtime.emit(
+      'customer:created',
+      {
+        id: result.id,
+        name: result.name,
+        company: result.company,
+      },
+      { tenantId: user.tenantId },
+    );
+
+    return result;
   }
 
   @Get(':id')
@@ -354,42 +354,6 @@ export class CustomersController {
           createdAt: item.createdAt,
         })),
       };
-    });
-  }
-
-  @Post()
-  create(@CurrentUser() user: AuthUser, @Body() dto: CustomerDto) {
-    return this.prisma.withTenant(user.tenantId, async (tx) => {
-      const created = await tx.customer.create({
-        data: {
-          tenantId: user.tenantId,
-          name: dto.name.trim(),
-          company: blank(dto.company),
-          phone: blank(dto.phone),
-          email: blank(dto.email),
-          address: blank(dto.address),
-          taxCode: blank(dto.taxCode),
-          industry: blank(dto.industry),
-          contactName: blank(dto.contactName),
-          contactPhone: blank(dto.contactPhone),
-          contactEmail: blank(dto.contactEmail),
-          type: dbType(dto.type),
-          status: dto.status ?? 'lead',
-          sourceName: blank(dto.sourceName),
-          notes: blank(dto.notes),
-          assignedTo: user.sub,
-          createdBy: user.sub,
-        },
-        include: { opportunities: { select: { id: true, status: true, stage: { select: { name: true } } } } },
-      });
-      await logActivity(tx, user, {
-        type: 'note',
-        subject: 'Tạo khách hàng',
-        content: created.name,
-        relatedType: 'customer',
-        relatedId: created.id,
-      });
-      return this.present(created, new Map([[user.sub, user.name]]));
     });
   }
 

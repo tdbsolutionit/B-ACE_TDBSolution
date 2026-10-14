@@ -210,8 +210,23 @@ button, a, input, select, textarea { font-family: inherit; }
   .search-key { display: none; }
   .app-sidebar { width: 76px; }
   .app-main { margin-left: 76px; }
-  .brand span.brand-name, .workspace-label, .nav-item span, .team-note, .sidebar-meta { display: none; }
+  
+  /* Ẩn tất cả text trong sidebar */
+  .brand span.brand-name,
+  .workspace-label,
+  .nav-item span,
+  .team-note,
+  .sidebar-meta,
+  .sidebar-bottom button span {
+    display: none;
+  }
+  
+  /* Căn giữa icon */
   .nav-item { justify-content: center; padding: 0; }
+  .sidebar-bottom button { justify-content: center; padding: 12px 0; }
+  
+  /* Sidebar meta chỉ hiện avatar */
+  .sidebar-meta { justify-content: center; }
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes notice-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
@@ -247,3 +262,95 @@ button, a, input, select, textarea { font-family: inherit; }
 .project-card:hover { transform: translateY(-3px); box-shadow: var(--hover-shadow); }
 .file-row { transition: background .15s ease; }
 .file-row:hover { background: var(--secondary); }
+
+/* ============================================
+   APP LAYOUT — Flex thay vì hardcode height
+   ============================================ */
+.app-main {
+  margin-left: 224px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;          /* KHÔNG dùng min-height */
+  overflow: hidden;       /* Ngăn scroll ngoài */
+}
+
+.app-header {
+  flex-shrink: 0;         /* Header không co */
+}
+
+.page-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px;
+  width: 100%;
+  max-width: none;    /* ← Thêm: override dòng 112 */
+  margin: 0;          /* ← Thêm: override dòng 112 */
+}
+
+/* Split view — cho pane tự scroll */
+.page-content.split-view-active {
+  padding: 0;
+  overflow: hidden;
+}
+
+.page-content.split-view-active .breadcrumb {
+  display: none;
+}
+
+/* Scrollbar mảnh (giữ nguyên từ lần trước) */
+.subtle-scrollbar::-webkit-scrollbar,
+.customer-list-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.subtle-scrollbar::-webkit-scrollbar-track,
+.customer-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.subtle-scrollbar::-webkit-scrollbar-thumb,
+.customer-list-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+.subtle-scrollbar:hover::-webkit-scrollbar-thumb,
+.customer-list-scroll:hover::-webkit-scrollbar-thumb {
+  background: oklch(0.85 0.01 255);
+}
+.subtle-scrollbar::-webkit-scrollbar-thumb:hover,
+.customer-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.7 0.01 255);
+}
+.subtle-scrollbar,
+.customer-list-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.subtle-scrollbar:hover,
+.customer-list-scroll:hover {
+  scrollbar-color: oklch(0.85 0.01 255) transparent;
+}
+
+/* ============================================
+   COMPACT DETAIL IN SPLIT VIEW
+   ============================================ */
+
+/* Panel bên phải — compact hơn */
+.page-content.split-view-active .data-panel {
+  padding: 16px 18px;
+}
+
+/* Giảm margin dọc giữa các section */
+.page-content.split-view-active .detail-section {
+  margin-bottom: 14px;
+}
+
+/* Card dạng card gọn */
+.detail-card-compact {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}

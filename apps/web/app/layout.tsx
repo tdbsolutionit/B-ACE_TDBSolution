@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth';
+import { RealtimeProvider } from '@/lib/realtime';
+import { Toaster } from '@/components/ui/toast';
 
 export const metadata: Metadata = {
   title: 'B-ACE SME',
@@ -16,7 +18,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <RealtimeProvider>
+            {children}
+          </RealtimeProvider>
+        </AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

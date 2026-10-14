@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser, owned, scope } from '../common/auth';
 import { CurrentUser } from '../common/current-user.decorator';
 import { logActivity } from '../common/activity';
+import { RealtimeService } from '../realtime/realtime.service';
 
 class TaskDto {
   @IsString()
@@ -65,7 +66,10 @@ function dueFlags(status: string, dueDate: Date | null) {
 @ApiBearerAuth()
 @Controller('tasks')
 export class TasksController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   @Get()
   list(@CurrentUser() user: AuthUser) {
@@ -95,10 +99,10 @@ export class TasksController {
     });
   }
 
-  @Post()
-  create(@CurrentUser() user: AuthUser, @Body() dto: TaskDto) {
-    return this.prisma.withTenant(user.tenantId, async (tx) => {
-      const created = await tx.task.create({
+    @Post()
+  async create(@CurrentUser() user: AuthUser, @Body() dto: TaskDto) {
+    const created = await this.prisma.withTenant(user.tenantId, async (tx) => {
+      const row = await tx.task.create({
         data: {
           tenantId: user.tenantId,
           title: dto.title.trim(),
@@ -116,20 +120,46 @@ export class TasksController {
       await logActivity(tx, user, {
         type: 'task',
         subject: 'Tạo công việc',
-        content: created.title,
+        content: row.title,
         relatedType: dto.relatedType,
         relatedId: dto.relatedId,
       });
-      return created;
+      return row;
     });
+
+    // Emit sau khi transaction thành công
+    this.realtime.emit(
+      'task:created',
+      {
+        id: created.id,
+        title: created.title,
+        priority: created.priority,
+        assignedTo: created.assignedTo,
+      },
+      { tenantId: user.tenantId, userId: created.assignedTo ?? undefined },
+    );
+
+    return created;
   }
 
   @Patch(':id')
-  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: TaskStatusDto) {
-    return this.prisma.withTenant(user.tenantId, async (tx) => {
+  async update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: TaskStatusDto) {
+    const updated = await this.prisma.withTenant(user.tenantId, async (tx) => {
       await tx.task.findFirstOrThrow({ where: owned(user, { id }) });
       return tx.task.update({ where: { id }, data: { status: dto.status } });
     });
+
+    this.realtime.emit(
+      'task:updated',
+      {
+        id: updated.id,
+        title: updated.title,
+        status: updated.status,
+      },
+      { tenantId: user.tenantId, userId: updated.assignedTo ?? undefined },
+    );
+
+    return updated;
   }
 }
 
