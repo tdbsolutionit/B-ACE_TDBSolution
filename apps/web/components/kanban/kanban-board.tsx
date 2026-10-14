@@ -24,6 +24,7 @@ export function KanbanBoard({ rows, stages, onMove, onCreate }: Props) {
     const unsub = on('deal:stage-changed', (event) => {
       const id = event.payload?.id;
       if (!id) return;
+
       setHighlightedId(id);
       window.setTimeout(() => setHighlightedId(null), 2500);
     });
