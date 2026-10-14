@@ -29,6 +29,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { api, useAuth } from '@/lib/auth';
+import { useRealtime } from '@/lib/realtime';
 import { type TaskRow } from '@/lib/crm';
 import { initials, roleLabel } from '@/lib/utils';
 
@@ -64,6 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [overdue, setOverdue] = useState<TaskRow[]>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const { on } = useRealtime();
 
   // Phím tắt G → X
   useGotoSequence(
@@ -129,6 +131,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       })
       .catch(() => setOverdue([]));
   }, [session, pathname]);
+
+    // Realtime: cập nhật chuông khi có task mới/cập nhật
+  useEffect(() => {
+    if (!session) return;
+
+    const refresh = () => {
+      api<TaskRow[]>('/tasks')
+        .then((rows) => {
+          const next = rows.filter((row) => row.overdue || row.dueToday || row.dueTomorrow);
+          setOverdue(next);
+
+          // Rung chuông + phát âm thanh nếu có thay đổi
+          const signature = next.map((row) => row.id).sort().join(',');
+          const seen = sessionStorage.getItem(NOTICE_SEEN);
+          if (signature && seen !== signature) {
+            setRing(true);
+            window.setTimeout(() => setRing(false), 1800);
+            playChime();
+          }
+        })
+        .catch(() => {});
+    };
+
+    const unsub1 = on('task:created', refresh);
+    const unsub2 = on('task:updated', refresh);
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [session, on]);
 
   const label = useMemo(() => {
     if (pathname.startsWith('/khach-hang')) return 'Khách hàng';

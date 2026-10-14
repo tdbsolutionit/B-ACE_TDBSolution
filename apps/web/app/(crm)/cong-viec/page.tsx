@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api } from '@/lib/auth';
 import { type CustomerRow, type TaskRow } from '@/lib/crm';
+import { useRealtime } from '@/lib/realtime';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<TaskRow[]>([]);
@@ -10,6 +11,7 @@ export default function TasksPage() {
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
+  const { on } = useRealtime();
 
   function load() {
     return api<TaskRow[]>('/tasks').then(setTasks);
@@ -20,6 +22,20 @@ export default function TasksPage() {
     api<CustomerRow[]>('/customers').then(setCustomers).catch(() => setCustomers([]));
     api<Array<{ id: string; name: string }>>('/users').then(setUsers).catch(() => setUsers([]));
   }, []);
+
+    // Realtime: tự động reload khi có task mới/cập nhật
+  useEffect(() => {
+    const unsub1 = on('task:created', () => {
+      load().catch(() => {});
+    });
+    const unsub2 = on('task:updated', () => {
+      load().catch(() => {});
+    });
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [on]);
 
   async function toggle(task: TaskRow) {
     await api(`/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ status: task.done ? 'pending' : 'done' }) });
