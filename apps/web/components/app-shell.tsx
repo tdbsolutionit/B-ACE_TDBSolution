@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { CommandPalette } from '@/components/command-palette';
 import {
   ArrowUpRight,
   Bell,
@@ -46,8 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { ready, session, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [help, setHelp] = useState(false);
-  const [menu, setMenu] = useState(false);
-  const [search, setSearch] = useState('');
+  const [menu, setMenu] = useState(false);  
   const [bell, setBell] = useState(false);
   const [ring, setRing] = useState(false);
   const [overdue, setOverdue] = useState<TaskRow[]>([]);
@@ -104,8 +104,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     year: 'numeric',
   }).format(new Date());
 
-  return (
-    <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
+   return (
+    <>
+      <CommandPalette />
+      <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
       <aside className="app-sidebar">
         <Link href="/" className="brand">
           <span className="brand-symbol"><Layers3 size={22} /></span>
@@ -197,17 +199,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
       <div className="app-main">
         <header className="app-header">
-          <form
-            className="global-search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              router.push(search.trim() ? `/tim-kiem?q=${encodeURIComponent(search.trim())}` : '/khach-hang');
-            }}
-          >
-            <Search size={17} />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm khách hàng, cơ hội, công việc..." />
-            <span className="search-key"><Command size={10} /> K</span>
-          </form>
+             <button
+               type="button"
+               onClick={() => {
+                 const evt = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
+                 window.dispatchEvent(evt);
+               }}
+               className="global-search group"
+             >
+               <Search size={17} />
+               <span className="flex-1 text-left text-sm text-muted-foreground">
+                 Tìm khách hàng, cơ hội, công việc...
+               </span>
+               <span className="search-key"><Command size={10} /> K</span>
+             </button>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs capitalize text-muted-foreground xl:block">{dateLabel}</span>
             <span className="mx-1 hidden h-5 border-l border-border sm:block" />
@@ -265,6 +270,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </>
       )}
     </div>
+    </>
   );
 }
 
