@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { TodayWidget } from '@/components/dashboard/today-widget';
+import { HotDealsWidget } from '@/components/dashboard/hot-deals-widget';
 import { useEffect, useState } from 'react';
 import { ArrowRight, ArrowUpRight, CalendarDays, Check, Target, TrendingUp, UsersRound, Wallet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -63,6 +65,13 @@ export default function DashboardPage() {
         </Link>
       </div>
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+
+      {/* ⬇️ THÊM MỚI — 2 widget actionable */}
+      <div className="mb-5 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <TodayWidget tasks={tasks} onToggle={(t) => toggle(t).catch((err: Error) => setError(err.message))} />
+        <HotDealsWidget />
+      </div>
+
       <div className="mb-7 grid grid-cols-2 gap-5 xl:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
