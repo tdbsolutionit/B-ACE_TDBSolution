@@ -75,18 +75,16 @@ export default function OpportunitiesPage() {
             <button
               type="button"
               onClick={() => setViewMode('kanban')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
               <KanbanSquare size={14} /> Kanban
             </button>
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
               <TableIcon size={14} /> Bảng
             </button>
@@ -161,31 +159,141 @@ export default function OpportunitiesPage() {
       {open && (
         <>
           <div className="modal-backdrop" onClick={() => setOpen(false)} />
-          <form className="modal-card" onSubmit={(event) => create(event).catch((err: Error) => setError(err.message))}>
+
+          <form
+            className="modal-card"
+            onSubmit={(event) =>
+              create(event).catch((err: Error) => setError(err.message))
+            }
+          >
             <h2 className="text-base font-semibold">Thêm dự án</h2>
-            <div className="mt-4 grid gap-3">
-              <input name="name" required className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Tên dự án" />
-              <select name="customerId" required className="crm-select">
-                <option value="">Chọn khách hàng</option>
-                {customers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
-              </select>
-              <select
-                name="stageId"
-                className="crm-select"
-                defaultValue={selectedStageId || stages[0]?.id || ''}
-              >
-                {stages.map((stage) => (
-                  <option key={stage.id} value={stage.id}>{stage.name}</option>
-                ))}
-              </select>
-              <div className="grid grid-cols-2 gap-3">
-                <input name="value" className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Giá trị" defaultValue="0" />
-                <input name="probability" className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Xác suất %" defaultValue="10" />
+
+            <div className="mt-4 grid gap-4">
+              {/* Tên dự án */}
+              <div className="grid gap-1.5">
+                <label htmlFor="new-project-name" className="text-sm font-medium">
+                  Tên dự án <span className="text-destructive">*</span>
+                </label>
+                <input
+                  id="new-project-name"
+                  name="name"
+                  required
+                  className="h-10 rounded-md border border-input px-3 text-sm"
+                  placeholder="Nhập tên dự án"
+                />
               </div>
-              <input name="closeDate" type="date" className="h-10 rounded-md border border-input px-3 text-sm" />
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setOpen(false)} className="h-9 rounded-md border px-4 text-sm">Hủy</button>
-                <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Lưu</button>
+
+              {/* Khách hàng */}
+              <div className="grid gap-1.5">
+                <label htmlFor="new-project-customer" className="text-sm font-medium">
+                  Khách hàng <span className="text-destructive">*</span>
+                </label>
+                <select
+                  id="new-project-customer"
+                  name="customerId"
+                  required
+                  className="crm-select"
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    Chọn khách hàng
+                  </option>
+                  {customers.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Giai đoạn bán hàng */}
+              <div className="grid gap-1.5">
+                <label htmlFor="new-project-stage" className="text-sm font-medium">
+                  Giai đoạn bán hàng
+                </label>
+                <select
+                  id="new-project-stage"
+                  name="stageId"
+                  className="crm-select"
+                  defaultValue={selectedStageId || stages[0]?.id || ""}
+                >
+                  {stages.map((stage) => (
+                    <option key={stage.id} value={stage.id}>
+                      {stage.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Giá trị và xác suất */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <label htmlFor="new-project-value" className="text-sm font-medium">
+                    Giá trị dự án (VNĐ)
+                  </label>
+                  <input
+                    id="new-project-value"
+                    name="value"
+                    type="number"
+                    min="0"
+                    step="any"
+                    className="h-10 rounded-md border border-input px-3 text-sm"
+                    placeholder="Nhập giá trị dự án"
+                    defaultValue="0"
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <label
+                    htmlFor="new-project-probability"
+                    className="text-sm font-medium"
+                  >
+                    Xác suất thành công (%)
+                  </label>
+                  <input
+                    id="new-project-probability"
+                    name="probability"
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="h-10 rounded-md border border-input px-3 text-sm"
+                    placeholder="0–100"
+                    defaultValue="10"
+                  />
+                </div>
+              </div>
+
+              {/* Ngày dự kiến chốt */}
+              <div className="grid gap-1.5">
+                <label htmlFor="new-project-close-date" className="text-sm font-medium">
+                  Ngày dự kiến chốt dự án
+                </label>
+                <input
+                  id="new-project-close-date"
+                  name="closeDate"
+                  type="date"
+                  className="h-10 rounded-md border border-input px-3 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ngày dự kiến hoàn tất thương vụ với khách hàng.
+                </p>
+              </div>
+
+              {/* Nút thao tác */}
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="h-9 rounded-md border px-4 text-sm"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground"
+                >
+                  Tạo dự án
+                </button>
               </div>
             </div>
           </form>
