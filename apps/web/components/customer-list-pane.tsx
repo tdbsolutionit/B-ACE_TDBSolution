@@ -4,10 +4,12 @@ import { Loading } from '@/components/loading';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import {
-  FileUp, LayoutGrid, Plus, Rows, Search,
+  Download, FileUp, LayoutGrid, Plus, Rows, Search,
 } from 'lucide-react';
 import { api } from '@/lib/auth';
 import { type CustomerRow } from '@/lib/crm';
+import { exportToExcel } from '@/lib/utils';
+import { useRealtime } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomerTable } from '@/components/customer-table';
@@ -36,14 +38,58 @@ function ListPane() {
   const [error, setError] = useState('');
   const [dupes, setDupes] = useState<Array<{ id: string; name: string }>>([]);
   const [importNote, setImportNote] = useState('');
+  const [users, setUsers] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const csvInput = useRef<HTMLInputElement>(null);
+
+  const { on } = useRealtime();
 
   useEffect(() => {
     api<CustomerRow[]>('/customers')
       .then(setRows)
       .catch((err: Error) => setError(err.message || 'Không tải được danh sách'))
       .finally(() => setLoading(false));
+
+    api<Array<{ id: string; name: string; role?: string }>>('/users')
+      .then(setUsers)
+      .catch(() => {});
   }, []);
+
+  // Lắng nghe sự kiện sửa/tạo khách hàng để tự động cập nhật danh sách ngay lập tức không cần F5
+  useEffect(() => {
+    const handleLocalChange = (e: Event) => {
+      const updated = (e as CustomEvent).detail;
+      if (updated?.id) {
+        setRows((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      }
+    };
+    window.addEventListener('customer:changed', handleLocalChange);
+
+    const unsubCreated = on('customer:created', (e) => {
+      if (e.payload?.id) {
+        api<CustomerRow>(`/customers/${e.payload.id}`)
+          .then((c) => {
+            if (c) {
+              setRows((prev) => (prev.some((r) => r.id === c.id) ? prev : [c, ...prev]));
+            }
+          })
+          .catch(() => {});
+      }
+    });
+
+    const unsubUpdated = on('customer:updated', (e) => {
+      if (e.payload?.id) {
+        setRows((prev) =>
+          prev.map((r) => (r.id === e.payload.id ? { ...r, ...e.payload } : r)),
+        );
+      }
+    });
+
+    return () => {
+      window.removeEventListener('customer:changed', handleLocalChange);
+      unsubCreated();
+      unsubUpdated();
+    };
+  }, [on]);
 
   useEffect(() => {
     const phone = form.phone.trim();
@@ -132,6 +178,87 @@ function ListPane() {
     toast.success(`Đã import ${result.created} khách`);
   }
 
+  const CUSTOMER_EXPORT_COLS = [
+    { key: 'name', label: 'Tên khách hàng' },
+    { key: 'company', label: 'Công ty' },
+    { key: 'phone', label: 'Số điện thoại' },
+    { key: 'email', label: 'Email' },
+    { key: 'address', label: 'Địa chỉ' },
+    { key: 'taxCode', label: 'Mã số thuế' },
+    { key: 'industry', label: 'Ngành nghề' },
+    { key: 'type', label: 'Loại khách' },
+    { key: 'status', label: 'Trạng thái' },
+    { key: 'sourceName', label: 'Nguồn' },
+    { key: 'assigneeName', label: 'Người phụ trách' },
+  ];
+
+  function exportCustomers(exportRows: CustomerRow[]) {
+    if (!exportRows.length) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+    exportToExcel('danh-sach-khach-hang', exportRows, CUSTOMER_EXPORT_COLS);
+    toast.success(`Đã xuất ${exportRows.length} khách hàng ra file Excel (.xls)`);
+  }
+
+  async function handleBulkAssign(targetUserId: string) {
+    try {
+      const selectedIds = Array.from(bulk.selected);
+      const res = await api<{ count: number; assigneeName: string }>('/customers/bulk-assign', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds, assignedTo: targetUserId }),
+      });
+      setRows((prev) =>
+        prev.map((r) =>
+          bulk.selected.has(r.id) ? { ...r, assigneeName: res.assigneeName } : r,
+        ),
+      );
+      toast.success(`Đã gán ${res.count} khách cho ${res.assigneeName}`);
+      bulk.clear();
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi gán khách hàng');
+    }
+  }
+
+  async function handleBulkStatus(newStatus: 'lead' | 'active' | 'inactive') {
+    try {
+      const selectedIds = Array.from(bulk.selected);
+      const res = await api<{ count: number }>('/customers/bulk-status', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds, status: newStatus }),
+      });
+      setRows((prev) =>
+        prev.map((r) =>
+          bulk.selected.has(r.id) ? { ...r, status: newStatus } : r,
+        ),
+      );
+      toast.success(`Đã cập nhật trạng thái cho ${res.count} khách`);
+      bulk.clear();
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi cập nhật trạng thái');
+    }
+  }
+
+  async function handleBulkDelete() {
+    try {
+      const selectedIds = Array.from(bulk.selected);
+      await api<{ count: number }>('/customers/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      setRows((prev) => prev.filter((r) => !bulk.selected.has(r.id)));
+      toast.success(`Đã xóa ${selectedIds.length} khách hàng`);
+      bulk.clear();
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi xóa khách hàng');
+    }
+  }
+
+  function handleBulkExport() {
+    const selectedRows = rows.filter((r) => bulk.selected.has(r.id));
+    exportCustomers(selectedRows);
+  }
+
   const tabs = [
     ['all', 'Tất cả', rows.length],
     ['lead', 'Lead', stats.lead],
@@ -153,7 +280,20 @@ function ListPane() {
           </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
-          <Button variant="outline" className="h-8 px-2.5 text-xs" onClick={() => csvInput.current?.click()}>
+          <Button
+            variant="outline"
+            className="h-8 px-2.5 text-xs"
+            title="Xuất danh sách ra CSV"
+            onClick={() => exportCustomers(filtered)}
+          >
+            <Download size={14} />
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 px-2.5 text-xs"
+            title="Nhập khách từ file CSV"
+            onClick={() => csvInput.current?.click()}
+          >
             <FileUp size={14} />
           </Button>
           <input ref={csvInput} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => {
@@ -229,7 +369,15 @@ function ListPane() {
         />
       </div>
 
-      <BulkActionBar count={bulk.count} onClear={bulk.clear} />
+      <BulkActionBar
+        count={bulk.count}
+        users={users}
+        onClear={bulk.clear}
+        onAssign={handleBulkAssign}
+        onChangeStatus={handleBulkStatus}
+        onExport={handleBulkExport}
+        onDelete={handleBulkDelete}
+      />
 
       {open && (
         <>

@@ -161,6 +161,30 @@ class ImportDto {
   rows!: ImportRow[];
 }
 
+class BulkAssignDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @IsString()
+  assignedTo!: string;
+}
+
+class BulkStatusDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @IsIn(['lead', 'active', 'inactive'])
+  status!: 'lead' | 'active' | 'inactive';
+}
+
+class BulkDeleteDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+}
+
 function blank(value?: string | null) {
   const text = value?.trim();
   return text ? text : null;
@@ -264,6 +288,133 @@ export class CustomersController {
     });
   }
 
+  @Post('import')
+  async import(@CurrentUser() user: AuthUser, @Body() dto: ImportDto) {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const existing = await tx.customer.findMany({
+        where: scope(user.tenantId),
+        select: { id: true, phone: true, email: true, contactPhone: true, contactEmail: true },
+      });
+
+      const skipped: Array<{ name: string; reason: string }> = [];
+      const toCreate: ImportRow[] = [];
+
+      for (const row of dto.rows || []) {
+        const name = (row.name || '').trim();
+        if (!name) continue;
+
+        const phone = blank(row.phone);
+        const email = blank(row.email);
+
+        const isDupe = existing.some(
+          (ex) =>
+            sameContact(phone, ex.phone) ||
+            sameContact(phone, ex.contactPhone) ||
+            sameEmail(email, ex.email) ||
+            sameEmail(email, ex.contactEmail),
+        );
+
+        if (isDupe) {
+          skipped.push({ name, reason: 'Số điện thoại hoặc email đã tồn tại' });
+          continue;
+        }
+
+        existing.push({ id: '', phone, email, contactPhone: null, contactEmail: null });
+        toCreate.push(row);
+      }
+
+      let createdCount = 0;
+      for (const row of toCreate) {
+        await tx.customer.create({
+          data: {
+            tenantId: user.tenantId,
+            name: row.name.trim(),
+            phone: blank(row.phone),
+            email: blank(row.email),
+            company: blank(row.company),
+            taxCode: blank(row.taxCode),
+            type: row.company ? 'business' : 'personal',
+            status: 'lead',
+            sourceName: 'Import CSV',
+            assignedTo: user.sub,
+            createdBy: user.sub,
+          },
+        });
+        createdCount++;
+      }
+
+      if (createdCount > 0) {
+        await logActivity(tx, user, {
+          type: 'note',
+          subject: 'Import khách hàng',
+          content: `Import thành công ${createdCount} khách hàng (${skipped.length} bỏ qua)`,
+          relatedType: 'customer',
+        });
+      }
+
+      return { created: createdCount, skipped };
+    });
+  }
+
+  @Post('bulk-assign')
+  async bulkAssign(@CurrentUser() user: AuthUser, @Body() dto: BulkAssignDto) {
+    const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
+      const targetUser = await tx.user.findFirstOrThrow({
+        where: scope(user.tenantId, { id: dto.assignedTo }),
+      });
+      const updated = await tx.customer.updateMany({
+        where: owned(user, { id: { in: dto.ids } }),
+        data: { assignedTo: dto.assignedTo },
+      });
+      await logActivity(tx, user, {
+        type: 'note',
+        subject: 'Chuyển nhượng khách hàng',
+        content: `Gán ${updated.count} khách cho ${targetUser.name}`,
+        relatedType: 'customer',
+      });
+      return { count: updated.count, assigneeName: targetUser.name };
+    });
+
+    this.realtime.emit(
+      'customer:assigned',
+      {
+        count: result.count,
+        assigneeName: result.assigneeName,
+        assignedTo: dto.assignedTo,
+      },
+      { tenantId: user.tenantId },
+    );
+
+    return result;
+  }
+
+  @Post('bulk-status')
+  async bulkStatus(@CurrentUser() user: AuthUser, @Body() dto: BulkStatusDto) {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const updated = await tx.customer.updateMany({
+        where: owned(user, { id: { in: dto.ids } }),
+        data: { status: dto.status },
+      });
+      await logActivity(tx, user, {
+        type: 'note',
+        subject: 'Đổi trạng thái khách hàng',
+        content: `Cập nhật trạng thái ${updated.count} khách sang ${dto.status}`,
+        relatedType: 'customer',
+      });
+      return { count: updated.count };
+    });
+  }
+
+  @Post('bulk-delete')
+  async bulkDelete(@CurrentUser() user: AuthUser, @Body() dto: BulkDeleteDto) {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const deleted = await tx.customer.deleteMany({
+        where: owned(user, { id: { in: dto.ids } }),
+      });
+      return { count: deleted.count };
+    });
+  }
+
   @Post()
   async create(@CurrentUser() user: AuthUser, @Body() dto: CustomerDto) {
     const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
@@ -336,6 +487,7 @@ export class CustomersController {
         ...this.present(row, names),
         opportunities: row.opportunities.map((item) => ({
           id: item.id,
+          code: item.code || null,
           name: item.name,
           stage: item.stage.name,
           stageColor: item.stage.color,
@@ -344,6 +496,7 @@ export class CustomersController {
           closeDate: item.expectedCloseDate ? item.expectedCloseDate.toISOString().slice(0, 10) : '',
           status: item.status,
           isLead: item.stage.name === 'Lead mới',
+          description: item.description,
         })),
         activities: activities.map((item) => ({
           id: item.id,
@@ -378,8 +531,8 @@ export class CustomersController {
   }
 
   @Patch(':id')
-  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CustomerPatchDto) {
-    return this.prisma.withTenant(user.tenantId, async (tx) => {
+  async update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CustomerPatchDto) {
+    const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
       await tx.customer.findFirstOrThrow({ where: owned(user, { id }) });
       const updated = await tx.customer.update({
         where: { id },
@@ -410,6 +563,14 @@ export class CustomersController {
       });
       return this.present(updated, new Map([[user.sub, user.name]]));
     });
+
+    this.realtime.emit(
+      'customer:updated',
+      result,
+      { tenantId: user.tenantId },
+    );
+
+    return result;
   }
 
   @Delete(':id')
@@ -453,6 +614,8 @@ export class CustomersController {
   ) {
     return {
       id: row.id,
+      code: (row as any).code ?? null,
+      shortCode: (row as any).shortCode ?? null,
       name: row.name,
       company: row.company,
       phone: row.phone,

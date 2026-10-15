@@ -148,10 +148,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [session, on]);
 
-  // Celebration khi deal chốt thắng
+  // Celebration khi deal chốt thắng hoặc báo giá được chấp nhận
   useEffect(() => {
     if (!session) return;
-    const unsub = on('deal:stage-changed', (event) => {
+    const unsub1 = on('deal:stage-changed', (event) => {
       if (event.payload?.status !== 'won') return;
       setCelebration({
         dealName: event.payload.name,
@@ -160,7 +160,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         at: event.at,
       });
     });
-    return unsub;
+    const unsub2 = on('quote:accepted', (event) => {
+      setCelebration({
+        dealName: `Báo giá ${event.payload?.quoteNumber || ''}`,
+        value: event.payload?.price,
+        owner: event.payload?.title,
+        at: event.at,
+      });
+    });
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, [session, on]);
 
   const label = useMemo(() => {

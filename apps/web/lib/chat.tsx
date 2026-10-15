@@ -51,6 +51,18 @@ export type ChatRoom = {
   lastReadAt: string;
 };
 
+function dedupeMessages(list: ChatMessage[]): ChatMessage[] {
+  const seen = new Set<string>();
+  const result: ChatMessage[] = [];
+  for (const item of list) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      result.push(item);
+    }
+  }
+  return result;
+}
+
 // ═══════════════════════════════════════════════════════════
 // Context
 // ═══════════════════════════════════════════════════════════
@@ -153,7 +165,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const list = await api<ChatMessage[]>(`/chat/rooms/${roomId}/messages?limit=50`);
-      setMessages(list);
+      setMessages(dedupeMessages(list));
       await markRead(roomId);
     } catch {
       setMessages([]);
@@ -195,7 +207,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         body: JSON.stringify({ roomId: activeRoomId, content: content.trim(), replyToId }),
       });
-      setMessages((prev) => prev.map((m) => (m.id === tempId ? created : m)));
+      setMessages((prev) => {
+        // Nếu sự kiện realtime WebSocket đã thêm tin nhắn vào trước thì chỉ cần xoá bỏ tin tạm
+        if (prev.some((m) => m.id === created.id)) {
+          return prev.filter((m) => m.id !== tempId);
+        }
+        return dedupeMessages(prev.map((m) => (m.id === tempId ? created : m)));
+      });
       refresh();
     } catch (err) {
       // Rollback
@@ -264,13 +282,27 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     matches: activeRoomRef.current === msg.roomId,
   });
 
-      // Nếu đang mở đúng phòng → append
+      // Nếu đang mở đúng phòng → append hoặc thay thế tin tạm
       if (activeRoomRef.current === msg.roomId) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
+
+          // Kiểm tra xem có tin optimistic tạm thời trùng nội dung và người gửi không
+          const tempIdx = prev.findIndex(
+            (m) =>
+              m.id.startsWith('temp-') &&
+              m.senderId === msg.senderId &&
+              m.content === msg.content,
+          );
+          if (tempIdx !== -1) {
+            const next = [...prev];
+            next[tempIdx] = msg;
+            return dedupeMessages(next);
+          }
+
+          return dedupeMessages([...prev, msg]);
         });
-               // Auto-mark read nếu chat đang mở
+        // Auto-mark read nếu chat đang mở
         if (openRef.current) markRead(msg.roomId);
       }
 

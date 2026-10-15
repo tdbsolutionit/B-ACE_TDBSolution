@@ -9,17 +9,22 @@ type Props = {
   required?: boolean;
   className?: string;
   showPreview?: boolean;
+  onChange?: (value: number) => void;
 };
 
 function formatNumber(raw: string): string {
   const digits = raw.replace(/\D/g, '');
   if (!digits) return '';
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // Xóa số 0 thừa ở đầu khi có số khác đằng sau (VD: "02" -> "2")
+  const cleaned = digits.replace(/^0+(?=\d)/, '');
+  return cleaned.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 function parseNumber(formatted: string): number {
   const digits = formatted.replace(/\D/g, '');
-  return digits ? Number(digits) : 0;
+  if (!digits) return 0;
+  const cleaned = digits.replace(/^0+(?=\d)/, '');
+  return cleaned ? Number(cleaned) : 0;
 }
 
 function readVietnamese(v: number): string {
@@ -37,6 +42,7 @@ export function CurrencyInput({
   required,
   className,
   showPreview = false,
+  onChange,
 }: Props) {
   const initial =
     typeof defaultValue === 'number'
@@ -58,8 +64,16 @@ export function CurrencyInput({
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
     const formatted = formatNumber(raw);
+    const parsed = parseNumber(formatted);
     setDisplay(formatted);
-    setValue(parseNumber(formatted));
+    setValue(parsed);
+    onChange?.(parsed);
+  }
+
+  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    if (value === 0 || display === '0') {
+      e.target.select();
+    }
   }
 
   return (
@@ -68,6 +82,7 @@ export function CurrencyInput({
         type="text"
         inputMode="numeric"
         value={display}
+        onFocus={handleFocus}
         onChange={handleChange}
         placeholder={placeholder}
         required={required}

@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { KanbanSquare, Table as TableIcon } from 'lucide-react';
 import { api } from '@/lib/auth';
 import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
 import { compactMoney } from '@/lib/utils';
+import { KanbanBoard } from '@/components/kanban/kanban-board';
+import { toast } from '@/components/ui/toast';
 
 const OPP: Record<string, string> = { open: 'Đang mở', won: 'Thắng', lost: 'Thua' };
 
@@ -15,6 +18,8 @@ export default function OpportunitiesPage() {
   const [stages, setStages] = useState<StageRow[]>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+  const [selectedStageId, setSelectedStageId] = useState<string>('');
 
   function load() {
     return api<ProjectRow[]>('/opportunities').then(setRows);
@@ -25,6 +30,19 @@ export default function OpportunitiesPage() {
     api<CustomerRow[]>('/customers').then(setCustomers).catch(() => setCustomers([]));
     api<StageRow[]>('/opportunities/stages').then(setStages).catch(() => setStages([]));
   }, []);
+
+  async function handleMove(dealId: string, stageId: string) {
+    try {
+      const updated = await api<ProjectRow>(`/opportunities/${dealId}/stage`, {
+        method: 'PATCH',
+        body: JSON.stringify({ stageId }),
+      });
+      setRows((prev) => prev.map((r) => (r.id === dealId ? { ...r, ...updated } : r)));
+      toast.success(`Đã chuyển giai đoạn "${updated.name}" → ${updated.stage}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi chuyển giai đoạn');
+    }
+  }
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,40 +66,98 @@ export default function OpportunitiesPage() {
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-[28px] font-bold">Cơ hội</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">Dự án và cơ hội đang theo dõi. Mở một dòng để vào hồ sơ dự án.</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Dự án và cơ hội đang theo dõi qua Pipeline.
+          </p>
         </div>
-        <button type="button" onClick={() => setOpen(true)} className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">Thêm dự án</button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-border bg-card p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('kanban')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <KanbanSquare size={14} /> Kanban
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <TableIcon size={14} /> Bảng
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedStageId(stages[0]?.id || '');
+              setOpen(true);
+            }}
+            className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+          >
+            Thêm dự án
+          </button>
+        </div>
       </div>
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
-      <section className="data-panel overflow-x-auto">
-        <table className="crm-table">
-          <thead>
-            <tr><th>DỰ ÁN</th><th>KHÁCH HÀNG</th><th>GIAI ĐOẠN</th><th>GIÁ TRỊ</th><th>XÁC SUẤT</th><th>NGÀY DỰ KIẾN</th><th>TRẠNG THÁI</th></tr>
-          </thead>
-          <tbody>
-            {rows.map((project) => (
-              <tr key={project.id} className="cursor-pointer" onClick={() => router.push(`/du-an/${project.id}`)}>
-                <td>
-                  <p className="font-medium">{project.name}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{project.isLead ? 'Lead' : 'Cơ hội'}</p>
-                </td>
-                <td className="text-xs">{project.customer}</td>
-                <td><span className="stage-badge" style={{ background: `${project.stageColor}20`, color: project.stageColor }}>{project.stage}</span></td>
-                <td className="font-medium">{compactMoney(project.value)}</td>
-                <td>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${project.probability}%` }} /></div>
-                    <span className="text-xs">{project.probability}%</span>
-                  </div>
-                </td>
-                <td className="text-xs text-muted-foreground">{project.closeDate || '—'}</td>
-                <td><span className={project.status === 'won' ? 'status-badge status-success' : project.status === 'lost' ? 'status-badge status-warning' : 'status-badge status-blue'}>{OPP[project.status]}</span></td>
+
+      {viewMode === 'kanban' ? (
+        <KanbanBoard
+          rows={rows}
+          stages={stages}
+          onMove={handleMove}
+          onCreate={(stageId) => {
+            setSelectedStageId(stageId);
+            setOpen(true);
+          }}
+        />
+      ) : (
+        <section className="data-panel overflow-x-auto">
+          <table className="crm-table">
+            <thead>
+              <tr>
+                <th className="whitespace-nowrap">MÃ DỰ ÁN</th>
+                <th>DỰ ÁN</th>
+                <th>KHÁCH HÀNG</th>
+                <th>GIAI ĐOẠN</th>
+                <th>GIÁ TRỊ</th>
+                <th>XÁC SUẤT</th>
+                <th>NGÀY DỰ KIẾN</th>
+                <th>TRẠNG THÁI</th>
               </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">Chưa có cơ hội.</td></tr>}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody>
+              {rows.map((project) => (
+                <tr key={project.id} className="cursor-pointer" onClick={() => router.push(`/du-an/${project.id}`)}>
+                  <td className="whitespace-nowrap font-mono text-xs font-semibold text-primary">
+                    {project.code || '—'}
+                  </td>
+                  <td>
+                    <p className="font-medium">{project.name}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{project.isLead ? 'Lead' : 'Cơ hội'}</p>
+                  </td>
+                  <td className="text-xs font-medium">{project.customer}</td>
+                  <td><span className="stage-badge" style={{ background: `${project.stageColor}20`, color: project.stageColor }}>{project.stage}</span></td>
+                  <td className="font-medium">{project.value > 0 ? compactMoney(project.value) : '—'}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${project.probability}%` }} /></div>
+                      <span className="text-xs">{project.probability}%</span>
+                    </div>
+                  </td>
+                  <td className="text-xs text-muted-foreground">{project.closeDate || '—'}</td>
+                  <td><span className={project.status === 'won' ? 'status-badge status-success' : project.status === 'lost' ? 'status-badge status-warning' : 'status-badge status-blue'}>{OPP[project.status]}</span></td>
+                </tr>
+              ))}
+              {rows.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-sm text-muted-foreground">Chưa có cơ hội.</td></tr>}
+            </tbody>
+          </table>
+        </section>
+      )}
       {open && (
         <>
           <div className="modal-backdrop" onClick={() => setOpen(false)} />
@@ -96,7 +172,7 @@ export default function OpportunitiesPage() {
               <select
                 name="stageId"
                 className="crm-select"
-                defaultValue={stages[0]?.id || ''}
+                defaultValue={selectedStageId || stages[0]?.id || ''}
               >
                 {stages.map((stage) => (
                   <option key={stage.id} value={stage.id}>{stage.name}</option>

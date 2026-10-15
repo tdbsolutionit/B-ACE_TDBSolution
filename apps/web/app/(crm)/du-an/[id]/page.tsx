@@ -103,6 +103,11 @@ export default function ProjectPage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-xl font-bold">{project.name}</h1>
+              {project.code && (
+                <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+                  {project.code}
+                </span>
+              )}
               <span className="stage-badge" style={{ background: `${project.stageColor}20`, color: project.stageColor }}>{project.stage}</span>
             </div>
             <div className="mt-2.5 flex flex-wrap items-center text-xs text-slate-500">

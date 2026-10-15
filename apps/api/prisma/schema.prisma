@@ -80,6 +80,8 @@ model Stage {
 model Customer {
   id            String         @id @default(uuid())
   tenantId      String         @map("tenant_id")
+  code          String?        // Mã KH (ví dụ: KH00001)
+  shortCode     String?        @map("short_code") // Mã số (ví dụ: 01)
   name          String
   company       String?
   phone         String?
@@ -105,12 +107,14 @@ model Customer {
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([tenantId, email])
+  @@index([tenantId, code])
   @@map("customers")
 }
 
 model Opportunity {
   id                String            @id @default(uuid())
   tenantId          String            @map("tenant_id")
+  code              String?           // Mã dự án (ví dụ: 20240124-0101_Z751_Mua hàng 20 bộ treo xe)
   name              String
   customerId        String            @map("customer_id")
   stageId           String            @map("stage_id")

@@ -241,8 +241,13 @@ export function CustomerTable({
                           {initials(row.name)}
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate font-medium text-foreground">
-                            {row.name}
+                          <span className="flex items-center gap-1.5 font-medium text-foreground">
+                            <span className="truncate">{row.name}</span>
+                            {row.code && (
+                              <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
+                                {row.code}
+                              </span>
+                            )}
                           </span>
                           {row.company && (
                             <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
