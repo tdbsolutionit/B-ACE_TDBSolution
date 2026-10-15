@@ -8,7 +8,7 @@ import { ChatWidget } from '@/components/chat/chat-widget';
 
 export const metadata: Metadata = {
   title: 'B-ACE SME',
-  description: 'CRM cho doanh nghiệp SME Việt Nam',
+  description: 'CRM cho doanh nghiệp Việt Nam',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
