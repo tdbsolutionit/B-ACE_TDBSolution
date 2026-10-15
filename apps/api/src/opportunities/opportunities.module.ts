@@ -98,6 +98,7 @@ function present(row: {
 }, names: Map<string, string>) {
   return {
     id: row.id,
+    code: (row as any).code ?? null,
     name: row.name,
     customerId: row.customerId,
     customer: row.customer.name,
@@ -276,6 +277,8 @@ export class OpportunitiesController {
         stage: result.stage,
         stageColor: result.stageColor,
         status: result.status,
+        value: Number(result.value) || 0,
+        owner: result.owner,
       },
       { tenantId: user.tenantId },
     );

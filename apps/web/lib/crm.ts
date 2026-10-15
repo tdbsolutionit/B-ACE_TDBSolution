@@ -1,5 +1,7 @@
 export type CustomerRow = {
   id: string;
+  code?: string | null;
+  shortCode?: string | null;
   name: string;
   company: string | null;
   phone: string | null;
@@ -22,6 +24,7 @@ export type CustomerRow = {
 
 export type ProjectRow = {
   id: string;
+  code?: string | null;
   name: string;
   customerId: string;
   customer: string;

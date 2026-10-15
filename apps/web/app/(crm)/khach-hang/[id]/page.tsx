@@ -10,6 +10,7 @@ import { compactMoney, initials } from '@/lib/utils';
 import { ActivityForm } from '@/components/activity-form';
 import { Loading } from '@/components/loading';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { toast } from '@/components/ui/toast';
 
 const STATUS: Record<string, string> = { lead: 'Lead', active: 'Đang hoạt động', inactive: 'Ngừng hoạt động' };
 const OPP: Record<string, string> = { open: 'Đang mở', won: 'Thắng', lost: 'Thua' };
@@ -31,11 +32,18 @@ export default function CustomerDetailPage() {
   const [stages, setStages] = useState<StageRow[]>([]);
   const [projectName, setProjectName] = useState('');
   const [projectValue, setProjectValue] = useState('0');
+  const [projectStageId, setProjectStageId] = useState('');
+  const [projectProbability, setProjectProbability] = useState(20);
+  const [projectCloseDate, setProjectCloseDate] = useState('');
+  const [projectDesc, setProjectDesc] = useState('');
 
   async function load() {
     const row = await api<Detail>(`/customers/${params.id}`);
     setCustomer(row);
     setNotes(row.notes || '');
+    if ((row.opportunities || []).length > 0) {
+      setTab(`Dự án (${row.opportunities.length})`);
+    }
   }
 
   useEffect(() => {
@@ -73,37 +81,54 @@ export default function CustomerDetailPage() {
   async function saveEdit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    await api(`/customers/${params.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        name: String(data.get('name') || ''),
-        phone: String(data.get('phone') || ''),
-        email: String(data.get('email') || ''),
-        address: String(data.get('address') || ''),
-        taxCode: String(data.get('taxCode') || ''),
-        industry: String(data.get('industry') || ''),
-        status: String(data.get('status') || 'lead'),
-      }),
-    });
-    setEdit(false);
-    await load();
+    try {
+      const updated = await api<Detail>(`/customers/${params.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: String(data.get('name') || ''),
+          phone: String(data.get('phone') || ''),
+          email: String(data.get('email') || ''),
+          address: String(data.get('address') || ''),
+          taxCode: String(data.get('taxCode') || ''),
+          industry: String(data.get('industry') || ''),
+          status: String(data.get('status') || 'lead'),
+        }),
+      });
+      setCustomer((prev) => (prev ? { ...prev, ...updated } : prev));
+      setEdit(false);
+      window.dispatchEvent(new CustomEvent('customer:changed', { detail: updated }));
+      toast.success('Đã cập nhật thông tin khách hàng');
+      await load();
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi cập nhật khách hàng');
+    }
   }
 
   async function addProject() {
     if (!projectName.trim() || !stages[0]) return;
-    await api('/opportunities', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: projectName,
-        customerId: params.id,
-        stageId: stages[0].id,
-        value: Number(projectValue) || 0,
-      }),
-    });
-    setAdding(false);
-    setProjectName('');
-    await load();
-    setTab(`Dự án (${projects.length + 1})`);
+    try {
+      await api('/opportunities', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: projectName.trim(),
+          customerId: params.id,
+          stageId: projectStageId || stages[0].id,
+          value: Number(projectValue) || 0,
+          probability: Number(projectProbability) || 0,
+          expectedCloseDate: projectCloseDate || undefined,
+          description: projectDesc || undefined,
+        }),
+      });
+      setAdding(false);
+      setProjectName('');
+      setProjectValue('0');
+      setProjectDesc('');
+      toast.success('Đã thêm dự án mới');
+      await load();
+      setTab(`Dự án (${projects.length + 1})`);
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi thêm dự án');
+    }
   }
 
   if (error) {
@@ -149,17 +174,25 @@ export default function CustomerDetailPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-xl font-bold">{customer.name}</h1>
+                {customer.code && (
+                  <span className="rounded-md bg-primary/15 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+                    Mã KH: {customer.code} {customer.shortCode ? `(${customer.shortCode})` : ''}
+                  </span>
+                )}
                 {isBusiness ? (
                   <span className="badge-type badge-type-business"><Building2 size={12} /> Doanh nghiệp</span>
                 ) : (
                   <span className="badge-type badge-type-individual"><User size={12} /> Cá nhân</span>
                 )}
               </div>
+              {customer.company && customer.company !== customer.name && (
+                <p className="mt-1 text-xs font-semibold text-foreground/80">{customer.company}</p>
+              )}
               <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
                 {isBusiness && customer.taxCode && <p>MST: <strong className="text-foreground">{customer.taxCode}</strong></p>}
                 {isBusiness && customer.industry && <p>Lĩnh vực: <strong className="text-foreground">{customer.industry}</strong></p>}
                 {isBusiness && customer.contactName && <p>PIC: <strong className="text-foreground">{customer.contactName}</strong>{customer.contactPhone ? ` · ${customer.contactPhone}` : ''}</p>}
-                {!isBusiness && customer.company && <p>{customer.company}</p>}
+                {!isBusiness && customer.company && customer.company === customer.name && <p>{customer.company}</p>}
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <span className={customer.status === 'active' ? 'status-badge status-success' : customer.status === 'inactive' ? 'status-badge status-warning' : 'status-badge status-blue'}>{STATUS[customer.status]}</span>
@@ -194,7 +227,14 @@ export default function CustomerDetailPage() {
 
         {tab === 'Thông tin' && (
           <dl className="w-full space-y-1.5 text-sm">
-            <Row label={isBusiness ? 'Tên doanh nghiệp' : 'Tên khách hàng'} value={customer.name} />
+            {customer.code && (
+              <Row
+                label="Mã khách hàng"
+                value={`${customer.code} ${customer.shortCode ? `(Mã số: ${customer.shortCode})` : ''}`}
+              />
+            )}
+            <Row label="Tên gọi / Tên ngắn" value={customer.name} />
+            {customer.company && <Row label="Tên công ty đầy đủ" value={customer.company} />}
             {isBusiness && <Row label="Mã số thuế" value={customer.taxCode || '—'} />}
             {isBusiness && <Row label="Lĩnh vực" value={customer.industry || '—'} />}
             <Row label="Điện thoại" value={customer.phone || '—'} />
@@ -210,39 +250,70 @@ export default function CustomerDetailPage() {
         {tab.startsWith('Dự án') && (
           <>
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Tất cả dự án và cơ hội của khách hàng này</p>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Danh sách dự án và cơ hội</p>
+                <p className="text-xs text-muted-foreground">Tổng cộng {projects.length} dự án liên kết với khách hàng này</p>
+              </div>
               <button type="button" onClick={() => setAdding(true)} className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"><Plus size={16} /> Thêm dự án</button>
             </div>
             {projects.length === 0 ? (
               <p className="py-16 text-center text-sm text-muted-foreground">Chưa có dự án nào cho khách hàng này.</p>
             ) : (
-              <table className="crm-table">
-                <thead>
-                  <tr><th>DỰ ÁN</th><th>GIAI ĐOẠN</th><th>GIÁ TRỊ</th><th>XÁC SUẤT</th><th>NGÀY DỰ KIẾN</th><th>TRẠNG THÁI</th></tr>
-                </thead>
-                <tbody>
-                  {projects.map((project) => (
-                    <tr key={project.id} className="cursor-pointer" onClick={() => { window.location.href = `/du-an/${project.id}`; }}>
-                      <td>
-                        <p className="font-medium">{project.name}</p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">{project.isLead ? 'Lead' : 'Cơ hội'}</p>
-                      </td>
-                      <td><span className="stage-badge" style={{ background: `${project.stageColor}20`, color: project.stageColor }}>{project.stage}</span></td>
-                      <td className="font-medium">{project.value > 0 ? compactMoney(project.value) : '—'}</td>
-                      <td>
-                        {project.isLead ? <span className="text-xs text-muted-foreground">—</span> : (
-                          <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${project.probability}%` }} /></div>
-                            <span className="text-xs">{project.probability}%</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="text-xs text-muted-foreground">{project.closeDate || '—'}</td>
-                      <td><span className={project.status === 'won' ? 'status-badge status-success' : project.status === 'lost' ? 'status-badge status-warning' : 'status-badge status-blue'}>{OPP[project.status]}</span></td>
+              <div className="overflow-x-auto">
+                <table className="crm-table w-full">
+                  <thead>
+                    <tr>
+                      <th className="whitespace-nowrap">MÃ DỰ ÁN</th>
+                      <th>TÊN DỰ ÁN</th>
+                      <th>GIAI ĐOẠN</th>
+                      <th>TÌNH TRẠNG</th>
+                      <th>GIÁ TRỊ</th>
+                      <th>XÁC SUẤT</th>
+                      <th>NGÀY DỰ KIẾN / NHẬN</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {projects.map((project) => {
+                      const pCode = project.code || project.description?.match(/Mã dự án: ([^|]+)/)?.[1]?.trim();
+                      const pStatusText = project.description?.match(/Tình trạng: (.*)/)?.[1]?.trim();
+
+                      return (
+                        <tr key={project.id} className="cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => { window.location.href = `/du-an/${project.id}`; }}>
+                          <td className="whitespace-nowrap font-mono text-xs font-semibold text-primary">
+                            {pCode || '—'}
+                          </td>
+                          <td>
+                            <p className="font-medium text-foreground">{project.name}</p>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">{project.isLead ? 'Lead' : 'Cơ hội'}</p>
+                          </td>
+                          <td><span className="stage-badge" style={{ background: `${project.stageColor}20`, color: project.stageColor }}>{project.stage}</span></td>
+                          <td>
+                            {pStatusText ? (
+                              <span className={`status-badge ${pStatusText.toLowerCase().includes('done') || pStatusText.toLowerCase().includes('triển khai') ? 'status-success' : 'status-blue'}`}>
+                                {pStatusText}
+                              </span>
+                            ) : (
+                              <span className={project.status === 'won' ? 'status-badge status-success' : project.status === 'lost' ? 'status-badge status-warning' : 'status-badge status-blue'}>
+                                {OPP[project.status]}
+                              </span>
+                            )}
+                          </td>
+                          <td className="font-medium">{project.value > 0 ? compactMoney(project.value) : '—'}</td>
+                          <td>
+                            {project.isLead ? <span className="text-xs text-muted-foreground">—</span> : (
+                              <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${project.probability}%` }} /></div>
+                                <span className="text-xs">{project.probability}%</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="text-xs text-muted-foreground">{project.closeDate || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </>
         )}
@@ -303,18 +374,113 @@ export default function CustomerDetailPage() {
       {adding && (
         <>
           <div className="modal-backdrop" onClick={() => setAdding(false)} />
-          <div className="modal-card">
-            <h2 className="text-base font-semibold">Thêm dự án</h2>
-            <div className="mt-4 grid gap-3">
-              <input className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Tên dự án" value={projectName} onChange={(event) => setProjectName(event.target.value)} />
-              <CurrencyInput
-                name="value"
-                defaultValue={projectValue}
-                placeholder="0"
-                showPreview
-              />              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setAdding(false)} className="h-9 rounded-md border px-4 text-sm">Hủy</button>
-                <button type="button" onClick={() => addProject().catch((err: Error) => setError(err.message))} className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Lưu</button>
+          <div className="modal-card max-w-lg">
+            <h2 className="text-base font-bold font-display">Thêm cơ hội / Dự án mới</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Tạo cơ hội bán hàng cho khách hàng <strong className="text-foreground">{customer.name}</strong>
+            </p>
+            <div className="mt-4 space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold mb-1">
+                  Tên dự án / cơ hội <span className="text-destructive">*</span>
+                </label>
+                <input
+                  className="h-10 w-full rounded-md border border-input px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                  placeholder="VD: Cung cấp giải pháp thiết bị & phần mềm TDB"
+                  value={projectName}
+                  onChange={(event) => setProjectName(event.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-1">
+                    Giai đoạn bán hàng
+                  </label>
+                  <select
+                    className="crm-select w-full"
+                    value={projectStageId || stages[0]?.id || ''}
+                    onChange={(e) => setProjectStageId(e.target.value)}
+                  >
+                    {stages.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1">
+                    Giá trị dự kiến (VNĐ)
+                  </label>
+                  <CurrencyInput
+                    name="value"
+                    defaultValue={projectValue}
+                    onChange={(val) => setProjectValue(String(val))}
+                    placeholder="0"
+                    showPreview
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-1">
+                    Xác suất thành công (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    className="h-10 w-full rounded-md border border-input px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                    value={projectProbability}
+                    onChange={(e) => setProjectProbability(Number(e.target.value))}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1">
+                    Ngày dự kiến chốt
+                  </label>
+                  <input
+                    type="date"
+                    className="h-10 w-full rounded-md border border-input px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                    value={projectCloseDate}
+                    onChange={(e) => setProjectCloseDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1">
+                  Mô tả / Yêu cầu sơ bộ
+                </label>
+                <textarea
+                  className="w-full h-20 rounded-md border border-input p-2.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+                  placeholder="Ghi chú nhu cầu khách hàng, thông tin liên hệ phụ..."
+                  value={projectDesc}
+                  onChange={(e) => setProjectDesc(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setAdding(false)}
+                  className="h-9 rounded-md border px-4 text-sm hover:bg-accent"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  disabled={!projectName.trim()}
+                  onClick={() => addProject().catch((err: Error) => setError(err.message))}
+                  className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                >
+                  Lưu dự án
+                </button>
               </div>
             </div>
           </div>

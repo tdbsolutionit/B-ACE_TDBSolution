@@ -4,6 +4,7 @@ import { Type } from 'class-transformer';
 import { IsArray, IsIn, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 import { priceQuote } from '@bace/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { AuthUser, owned, scope } from '../common/auth';
 import { CurrentUser } from '../common/current-user.decorator';
 import { logActivity } from '../common/activity';
@@ -89,7 +90,10 @@ function money(value: bigint | number) {
 @ApiBearerAuth()
 @Controller('quotes')
 export class QuotesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   @Get()
   async list(@CurrentUser() user: AuthUser, @Query('q') q?: string, @Query('opportunityId') opportunityId?: string) {
@@ -300,16 +304,45 @@ export class QuotesController {
   }
 
   @Patch(':id/status')
-  setStatus(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: StatusDto) {
-    return this.prisma.withTenant(user.tenantId, async (tx) => {
-      await tx.quote.findFirstOrThrow({
+  async setStatus(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: StatusDto) {
+    const updated = await this.prisma.withTenant(user.tenantId, async (tx) => {
+      const quote = await tx.quote.findFirstOrThrow({
         where: scope(user.tenantId, {
           id,
           ...(user.role === 'sales' ? { opportunity: { assignedTo: user.sub } } : {}),
         }),
       });
-      return tx.quote.update({ where: { id }, data: { status: dto.status } });
+      const res = await tx.quote.update({ where: { id }, data: { status: dto.status } });
+      await logActivity(tx, user, {
+        type: 'note',
+        subject: 'Cập nhật trạng thái chứng từ',
+        content: `${quote.quoteNumber} → ${dto.status}`,
+        relatedType: 'quote',
+        relatedId: quote.id,
+      });
+      return {
+        id: res.id,
+        quoteNumber: res.quoteNumber,
+        title: res.title,
+        status: res.status,
+        sellingPrice: Number(res.sellingPrice),
+      };
     });
+
+    if (dto.status === 'accepted') {
+      this.realtime.emit(
+        'quote:accepted',
+        {
+          id: updated.id,
+          quoteNumber: updated.quoteNumber,
+          title: updated.title,
+          price: updated.sellingPrice,
+        },
+        { tenantId: user.tenantId },
+      );
+    }
+
+    return updated;
   }
 }
 

@@ -110,19 +110,90 @@ export default function UsersPage() {
       {open && (
         <>
           <div className="modal-backdrop" onClick={() => setOpen(false)} />
-          <form className="modal-card" onSubmit={(event) => addUser(event).catch((err: Error) => setError(err.message))}>
+          <form
+            className="modal-card"
+            onSubmit={(event) =>
+              addUser(event).catch((err: Error) => setError(err.message))
+            }
+          >
             <h2 className="text-lg font-semibold">Thêm người dùng</h2>
-            <div className="mt-4 grid gap-3">
-              <Input required placeholder="Họ tên" value={name} onChange={(event) => setName(event.target.value)} />
-              <Input required type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} />
-              <select className="crm-select" value={nextRole} onChange={(event) => setNextRole(event.target.value)}>
-                <option value="sales">Sales</option>
-                <option value="manager">Quản lý</option>
-                <option value="admin">Quản trị viên</option>
-              </select>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Huỷ</Button>
-                <Button type="submit">Lưu</Button>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Nhập thông tin tài khoản và phân quyền sử dụng CRM.
+            </p>
+
+            <div className="mt-4 grid gap-4">
+              {/* Họ và tên */}
+              <div className="grid gap-1.5">
+                <label htmlFor="new-user-name" className="text-sm font-medium">
+                  Họ và tên <span className="text-destructive">*</span>
+                </label>
+
+                <Input
+                  id="new-user-name"
+                  required
+                  placeholder="Nhập họ và tên"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+
+              {/* Email */}
+              <div className="grid gap-1.5">
+                <label htmlFor="new-user-email" className="text-sm font-medium">
+                  Email <span className="text-destructive">*</span>
+                </label>
+
+                <Input
+                  id="new-user-email"
+                  required
+                  type="email"
+                  placeholder="example@company.com"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+
+                <p className="text-xs text-muted-foreground">
+                  Sử dụng email hợp lệ của người dùng.
+                </p>
+              </div>
+
+              {/* Vai trò */}
+              <div className="grid gap-1.5">
+                <label htmlFor="new-user-role" className="text-sm font-medium">
+                  Vai trò <span className="text-destructive">*</span>
+                </label>
+
+                <select
+                  id="new-user-role"
+                  className="crm-select"
+                  value={nextRole}
+                  onChange={(event) => setNextRole(event.target.value)}
+                  required
+                >
+                  <option value="sales">Sales</option>
+                  <option value="manager">Quản lý</option>
+                  <option value="admin">Quản trị viên</option>
+                </select>
+
+                <p className="text-xs text-muted-foreground">
+                  Vai trò quyết định quyền truy cập và thao tác trong hệ thống.
+                </p>
+              </div>
+
+              {/* Nút thao tác */}
+              <div className="mt-2 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Hủy
+                </Button>
+
+                <Button type="submit">
+                  Tạo người dùng
+                </Button>
               </div>
             </div>
           </form>

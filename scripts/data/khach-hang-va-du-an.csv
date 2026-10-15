@@ -1,0 +1,190 @@
+STT,Mã số ( Code),Tên khách hàng,Mã,Thông tin khách hàng,,MST,Địa chỉ,WEBSITE,Người liên hệ ,Chức vụ người liên hệ,Email,Số điện thoại,Lĩnh vực,Người liên hệ ,Chức vụ người liên hệ,Email,Số điện thoại
+1,01,Z751,KH00001,CÔNG TY TNHH MỘT THÀNH VIÊN 751,KH00001-CÔNG TY TNHH MỘT THÀNH VIÊN 751,0301458202,"Số 9, đường số 1, KCN Quốc phòng, Phường Long Bình, Thành phố Biên Hoà, Tỉnh Đồng Nai, Việt Nam",,A Quân,Tổ trưởng ban RD,,,,,,,
+2,02,SoluCA,KH00002,CÔNG TY TNHH GIẢI PHÁP CÔNG NGHỆ ĐỒ HỌA SOLUCA,KH00002-CÔNG TY TNHH GIẢI PHÁP CÔNG NGHỆ ĐỒ HỌA SOLUCA,0311248959,"Số 468/23 Phan Văn Trị, Phường 7, Quận Gò Vấp, Thành phố Hồ Chí Minh, Việt Nam",,A Đức,Giám đốc,,,,,,,
+3,03,SSPACE,KH00003,CÔNG TY TNHH GIẢI PHÁP VÀ DỊCH VỤ SSPACE,KH00003-CÔNG TY TNHH GIẢI PHÁP VÀ DỊCH VỤ SSPACE,0315757650,"536/43/84/17 Âu Cơ, Phường 10, Quận Tân Bình, Thành phố Hồ Chí Minh, Việt Nam",,A Tuyến,Giám đốc,tuyennn@sspace.com.vn,,,,,,
+4,04,Mi-Jack,KH00004,CÔNG TY TNHH MI-JACK VIỆT NAM,KH00004-CÔNG TY TNHH MI-JACK VIỆT NAM,3502469351,"Khu công nghiệp Mỹ Xuân A2, Phường Mỹ Xuân, Thị Xã Phú Mỹ, Tỉnh Bà Rịa - Vũng Tàu, Việt Nam",,A Nam,Giám đốc,tnam@mi-jackvietnam.com,,,,,,
+5,05,ISOLOADER,KH00005,Isoloader USA Inc,KH00005-Isoloader USA Inc,NA,"1745 Eolus Ave, Encinitas, CA 92024",,Mike. Arnold,Giám đốc,,+1 760 621 3830,,,,,
+6,06,CS Wind,KH00006,CÔNG TY TNHH CS WIND VIỆT NAM,KH00006-CÔNG TY TNHH CS WIND VIỆT NAM,3500785873,"Đường số 2B, Khu Công nghiệp Phú Mỹ I, Phường Phú Mỹ, Thị Xã Phú Mỹ, Tỉnh Bà Rịa - Vũng Tàu, Việt Nam",,Xuân Phúc,Kỹ sư dự án,lxphuc@cswind.com,,,,,,
+7,07,Eteams,KH00007,CÔNG TY CỔ PHẦN GIẢI PHÁP CÔNG NGHỆ ETEAMS,KH00007-CÔNG TY CỔ PHẦN GIẢI PHÁP CÔNG NGHỆ ETEAMS,0317793012,"Phòng 301, Tầng 3, Tòa nhà The Sun Building, Số 36/36A, Đường Nguyễn Gia Trí, Phường 25, Quận Bình Thạnh, Thành phố Hồ Chí Minh, Việt Nam",,A Khánh,Giám đốc,,,,,,,
+8,08,Altair,KH00008,Altair Engineering Inc (Việt Nam),KH00008-Altair Engineering Inc (Việt Nam),NA,,,A Thanh,Giám đốc kỹ thuật,,,,,,,
+9,09,Leolegian,KH00009,CÔNG TY TNHH LEON LEGION,KH00009-CÔNG TY TNHH LEON LEGION,0316535763,"269 Đường Liên Phường, Phường Phước Long B, Thành phố Thủ Đức, TP Hồ Chí Minh",,Hoàng Xuân Thành,Giám đốc,thanh.hoang@leonlegion.com,(+84) 868 109 628,Kỹ thuật + Công nghệ và Bockchain,,,,
+10,10,Tân Long,KH00010,CÔNG TY CỔ PHẦN CƠ ĐIỆN LẠNH TÂN LONG,KH00010-CÔNG TY CỔ PHẦN CƠ ĐIỆN LẠNH TÂN LONG,0303704358,"86 Đồng Đen, Phường 14, Quận Tân Bình, Tp. Hồ Chí Minh, Việt Nam",,Anh Nhật,Giám đốc sản xuất,,,Chuyên máy thực phẩm/ Máy sấy,,,,
+11,11,Anh Minh,KH00011,CÔNG TY TNHH TƯ VẤN XÂY DỰNG & DỊCH VỤ KỸ THUẬT ANH MINH,KH00011-CÔNG TY TNHH TƯ VẤN XÂY DỰNG & DỊCH VỤ KỸ THUẬT ANH MINH,0313827937,"132/15 Nguyễn Văn Thương, Phường 25, Quận Bình Thạnh, Thành phố Hồ Chí Minh, Việt Nam",,Mr. Hoàng,Kỹ sư dự án,,,,,,,
+12,12,,,,-,,,,,,,,,,,,
+13,13,Mr Quí,KH00013,DỰ ÁN CỦA PHÁP - MR. QUÍ,KH00013-DỰ ÁN CỦA PHÁP - MR. QUÍ,NA,NA,,Mr. Quí,Giám đốc,,,,,,,
+14,14,CONTACT,KH00014,Contact software,KH00014-Contact software,NA,"Wiener Str. 1-3, 28359 Bremen",,Mr. Nam,Giám đốc kinh doanh,info@contact-software.com,,,,,,
+15,15,Atlan,KH00015,CÔNG TY TNHH ATLAN GLOBAL,KH00015-CÔNG TY TNHH ATLAN GLOBAL,0317545813,"Số 99 Cộng Hòa, Phường 4, Quận Tân Bình, Thành phố Hồ Chí Minh, Việt Nam",,TĂNG QUỐC BẢO,Giám đốc,,0825558800,,Phạm Văn Vươn,Trưởng phòng sản xuất,,
+16,16,Bason,KH00016,TỔNG CÔNG TY BA SON - CÔNG TY TNHH MỘT THÀNH VIÊN,KH00016-TỔNG CÔNG TY BA SON - CÔNG TY TNHH MỘT THÀNH VIÊN,0300523272,"02 Tôn Đức Thắng, Phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh, Việt Nam",,MAI QUỐC TRƯỞNG,Giám đốc,,0838297730,,Vũ Khắc Trai,Phó tổng giám đốc 751,,
+17,17,Aqua,KH00017,CÔNG TY TNHH ĐIỆN MÁY AQUA VIỆT NAM,KH00017-CÔNG TY TNHH ĐIỆN MÁY AQUA VIỆT NAM,3600257517,"Số 8, đường 17A, KCN Biên Hòa 2, Phường An Bình, Thành phố Biên Hoà, Tỉnh Đồng Nai, Việt Nam",,NGUYỄN MINH TRÍ,Trưởng Phòng R&D,,0933011035,,,,,
+18,18,TS. Tuấn,KH00018,TRƯỜNG ĐẠI HỌC CÔNG NGHỆ TP.HCM (HUTECH),KH00018-TRƯỜNG ĐẠI HỌC CÔNG NGHỆ TP.HCM (HUTECH),NA,"475A Điện Biên Phủ, P.25, Q.Bình Thạnh, TP.HCM",,Thầy Tuấn,Giảng viên xây dựng,,,,,,,
+19,19,Tiến Tuấn,KH00019,CÔNG TY TNHH CHẾ TẠO MÁY DƯỢC PHẨM TIẾN TUẤN,KH00019-CÔNG TY TNHH CHẾ TẠO MÁY DƯỢC PHẨM TIẾN TUẤN,0301478632,"21/3 Đường Hoàng Việt, Phường 4, Quận Tân Bình, Thành phố Hồ Chí Minh, Việt Nam",,VŨ ANH TUẤN,Giám đốc,,028 3815 2951,,Hoài Hận,,,
+20,20,BoHo,KH00020,CÔNG TY TNHH BOHO DECOR,KH00020-CÔNG TY TNHH BOHO DECOR,0313382614,"96 Phan Đăng Lưu, Phường 05, Quận Phú Nhuận, Thành phố Hồ Chí Minh, Việt Nam",https://bohodecor.vn/,NGUYỄN NHI ANH,Quản lý kỹ thuật,,,,,,,
+21,21,KLM,KH00021,CÔNG TY TNHH KIM LOẠI MÀU HÀ NỘI,KH00021-CÔNG TY TNHH KIM LOẠI MÀU HÀ NỘI,0101154398,"Số 20, Lô 2A, Khu đô thị mới Trung Yên, Phường Yên Hoà, Quận Cầu Giấy, Thành phố Hà Nội, Việt Nam",https://kimloaimau.com/,LÊ THỊ CHINH,Giám đốc,,02437912588,,,,,
+22,22,ThepCNSG,KH00022,CÔNG TY CỔ PHẦN THÉP CÔNG NGHIỆP SÀI GÒN,KH00022-CÔNG TY CỔ PHẦN THÉP CÔNG NGHIỆP SÀI GÒN,0317902871,"138 Đường số N2, Khu dân cư Mega Village, Khu phố 3, Phường Phú Hữu, Thành phố Thủ Đức, Thành phố Hồ Chí Minh, Việt Nam",https://saigonsteel.com.vn/,,,,,,,,,
+23,23,LoBi,KH00023,CÔNG TY TNHH GIẢI PHÁP KỸ THUẬT VÀ ỨNG DỤNG SỐ LOBI SOLUTION,KH00023-CÔNG TY TNHH GIẢI PHÁP KỸ THUẬT VÀ ỨNG DỤNG SỐ LOBI SOLUTION,0318140961,"31/4Đ Ấp Trung Lân, Xã Bà Điểm, Huyện Hóc Môn, Thành phố Hồ Chí Minh, Việt Nam",https://lobisolution.com.vn,LÊ HOÀNG LONG,Giám đốc,longlh@lobisolution.com.vn,0356854910,,,,,
+24,24,Minh Quân,KH00024,CÔNG TY TNHH CƠ KHÍ XÂY DỰNG VÀ THƯƠNG MẠI MINH QUÂN,KH00024-CÔNG TY TNHH CƠ KHÍ XÂY DỰNG VÀ THƯƠNG MẠI MINH QUÂN,0311686046,"649/95 Điện Biên Phủ, P. 25, Q. Bình Thạnh, Thành phố Hồ Chí Minh, Việt Nam",https://www.minhquantmc.com.vn/,NGUYỄN VĂN VƯƠNG,Giám đốc kỹ thuật,nguyenvuong@minhquantmc.com.vn,0917775882,,,,,
+25,25,CAEGS ,KH00025,CÔNG TY CỔ PHẦN GIẢI PHÁP CAE TOÀN CẦU,KH00025-CÔNG TY CỔ PHẦN GIẢI PHÁP CAE TOÀN CẦU,0109889997,"Số nhà 25 Tổ dân phố 03, Phường Trung Văn, Quận Nam Từ Liêm, Thành phố Hà Nội, Việt Nam",https://caegs.vn/,PHÙNG TRUNG DŨNG,Giám đốc,dung.phung@caegs.vn,	0971135151,,Hoàng Đạt,Kỹ sư phân tích CAE,dat.hoang@caegs.vn,
+26,26,MienNamGroup,KH00026,CÔNG TY MIỀN NAM GROUP,KH00026-CÔNG TY MIỀN NAM GROUP,0315965530,"Số 35 Đường 41 KĐT Vạn Phúc, Phường Hiệp Bình Phước, TP. Thủ Đức, TP. HCM. ",https://miennamgroup.vn/,TRẦN LÂM,Phó tổng giám đốc,lam.tran@miennamgroup.vn,,,Phương,Trợ lý ,,
+27,27,DHP,KH00027,CÔNG TY TNHH SX TM DV KỸ THUẬT ĐẠI HỒNG PHÁT         ,KH00027-CÔNG TY TNHH SX TM DV KỸ THUẬT ĐẠI HỒNG PHÁT         ,0309944821,"22 Đường 11, KDC Khang Điền, Đường Dương Đình Hội, P.Phước Long B, TP. Thủ Đức, TP.HCM",https://khopnoitruc.com/,ĐẶNG THỊ QUỲNH PHƯƠNG,Giám đốc,,,,,,,
+28,28,OWTAus,KH00028,CÔNG TY OWT AUS TRADER PTY LTD,KH00028-CÔNG TY OWT AUS TRADER PTY LTD,45655028354,"Lô B5a, Đường Số 7, Khu Công Nghiệp Hiệp Phước, Xã Hiệp Phước, Nhà Bè, Hồ Chí Minh",,ANITA THU LE,Giám đốc điều hành,,+61 420 558 628,,,,,
+29,29,AnhMinhTech,KH00029,CÔNG TY TNHH THƯƠNG MẠI CÔNG NGHỆ ANH MINH,KH00029-CÔNG TY TNHH THƯƠNG MẠI CÔNG NGHỆ ANH MINH,0309346980,"353/27 Phạm Ngũ Lão, Phường Phạm Ngũ Lão, Quận 1 Thành Phố Hồ Chí Minh Việt Nam",https://www.anhminhtech.com.vn/,LÊ TUẤN DŨNG,Giám đốc,,,Sản xuất và thi công bồn bể,,,,
+30,30,Lexim,KH00030,CÔNG TY TNHH LEXIM Ô TÔ & THIẾT BỊ MÁY,KH00030-CÔNG TY TNHH LEXIM Ô TÔ & THIẾT BỊ MÁY,0101135973,"Lô 18 - A2 KCN Hà Nội - Đài Tư, số 386 Nguyễn Văn Linh, Sài Đồng, Long Biên, Hà Nội",,,,,,,,,,
+31,31,DuyenHai,KH00031,CÔNG TY NHIỆT ĐIỆN DUYÊN HẢI,KH00031-CÔNG TY NHIỆT ĐIỆN DUYÊN HẢI,2100654874,"Ấp Mù U, Xã Dân Thành, Thị xã Duyên Hải, Tỉnh Trà Vinh",https://www.tpcduyenhai.com.vn/,NGÔ VĂN SỸ,Giám đốc,,,,,,,
+32,32,ABCVietnam,KH00032,CÔNG TY TNHH ABC VIETNAM MANUFACTURING & SOURCING,KH00032-CÔNG TY TNHH ABC VIETNAM MANUFACTURING & SOURCING,0316174161,"22 đường 24a, An Phu Ward, TP. Thu Duc, HCMC ",https://abc-vietnam.com/,CHRISTIAAN ROMME,Giám đốc điều hành,C.romme@abc-vietnam.com,,Sản phẩm Sheet Metal,,,,
+33,33,Karofi,KH00033,CÔNG TY CỔ PHẦN TẬP ĐOÀN KAROFI,KH00033-CÔNG TY CỔ PHẦN TẬP ĐOÀN KAROFI,0105866879,"Tầng 8, Tòa nhà HUDLAND, Số 6 Nguyễn Hữu Thọ, Phường Hoàng Liệt, Quận Hoàng Mai, Thành phố Hà Nội",https://karofi.com/,NGUYỄN HIỆP,Bộ phận IT,hiep.nguyen2@karofi.vn,0989937285,Máy lọc nước,,,,
+34,34,Mr Anh,KH00034,CÔNG TY TNHH CƠ NHIỆT LẠNH HỒNG NHỰT,KH00034-CÔNG TY TNHH CƠ NHIỆT LẠNH HỒNG NHỰT,0301097482,"117a Bình Thới, Phường 11, Quận 11, Thành phố Hồ Chí Minh",https://hongnhut.com/,HOÀI ANH,Bộ phận công trình,,,,,,,
+35,35,IMAE,KH00035,CÔNG TY CỔ PHẦN MÁY & THIẾT BỊ CÔNG NGHIỆP QUỐC TẾ,KH00035-CÔNG TY CỔ PHẦN MÁY & THIẾT BỊ CÔNG NGHIỆP QUỐC TẾ,0308090119,"156 Nam Kỳ Khởi Nghĩa, Phường Bến Nghé, Quận 1, TPHCM",https://imaejsc.com/,,,,,,,,,
+36,36,BMW,KH00036,CÔNG TY CỔ PHẦN BM WINDOWS,KH00036-CÔNG TY CỔ PHẦN BM WINDOWS,0313919539,"96 Phan Đăng Lưu, Phường 05, Quận Phú Nhuận, Thành phố Hồ Chí Minh, Việt Nam",https://bmwindows.vn/vi,Mr. Tùng,,,0906828220,,,,,
+37,37,Mr Phúc,KH00037,N/A,KH00037-N/A,N/A,N/A,,,,,,,,,,
+38,38,DSS,KH00038,CÔNG TY TNHH GIẢI PHÁP DỮ LIỆU VÀ DỊCH VỤ,KH00038-CÔNG TY TNHH GIẢI PHÁP DỮ LIỆU VÀ DỊCH VỤ,0316055774,"73A Huỳnh Tịnh Của, Phường Võ Thị Sáu, Quận 3, Thành phố Hồ Chí Minh",https://dss-service.com.vn/,Mr. Việt,Giám đốc,,,,,,,
+39,39,Mr Tuấn,KH00039,N/A,KH00039-N/A,N/A,N/A,,,,,,,,,,
+40,40,HaiSon,KH00040,CÔNG TY TNHH SẢN XUẤT DỊCH VỤ VÀ THƯƠNG MẠI THIẾT BỊ HẢI SƠN,KH00040-CÔNG TY TNHH SẢN XUẤT DỊCH VỤ VÀ THƯƠNG MẠI THIẾT BỊ HẢI SƠN,	0317764597,"Số 19A, Đường số 1, Phường Bình Hưng Hòa A, Quận Bình Tân, TP Hồ Chí Minh",,Mr. Hải Sơn,Giám đốc,haisonn@haisoneq.com,0378053078,,,,,
+41,41,VTX,KH00041,VIỆN HÀNG KHÔNG VŨ TRỤ VIETTEL,KH00041-VIỆN HÀNG KHÔNG VŨ TRỤ VIETTEL,0100109106-473,"	Tòa nhà Viettel Hòa Lạc - B1 Lô 1, Khu Công nghệ cao Hòa Lạc, Xã Tân Xã, Huyện Thạch Thất, Thành phố Hà Nội",https://viettelaerospace.vn/,,,,,,,,,
+42,42,Innotel,KH00042,CÔNG TY TNHH VIỄN THÔNG SÁNG TẠO THUẬN PHONG,KH00042-CÔNG TY TNHH VIỄN THÔNG SÁNG TẠO THUẬN PHONG,0304195505,"	55/31 Trần Đình Xu, Phường Cầu Kho, Quận 1, HCM",https://innotel.com.vn/,Mr. Hải  ,Giám đốc,	hai.ht@innotel.com.vn,,,,,,
+43,43,XDBACHKHOA,KH00043,CÔNG TY CỔ PHẦN XÂY DỰNG BÁCH KHOA,KH00043-CÔNG TY CỔ PHẦN XÂY DỰNG BÁCH KHOA,1600598753,"Số 39 đường Trần Hưng Đạo, Phường Mỹ Quý, Thành Phố Long Xuyên, Tỉnh An Giang",https://bachkhoaangiang.com/,Mr. Thuận,,,,,,,,
+44,44,FPT,KH00044,CÔNG TY FPT AUTOMOTIVE,KH00044-CÔNG TY FPT AUTOMOTIVE,N/A,"Suite 108, 2770 Main Street, Frisco, Texas 75033",https://fpt.auto/,Mr. Dũng,Head of Engineering,DungNH4@fpt.com,,,Đỗ Văn Hoàn,Lead CAE (NVH),,
+45,45,HUVI,KH00045,SPA VÀ VẬT LÍ TRỊ LIỆU HUVI ,KH00045-SPA VÀ VẬT LÍ TRỊ LIỆU HUVI ,N/A,,,Mr. Phương,Giám đốc,,,,,,,
+46,46,DFM,KH00046,CÔNG TY CỔ PHẦN DFM-ENGINEERING,KH00046-CÔNG TY CỔ PHẦN DFM-ENGINEERING,	0304728538,"Lầu 2, Tòa nhà Helios, đường số 3, Công viên phần mềm Quang, Phường Trung Mỹ Tây, TP Hồ Chí Minh, Việt Nam",,,,,,,,,,
+47,47,OCOTEN,KH00047,CÔNG TY TNHH OCOTEN ENGINEERING TO MANUFACTURING,KH00047-CÔNG TY TNHH OCOTEN ENGINEERING TO MANUFACTURING,110614901,"Khu văn phòng tầng 22, Toà nhà Ngọc Khánh Plaza, số 01 Phạm, Phường Giảng Võ, TP Hà Nội, Việt Nam",https://ocoten.com/,Mr Anh Tuấn,COO,,,,,,,
+48,48,Mr Báu,KH00048,N/A,KH00048-N/A,N/A,N/A,,,,,,,,,,
+49,49,TienPhat,KH00049,CÔNG TY TNHH THƯƠNG MẠI KỸ THUẬT TIẾN PHÁT,KH00049-CÔNG TY TNHH THƯƠNG MẠI KỸ THUẬT TIẾN PHÁT,,,,Mr Việt,Trưởng phòng KT,,,,,,,
+50,50,CaoXanh,KH00050,CÔNG TY TNHH CÀO XANH,KH00050-CÔNG TY TNHH CÀO XANH,0312420761,"67 Phó Đức Chính, Phường Gia Định, TP Hồ Chí Minh, Việt Nam",,Mr. Rangiang,,,,,,,,
+51,51,AES,KH00051, CÔNG TY CP GIẢI PHÁP TỰ ĐỘNG HÓA KỸ THUẬT VIỆT NAM ,KH00051- CÔNG TY CP GIẢI PHÁP TỰ ĐỘNG HÓA KỸ THUẬT VIỆT NAM ,0105125581,"Số 15B, ngách 1, Ngõ 85 Nguyễn Lương Bằng, P Đống Đa, Hà Nội",,Mr. Thắng ,Kỹ sư CAE,,,,,,,
+52,52,RuouNB,KH00052,CÔNG TY TNHH THƯƠNG MẠI SẢN XUẤT RƯỢU NAM BỘ,KH00052-CÔNG TY TNHH THƯƠNG MẠI SẢN XUẤT RƯỢU NAM BỘ,1801166672,"1906 Quốc lộ 91, Phường Thốt Nốt, TP Cần Thơ, Việt Nam",https://ruounambo.vn/,Mr Thiện,,,,,,,,
+53,53,AnhKhoa,KH00053,CÔNG TY TNHH THƯƠNG MẠI KỸ THUẬT CÔNG NGHỆ ANH KHOA,KH00053-CÔNG TY TNHH THƯƠNG MẠI KỸ THUẬT CÔNG NGHỆ ANH KHOA,0312726439,"21 Đường 27A, Phường Bình Trưng, TP Hồ Chí Minh, Việt Nam",,David Trần (Mr),,david.tran@anhkhoacorp.vn,0982705086,,Đặng Trọng Toàn,,"toan.dang@anhkhoacorp.vn
+",
+54,54,TSTech,KH00054,CÔNG TY TNHH GIẢI PHÁP CÔNG NGHỆ TS TECH VIỆT NAM ,KH00054-CÔNG TY TNHH GIẢI PHÁP CÔNG NGHỆ TS TECH VIỆT NAM ,,,,,,,,,,,,
+55,55,CTUAV,KH00055,CÔNG TY CỔ PHẦN CT UAV,KH00055-CÔNG TY CỔ PHẦN CT UAV,0317763522,"Số 3 Đường ĐT 743, Khu phố Bình Đức 3, Phường Bình Hòa, TP Hồ Chí Minh, Việt Nam",https://ctgroupvietnam.com/en/ct-uav/,Mr. Tuấn,Trưởng phòng CAE,,0477 681 665,,,,,
+56,56,NguyenKhoa,KH00056,CÔNG TY CỔ PHẦN THƯƠNG MẠI DỊCH VỤ SẢN XUẤT NGUYÊN KHOA,KH00056-CÔNG TY CỔ PHẦN THƯƠNG MẠI DỊCH VỤ SẢN XUẤT NGUYÊN KHOA,0318269556,"NN1B Bạch Mã, Phường 15, Quận 10, TP.HCM",https://nguyenkhoa.vn/,Mr.Khoa,Giám đốc,trungtamdaotaonguyenkhoa@gmail.com,,,Mr.Dũng,Người đại diện,,
+57,57,Technet,KH00057,CÔNG TY CỔ PHẦN TECHNET,KH00057-CÔNG TY CỔ PHẦN TECHNET,0315503328,"33/1c An Phú Đông 03, Khu phố 4, Phường An Phú Đông, TP Hồ Chí Minh, Việt Nam",https://technetvn.net/,Mr. Đạt,,,,,,,,
+58,58,ROBOMINH,KH00058,CÔNG TY CỔ PHẦN ROBOMINH,KH00058-CÔNG TY CỔ PHẦN ROBOMINH,	0111356724,,,,,,,,,,,
+59,59,LONGHOUSE,KH00059,CÔNG TY,KH00059-CÔNG TY,,,,,,,,,,,,
+60,60,ANTAM,KH00060,CÔNG TY TNHH CÁCH ÂM CHỐNG NÓNG AN TÂM,KH00060-CÔNG TY TNHH CÁCH ÂM CHỐNG NÓNG AN TÂM,0313264843,"51/26/20 Đường Vườn Lài (Nối dài), Khu phố 30, Phường An Phú Đông, TP Hồ Chí Minh, Việt Nam",https://cachnhietantam.com/,Mr. Định,Giám đốc,cachnhietantam@gmail.com,02837203028,Sản xuất và cung cấp: Vật liệu cách nhiệt - Cách âm,,,,
+61,61,Mr.Nho,KH00061,Mr.Nho,KH00061-Mr.Nho,,,,,,,,,,,,
+62,62,KLP,KH00062,CÔNG TY TNHH KHẢI LỘC PHÁT,KH00062-CÔNG TY TNHH KHẢI LỘC PHÁT,,,,,,,,,,,,
+63,63,QBOOKS,KH00063,CÔNG TY CỔ PHẦN SÁCH QBOOKS,KH00063-CÔNG TY CỔ PHẦN SÁCH QBOOKS,0109314879,"Số 190, ngõ 192 đường Lê Trọng Tấn, Phường Định Công, TP Hà Nội, Việt Nam",https://qbooks.vn/,Ms. Uyển,,,,"	Bán buôn đồ dùng khác cho gia đình
+Chi tiết: Bán buôn sách, báo, tạp chí, văn phòng phẩm",,,,
+64,64,,KH00064,,,,,,,,,,,,,,
+65,65,,KH00066,,,,,,,,,,,,,,
+66,66,,KH00066,,,,,,,,,,,,,,
+67,67,,KH00067,,,,,,,,,,,,,,
+68,68,,KH00068,,,,,,,,,,,,,,
+69,69,,KH00069,,,,,,,,,,,,,,
+,,,,,,,,,,
+Năm 2023,,,,,,,
+STT,Mã năm,Mã khách hàng,Thứ tự dự án trong năm,Tên khách hàng,Tên dự án hoàn chỉnh,Mã dự án,Tình trạng
+1,20231013,13,01,Mr Quí,EF d_appareils pressurises,20231013-1301_Mr Quí_EF d_appareils pressurises,Gửi báo giá
+2,20231106,15,01,Atlan,Production projects,20231106-1501_Atlan_Production projects,Gửi báo giá
+3,20231121,07,01,Eteams,RD_Chair,20231121-0701_Eteams_RD_Chair,Gửi báo giá
+4,20231123,06,01,CS Wind,Can Grabber,20231123-0601_CS Wind_Can Grabber,Gửi báo giá
+5,20231123,03,01,SSPACE,Simulation Nha Hang,20231123-0301_SSPACE_Simulation Nha Hang,Gửi báo giá
+6,20231201,07,02,Eteams,Báo giá cho dự án HVAC - Room,20231201-0702_Eteams_Báo giá cho dự án HVAC - Room,Gửi báo giá
+7,20231206,18,01,TS. Tuấn,PHD Projects - Method for construction,20231206-1801_TS. Tuấn_PHD Projects - Method for construction,Gửi báo giá
+8,20231210,02,01,SoluCA,Báo giá gói vẽ xe rác,20231210-0201_SoluCA_Báo giá gói vẽ xe rác,Gửi báo giá
+9,20231130,21,01,KLM,00001540-Công Ty TNHH Kim Loại Màu Hà Nội,20231130-2101_KLM_00001540-Công Ty TNHH Kim Loại Màu Hà Nội,Done
+10,20231201,22,01,ThepCNSG,1C23TSG_34HD - CÔNG TY CỔ PHẦN THÉP CÔNG NGHIỆP SÀI GÒN,20231201-2201_ThepCNSG_1C23TSG_34HD - CÔNG TY CỔ PHẦN THÉP CÔNG NGHIỆP SÀI GÒN,Done
+,,,,,,,
+Năm 2024,,,,,,,
+STT,Mã năm,Mã khách hàng,Thứ tự dự án trong năm,Tên khách hàng,Tên dự án hoàn chỉnh,Mã dự án,Tình trạng
+1,240124,01,01,Z751,Mua hàng 20 bộ treo xe,240124-0101_Z751_Mua hàng 20 bộ treo xe,Chưa gửi báo giá
+2,240221,01,02,Z751,Xe semi romooc 200 tấn lưu hành nội bộ,240221-0102_Z751_Xe semi romooc 200 tấn lưu hành nội bộ,Chưa gửi báo giá
+3,240221,01,03,Z751,Mua hàng thép S700MC - trung quốc đợt 1,240221-0103_Z751_Mua hàng thép S700MC - trung quốc đợt 1,Chưa gửi báo giá
+4,240114,13,01,Mr Quí,DESAMIANTAGE ET DECONSTRUCTION - MULTISITES A SAFFRE ET FREIGNE,240114-1301_Mr Quí_DESAMIANTAGE ET DECONSTRUCTION - MULTISITES A SAFFRE ET FREIGNE,Chưa gửi báo giá
+5,240222,07,01,Eteams,Tính toán ghế xe Mobihome,240222-0701_Eteams_Tính toán ghế xe Mobihome,Đang triển khai
+6,240226,02,01,SoluCA,HVAC - Phòng lạnh và giữ ẩm,240226-0201_SoluCA_HVAC - Phòng lạnh và giữ ẩm,Chưa gửi báo giá
+7,240301,01,04,Z751,Thiết kế - Tính toán - Triển khai và quản lý sản xuất xe UNV-VT,240301-0104_Z751_Thiết kế - Tính toán - Triển khai và quản lý sản xuất xe UNV-VT,
+8,240322,01,05,Z751,Thiết kế - Tính toán - Triển khai và quản lý sản xuất xe XBP,240322-0105_Z751_Thiết kế - Tính toán - Triển khai và quản lý sản xuất xe XBP,
+9,240408,23,01,LoBi,Steel Frame,240408-2301_LoBi_Steel Frame,
+10,240423,02,02,SoluCA,SteelCoilLifting,240423-0202_SoluCA_SteelCoilLifting,
+11,240715,23,02,LoBi,BEAM - KY130001,240715-2302_LoBi_BEAM - KY130001,Chưa gửi báo giá
+12,240717,23,03,LoBi,Cột dẫn đỗ sân bay Long Thành,240717-2303_LoBi_Cột dẫn đỗ sân bay Long Thành,Chưa gửi báo giá
+13,240307,24,01,Minh Quân,Hệ thống sấy,240307-2401_Minh Quân_Hệ thống sấy,
+14,240913,25,01,CAEGS ,Composite Analysis - FEMAP - Nastran,240913-2501_CAEGS _Composite Analysis - FEMAP - Nastran,
+15,240919,26,01,MienNamGroup,Hồ sơ đăng kiểm dòng xe mui bạt và xe thùng,240919-2601_MienNamGroup_Hồ sơ đăng kiểm dòng xe mui bạt và xe thùng,
+17,240922,01,06,Z751,Hợp đồng cung cấp thùng CPU T5820,240922-0106_Z751_Hợp đồng cung cấp thùng CPU T5820,
+18,241122,03,01,SSPACE,Tính toán nhiệt,241122-0301_SSPACE_Tính toán nhiệt,Chưa gửi báo giá
+19,241130,32,01,ABCVietnam,Tính toán Sheet metal,241130-3201_ABCVietnam_Tính toán Sheet metal,Chưa gửi báo giá
+20,241218,28,01,OWTAus,Survival Capsule,241218-2801_OWTAus_Survival Capsule,Chưa gửi báo giá
+21,241231,29,01,AnhMinhTech,Server Quản Lý Dữ Liệu Tập Trung,241231-2901_AnhMinhTech_Server Quản Lý Dữ Liệu Tập Trung,Chưa gửi báo giá
+22,241231,30,01,Lexim,Hồ sơ thiết kế thùng xe,241231-3001_Lexim_Hồ sơ thiết kế thùng xe,Chưa gửi báo giá
+23,241203,27,01,HDP,Hệ thống quản lý thông tin-Server ,241203-2701_HDP_Hệ thống quản lý thông tin-Server ,Done
+,,,,,,,
+Năm 2025,,,,,,,
+STT,Mã năm,Mã khách hàng,Thứ tự dự án trong năm,Tên khách hàng,Tên dự án hoàn chỉnh,Mã dự án,Tình trạng
+1,250104,19,01,TienTuan,Hệ thống quản lý BOM,250104-1901_TienTuan_Hệ thống quản lý BOM,Gửi báo giá
+2,250109,31,01,DuyenHai,Đào tạo mô hình hóa sơ đồ lắp ráp thiết bị cơ khí,250109-3101_DuyenHai_Đào tạo mô hình hóa sơ đồ lắp ráp thiết bị cơ khí,Gửi báo giá
+3,250120,01,01,Z751,Mua hàng Laptop,250120-0101_Z751_Mua hàng Laptop,Gửi báo giá
+4,250120,27,01,DHP,Máy tính bàn,250120-2701_DHP_Máy tính bàn,Gửi báo giá
+5,250205,33,01,Karofi,Máy chủ mô phỏng,250205-3301_Karofi_Máy chủ mô phỏng,Gửi báo giá
+6,250220,34,01,Mr. Anh,Máy tính bàn,250220-3401_Mr. Anh_Máy tính bàn,Gửi báo giá
+7,250224,01,02,Z751,Mua hàng UPS,250224-0102_Z751_Mua hàng UPS,Gửi báo giá
+8,250224,35,01,IMAE,Tư vấn kỹ thuật và hồ sơ đăng kiểm XE QUAN SÁT,250224-3501_IMAE_Tư vấn kỹ thuật và hồ sơ đăng kiểm XE QUAN SÁT,Gửi báo giá
+9,250224,01,03,Z751,Hồ sơ thuyết minh tính toán bền kết cấu xe chuyên dụng D1P,250224-0103_Z751_Hồ sơ thuyết minh tính toán bền kết cấu xe chuyên dụng D1P,Gửi báo giá
+10,250307,27,02,DHP,Cung cấp ứng dụng CRM Vtiger,250307-2702_DHP_Cung cấp ứng dụng CRM Vtiger,Gửi báo giá
+11,250312,36,01,BMW,Thiết kế Xe móc cẩu,250312-3601_BMW_Thiết kế Xe móc cẩu,Gửi báo giá
+12,250312,01,10,Z751,Máy tính bàn,250312-0110_Z751_Máy tính bàn,Gửi báo giá
+13,250317,37,01,Mr.Phuc,Tính toán mô phỏng kết cấu,250317-3701_Mr.Phuc_Tính toán mô phỏng kết cấu,Gửi báo giá
+14,250318,01,11,Z751,Cho thuê máy tính,250318-0111_Z751_Cho thuê máy tính,Gửi báo giá
+15,250320,38,01,DSS,Phần mềm quản lý dự án ERP Odoo,250320-3801_DSS_Phần mềm quản lý dự án ERP Odoo,Gửi báo giá
+16,250324,01,12,Z751,Cho thuê máy tính,250324-0112_Z751_Cho thuê máy tính,Gửi báo giá
+17,250324,01,13,Z751,Mua bán máy tính,250324-0113_Z751_Mua bán máy tính,Gửi báo giá
+18,250324,39,01,Mr.Tuan,Mô phỏng dập vật liệu Composite,250324-3901_Mr.Tuan_Mô phỏng dập vật liệu Composite,Gửi báo giá
+19,250402,40,01,HaiSon,Mua hàng máy tính,250402-4001_HaiSon_Mua hàng máy tính,Gửi báo giá
+20,250408,01,14,Z751,Dịch vụ thiết kế 3D - Cụm Bệ xe D1P,250408-0114_Z751_Dịch vụ thiết kế 3D - Cụm Bệ xe D1P,Gửi báo giá
+21,250414,01,15,Z751,Nhập hàng ống cần xylanh,250414-0115_Z751_Nhập hàng ống cần xylanh,Chưa gửi báo giá
+22,250415,42,01,Innotel,Hệ thống ERP,250415-4201_Innotel_Hệ thống ERP,Gửi báo giá
+23,250423,41,01,VTX,Chân chống cơ khí,250423-4101_VTX_Chân chống cơ khí,Gửi báo giá
+24,250426,01,16,Z751,Màn hình máy tính,250426-0116_Z751_Màn hình máy tính,Gửi báo giá
+25,250426,40,02,HaiSon,Mua bán máy tính,250426-4002_HaiSon_Mua bán máy tính,Gửi báo giá
+26,250507,01,17,Z751,Tuyển dụng nhân sự,250507-0117_Z751_Tuyển dụng nhân sự,Gửi báo giá
+27,250512,01,18,Z751,Dịch vụ triển khai kỹ thuật xe truyền hình,250512-0118_Z751_Dịch vụ triển khai kỹ thuật xe truyền hình,Gửi báo giá
+28,250512,01,19,Z751,Dịch vụ đánh giá kiểm bền,250512-0119_Z751_Dịch vụ đánh giá kiểm bền,Gửi báo giá
+29,250526,29,02,AnhMinhTech,Dịch vụ mô phỏng kiểm bền khung Palang,250526-2902_AnhMinhTech_Dịch vụ mô phỏng kiểm bền khung Palang,Chưa gửi báo giá
+30,250527,01,20,Z751,Nhập hàng nhiệt đới hoá,250527-0120_Z751_Nhập hàng nhiệt đới hoá,Chưa gửi báo giá
+31,250602,03,01,SSPACE,Tính toán chi tiết ghế Bench,250602-0301_SSPACE_Tính toán chi tiết ghế Bench,Chưa gửi báo giá
+32,250609,43,01,XDBACHKHOA,Dịch vụ triển khai ERP và Mobile App,250609-4301_XDBACHKHOA_Dịch vụ triển khai ERP và Mobile App,Chưa gửi báo giá
+33,250701,44,01,FPT,Công việc CAE,250701-4401_FPT_Công việc CAE,Chưa gửi báo giá
+34,250710,45,01,HUVI,Triển khai CRM,250710-4501_HUVI_Triển khai CRM,Chưa gửi báo giá
+35,250715,36,02,BMW,Thiết kế tấm Panel,250715-3602_BMW_Thiết kế tấm Panel,Chưa gửi báo giá
+37,250729,01,23,Z751,Nhập hàng bộ nguồn và UPS,250729-0123_Z751_Nhập hàng bộ nguồn và UPS,Chưa gửi báo giá
+38,250731,07,01,Eteams,Mô phỏng nhiệt EMC,250731-0701_Eteams_Mô phỏng nhiệt EMC,Chưa gửi báo giá
+39,250731,46,01,DFM,Dựng mô hình 3D từ file 2D,250731-4601_DFM_Dựng mô hình 3D từ file 2D,Chưa gửi báo giá
+40,250805,47,01,OCOTEN,"License CAD và triển khai CRM, ERP","250805-4701_OCOTEN_License CAD và triển khai CRM, ERP",Chưa gửi báo giá
+41,250820,03,02,SSPACE,Triển khai ERP,250820-0302_SSPACE_Triển khai ERP,Chưa gửi báo giá
+42,250828,36,03,BMW,Thiết kế cẩu mini,250828-3603_BMW_Thiết kế cẩu mini,Chưa gửi báo giá
+43,250910,07,02,Eteams,Tính toán mô phỏng tủ điện Rack 1U,250910-0702_Eteams_Tính toán mô phỏng tủ điện Rack 1U,Chưa gửi báo giá
+44,250910,07,03,Eteams,Tính toán mô phỏng trao đổi nhiệt của Box đo nhiệt độ và độ ẩm trong không khí,250910-0703_Eteams_Tính toán mô phỏng trao đổi nhiệt của Box đo nhiệt độ và độ ẩm trong không khí,Chưa gửi báo giá
+45,250920,48,01,MrBau,Workstation mô phỏng CFD/CAE,250920-4801_MrBau_Workstation mô phỏng CFD/CAE,Chưa gửi báo giá
+46,251007,01,24,Z751,Nhập hàng ống cần xylanh lần 2,251007-0124_Z751_Nhập hàng ống cần xylanh lần 2,Chưa gửi báo giá
+47,251013,49,01,TienPhat,Tính toán Móc cẩu,251013-4901_TienPhat_Tính toán Móc cẩu,Done
+48,251016,01,25,Z751,Tuyển dụng nhân sự,251016-0125_Z751_Tuyển dụng nhân sự,
+49,251017,50,01,CaoXanh,Dự án thiết kế,251017-5001_CaoXanh_Dự án thiết kế,
+50,251021,01,26,Z751,Xây dựng mô hình 3D theo bản vẽ và tính toán mô phỏng cho XTH,251021-0126_Z751_Xây dựng mô hình 3D theo bản vẽ và tính toán mô phỏng cho XTH,
+51,251021,01,27,Z751,Đánh giá kiểm bền chốt khoá hãm của Bệ xe HM9 2 mô hình,251021-0127_Z751_Đánh giá kiểm bền chốt khoá hãm của Bệ xe HM9 2 mô hình,
+52,251021,01,28,Z751,Dịch vụ thiết kế 3D và đánh giá kiểm bền kết cấu Cabin xe chuyên dùng 3,251021-0128_Z751_Dịch vụ thiết kế 3D và đánh giá kiểm bền kết cấu Cabin xe chuyên dùng 3,
+53,251003,51,01,AES,Tư vấn mô phỏng thổi khuôn,251003-5101_AES_Tư vấn mô phỏng thổi khuôn,Gửi báo giá
+54,251127,01,29,Z751,Nhập hàng hệ con lăn và ray,251127-0129_Z751_Nhập hàng hệ con lăn và ray,
+55,251201,52,01,RuouNB,Xe chở khí CO2,251201-5201_RuouNB_Xe chở khí CO2,
+56,251202,53,01,AnhKhoa,Tính toán thiết kế bồn và khung,251202-5301_AnhKhoa_Tính toán thiết kế bồn và khung,
+57,251209,03,03,SSPACE,Thiết kế khung quạt,251209-0303_SSPACE_Thiết kế khung quạt,
+58,251212,50,02,CaoXanh,Thiết kế 3Ds Max,251212-5002_CaoXanh_Thiết kế 3Ds Max,
+59,251217,07,04,Eteams,Testing Protocol,251217-0704_Eteams_Testing Protocol,
+60,251219,01,31,Z751,Nhập hàng bộ ghế văn phòng,251219-0131_Z751_Nhập hàng bộ ghế văn phòng,
+61,251224,01,30,Z751,Xe Hậu Cần Bếp Ăn,251224-0130_Z751_Xe Hậu Cần Bếp Ăn,
+62,251225,01,32,Z751,Nhập hàng máy đánh bóng,251225-0132_Z751_Nhập hàng máy đánh bóng,
+63,251230,01,33,Z751,Nhập hàng màn hình led,251230-0133_Z751_Nhập hàng màn hình led,
+64,251230,02,01,SoluCA,Dịch vụ thiết kế CAD,251230-0201_SoluCA_Dịch vụ thiết kế CAD,
+65,260120,55,01,CTUAV,Cung cấp cơ sở hạ tầng và server,260120-5501_CTUAV_Cung cấp cơ sở hạ tầng và server,
+66,260330,57,01,Technet,Thiết kế và mô phỏng khớp liên kết,260330-5701_Technet_Thiết kế và mô phỏng khớp liên kết,
+67,260505,53,01,AKC,CFD Mixer,260505-5301_AKC_CFD Mixer,
+68,260508,03,04,SSPACE,WorkPOD,260508-0304_SSPACE_WorkPOD,
+69,260514,58,01,ROBOMINH,Robot Doresi,260514-5801_ROBOMINH_Robot Doresi,
+70,260519,07,01,ETEAMS,DfM Cabinet,260519-0701_ETEAMS_DfM Cabinet,
+71,260519,58,02,ROBOMINH,In 3D khối đế mô hình,260519-5802_ROBOMINH_In 3D khối đế mô hình,
+72,260601,59,01,LONGHOUSE,Affiliate,260601-5901_LONGHOUSE_Affiliate,
+73,260604,60,01,ANTAM,ERP,260604-6001_ANTAM_ERP,
+74,260608,58,02,ROBOMINH,Robot Doresi phase 2,260608-5802_ROBOMINH_Robot Doresi phase 2,
+75,260609,03,05,SSPACE,Máy chuốt mây,260609-0305_SSPACE_Máy chuốt mây,
+76,260619,61,01,Mr.Nho,Máy lạnh Dometic,260619-6101_Mr.Nho_Máy lạnh Dometic,
+77,260716,63,01,QBOOKS,LMS,260716-6301_QBOOKS_LMS,Done
+78,260821,64,01,KDC,Chuyển đổi website wordpress,260821-6401_KDC_Chuyển đổi website wordpress,

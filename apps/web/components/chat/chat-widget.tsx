@@ -35,6 +35,9 @@ export function ChatWidget() {
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
 
+  // Bảo đảm không có tin nhắn trùng ID gây lỗi duplicate key React
+  const uniqueMessages = Array.from(new Map(messages.map((m) => [m.id, m])).values());
+
   // Auto scroll xuống tin mới nhất
   useEffect(() => {
     if (open) {
@@ -142,7 +145,7 @@ export function ChatWidget() {
               <p className="py-8 text-center text-xs text-muted-foreground">Đang tải…</p>
             )}
 
-            {!loading && messages.length === 0 && (
+            {!loading && uniqueMessages.length === 0 && (
               <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
                 <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
                   <MessageCircle size={22} className="text-primary" />
@@ -154,9 +157,9 @@ export function ChatWidget() {
               </div>
             )}
 
-            {messages.map((m, idx) => {
+            {uniqueMessages.map((m, idx) => {
               const isMine = m.senderId === session.user.sub;
-              const prev = messages[idx - 1];
+              const prev = uniqueMessages[idx - 1];
               const showAvatar = !prev || prev.senderId !== m.senderId;
 
               return (

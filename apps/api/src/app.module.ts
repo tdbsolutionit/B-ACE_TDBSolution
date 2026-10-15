@@ -16,6 +16,7 @@ import { ChatModule } from './chat/chat.module';
 import { HealthController } from './health.controller';
 import { JwtAuthGuard } from './common/guards';
 import { RealtimeModule } from './realtime/realtime.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     ActivitiesModule,
     FilesModule,
     ChatModule,
+    SettingsModule,
   ],
   controllers: [HealthController],
   providers: [

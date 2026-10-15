@@ -6,11 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { CommandPalette } from '@/components/command-palette';
 import {
-  ArrowUpRight,
   Bell,
+  Blocks,
   CalendarDays,
   ChartNoAxesCombined,
-  ChevronDown,
   ChevronRight,
   ChevronsUpDown,
   CircleHelp,
@@ -22,9 +21,10 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   Search,
+  Settings,
   ShieldCheck,
-  Sparkles,
   UserPen,
   UsersRound,
 } from 'lucide-react';
@@ -32,13 +32,11 @@ import { api, useAuth } from '@/lib/auth';
 import { useRealtime } from '@/lib/realtime';
 import { type TaskRow } from '@/lib/crm';
 import { initials, roleLabel } from '@/lib/utils';
-
-import { useRef } from 'react';
 import { useGotoSequence } from '@/hooks/use-goto-sequence';
 import { ShortcutsHelp } from '@/components/shortcuts-help';
 import { useMediaQuery } from '@/hooks/use-media-query';
-
 import { Celebration } from '@/components/celebration';
+
 const NAV = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/khach-hang', label: 'Khách hàng', icon: UsersRound },
@@ -47,28 +45,47 @@ const NAV = [
   { href: '/cong-viec', label: 'Công việc', icon: ListTodo },
   { href: '/lich', label: 'Lịch', icon: CalendarDays },
   { href: '/bao-cao', label: 'Báo cáo', icon: ChartNoAxesCombined },
+  { href: '/tich-hop', label: 'Integration Hub', icon: Blocks },
+  { href: '/cai-dat', label: 'Cài đặt', icon: Settings },
 ];
+
+const CREATE_ITEMS = [
+  { href: '/khach-hang', label: 'Khách hàng', icon: UsersRound },
+  { href: '/co-hoi', label: 'Cơ hội', icon: Layers3 },
+  { href: '/cong-viec', label: 'Công việc', icon: ListTodo },
+];
+
+// Mở command palette (giống bấm Cmd/Ctrl + K)
+function openSearch() {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { ready, session, logout } = useAuth();
+  const { on, connected } = useRealtime();
+
   const [collapsed, setCollapsed] = useState(false);
   const isNarrow = useMediaQuery('(max-width: 1100px)');
-
-  // Tự động collapse khi màn hình nhỏ
-  useEffect(() => {
-    setCollapsed(isNarrow);
-  }, [isNarrow]);
+  const [create, setCreate] = useState(false);
   const [help, setHelp] = useState(false);
   const [menu, setMenu] = useState(false);
   const [bell, setBell] = useState(false);
   const [ring, setRing] = useState(false);
   const [overdue, setOverdue] = useState<TaskRow[]>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [celebration, setCelebration] = useState<{ dealName: string; value?: number; owner?: string; at: string } | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const { on } = useRealtime();
+  const [celebration, setCelebration] = useState<{
+    dealName: string;
+    value?: number;
+    owner?: string;
+    at: string;
+  } | null>(null);
+
+  // Tự động collapse khi màn hình nhỏ
+  useEffect(() => {
+    setCollapsed(isNarrow);
+  }, [isNarrow]);
 
   // Phím tắt G → X
   useGotoSequence(
@@ -78,7 +95,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       d: '/du-an',
       o: '/co-hoi',
       t: '/cong-viec',
+      l: '/lich',
       r: '/bao-cao',
+      i: '/tich-hop',
+      s: '/cai-dat',
     },
     (path) => router.push(path),
   );
@@ -92,10 +112,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable;
 
-      // `/` focus search
+      // `/` mở tìm kiếm
       if (event.key === '/' && !inInput) {
         event.preventDefault();
-        searchInputRef.current?.focus();
+        openSearch();
         return;
       }
 
@@ -132,12 +152,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           const signature = next.map((row) => row.id).sort().join(',');
           const seen = sessionStorage.getItem(NOTICE_SEEN);
           if (signature && seen !== signature) {
+            sessionStorage.setItem(NOTICE_SEEN, signature);
             setRing(true);
             window.setTimeout(() => setRing(false), 1800);
             playChime();
           }
         })
-        .catch(() => { });
+        .catch(() => {});
     };
 
     const unsub1 = on('task:created', refresh);
@@ -148,10 +169,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [session, on]);
 
-  // Celebration khi deal chốt thắng
+  // Celebration khi deal chốt thắng hoặc báo giá được chấp nhận
   useEffect(() => {
     if (!session) return;
-    const unsub = on('deal:stage-changed', (event) => {
+    const unsub1 = on('deal:stage-changed', (event) => {
       if (event.payload?.status !== 'won') return;
       setCelebration({
         dealName: event.payload.name,
@@ -160,7 +181,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         at: event.at,
       });
     });
-    return unsub;
+    const unsub2 = on('quote:accepted', (event) => {
+      setCelebration({
+        dealName: `Báo giá ${event.payload?.quoteNumber || ''}`,
+        value: event.payload?.price,
+        owner: event.payload?.title,
+        at: event.at,
+      });
+    });
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, [session, on]);
 
   const label = useMemo(() => {
@@ -171,8 +203,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith('/lich')) return 'Lịch';
     if (pathname.startsWith('/bao-cao')) return 'Báo cáo';
     if (pathname.startsWith('/bao-gia')) return 'Báo giá';
-    if (pathname.startsWith('/quan-ly')) return 'Người dùng';
+    if (pathname.startsWith('/quan-ly')) return 'Quản lý';
+    if (pathname.startsWith('/tai-khoan')) return 'Tài khoản của tôi';
     if (pathname.startsWith('/tim-kiem')) return 'Tìm kiếm';
+    if (pathname.startsWith('/tich-hop')) return 'Integration Hub';
+    if (pathname.startsWith('/cai-dat')) return 'Cài đặt';
     return 'Tổng quan';
   }, [pathname]);
 
@@ -181,7 +216,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const user = session.user;
-  const items = user.role === 'admin' ? [...NAV, { href: '/quan-ly/nguoi-dung', label: 'Người dùng', icon: ShieldCheck }] : NAV;
+  // Quản lý người dùng đã chuyển vào Cài đặt -> không còn mục riêng trên sidebar
+  const items = NAV;
   const dateLabel = new Intl.DateTimeFormat('vi-VN', {
     weekday: 'long',
     day: '2-digit',
@@ -224,20 +260,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="sidebar-bottom">
-            {!collapsed && (
-              <div className="team-note">
-                <span className="flex items-center gap-2 text-xs font-semibold">
-                  <Sparkles size={15} color="#C9A961" />
-                  Cùng nhau tăng trưởng
-                </span>
-                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                  Mỗi kết nối hôm nay,<br />một cơ hội cho ngày mai.
-                </p>
-                <Link href="/bao-cao" className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-[#C9A961]">
-                  Xem hiệu quả kinh doanh <ArrowUpRight size={13} />
-                </Link>
-              </div>
-            )}
             <button type="button" onClick={() => setHelp(true)} className="inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-accent">
               <CircleHelp size={18} />
               {!collapsed && <span>Trợ giúp & hỗ trợ</span>}
@@ -269,7 +291,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <UserPen size={14} /> Tài khoản của tôi
                   </Link>
                   {user.role === 'admin' && (
-                    <Link href="/quan-ly/nguoi-dung" className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent" onClick={() => setMenu(false)}>
+                    <Link href="/cai-dat?tab=users" className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent" onClick={() => setMenu(false)}>
                       <ShieldCheck size={14} /> Quản lý người dùng
                     </Link>
                   )}
@@ -290,21 +312,96 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
         <div className="app-main">
           <header className="app-header">
-            <button
-              type="button"
-              onClick={() => {
-                const evt = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
-                window.dispatchEvent(evt);
-              }}
-              className="global-search group"
+            {/* Trái: breadcrumb */}
+            <nav
+              aria-label="Breadcrumb"
+              className="hidden min-w-0 shrink-0 items-center gap-1.5 text-xs text-muted-foreground lg:flex"
             >
-              <Search size={17} />
-              <span className="flex-1 text-left text-sm text-muted-foreground">
-                Tìm khách hàng, cơ hội, công việc...
+              <span className="truncate">Không gian làm việc</span>
+              <ChevronRight size={12} />
+              <span className="truncate font-semibold text-foreground">{label}</span>
+            </nav>
+
+            {/* Giữa: tìm kiếm */}
+            <div className="flex min-w-0 flex-1 justify-center px-2">
+              <button
+                type="button"
+                onClick={openSearch}
+                className="global-search group w-full max-w-lg"
+              >
+                <Search size={17} />
+                <span className="flex-1 truncate text-left text-sm text-muted-foreground">
+                  Tìm khách hàng, cơ hội, công việc...
+                </span>
+                <span className="search-key"><Command size={10} /> K</span>
+              </button>
+            </div>
+
+            {/* Phải: hành động */}
+            <div className="flex shrink-0 items-center gap-1.5">
+              {/* Tạo mới */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setCreate((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={create}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90"
+                >
+                  <Plus size={16} />
+                  <span className="hidden sm:inline">Tạo mới</span>
+                </button>
+                {create && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Đóng menu"
+                      className="fixed inset-0 z-40 cursor-default"
+                      onClick={() => setCreate(false)}
+                    />
+                    <div
+                      role="menu"
+                      className="absolute right-0 z-50 mt-2 w-52 rounded-xl border border-border bg-card py-1 shadow-lg"
+                    >
+                      <p className="px-3 py-2 text-[11px] font-medium text-muted-foreground">Tạo nhanh</p>
+                      {CREATE_ITEMS.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            role="menuitem"
+                            onClick={() => setCreate(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent"
+                          >
+                            <Icon size={15} className="text-muted-foreground" />
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Trạng thái realtime */}
+              <span
+                title={connected ? 'Đang cập nhật trực tiếp' : 'Mất kết nối, dữ liệu không tự cập nhật'}
+                className="hidden items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground md:inline-flex"
+              >
+                <span className={`size-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                {connected ? 'Trực tiếp' : 'Ngoại tuyến'}
               </span>
-              <span className="search-key"><Command size={10} /> K</span>
-            </button>
-            <div className="flex items-center gap-3">
+
+              {/* Ngày -> mở lịch */}
+              <Link
+                href="/lich"
+                className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-xs capitalize text-muted-foreground hover:bg-accent xl:inline-flex"
+              >
+                <CalendarDays size={14} />
+                {dateLabel}
+              </Link>
+
               <button
                 type="button"
                 onClick={() => setShowShortcuts(true)}
@@ -314,12 +411,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <CircleHelp size={18} />
               </button>
-              <span className="hidden text-xs capitalize text-muted-foreground xl:block">{dateLabel}</span>
-              <span className="mx-1 hidden h-5 border-l border-border sm:block" />
+
+              {/* Chuông */}
               <div className="relative">
-                <button type="button" className="relative inline-flex size-9 items-center justify-center rounded-md hover:bg-accent" aria-label="Thông báo" onClick={() => { flushChime(); setBell((value) => !value); }}>
+                <button
+                  type="button"
+                  className="relative inline-flex size-9 items-center justify-center rounded-md hover:bg-accent"
+                  aria-label="Thông báo"
+                  onClick={() => {
+                    flushChime();
+                    setBell((value) => !value);
+                  }}
+                >
                   <Bell size={19} className={ring ? 'bell-swing' : undefined} />
-                  {(overdue.some((task) => task.overdue) || overdue.some((task) => task.dueToday || task.dueTomorrow)) && (
+                  {overdue.length > 0 && (
                     <span className={overdue.some((task) => task.overdue) ? 'notification-dot' : 'notification-dot notification-dot-soon'} />
                   )}
                 </button>
@@ -338,18 +443,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
               </div>
-              <Link href="/tai-khoan" className="inline-flex items-center gap-2 rounded-md px-1 hover:bg-accent">
-                <span className="avatar-initials avatar-profile inline-flex size-8 items-center justify-center rounded-full text-xs font-semibold">{initials(user.name)}</span>
-                <ChevronDown size={13} />
+
+              <span className="mx-1 hidden h-6 border-l border-border sm:block" />
+
+              {/* Người dùng */}
+              <Link
+                href="/tai-khoan"
+                className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-2 hover:bg-accent"
+              >
+                <span className="avatar-initials avatar-profile inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                  {initials(user.name)}
+                </span>
+                <span className="hidden text-left leading-tight md:block">
+                  <span className="block max-w-[140px] truncate text-xs font-semibold">{user.name}</span>
+                  <span className="block text-[10px] text-muted-foreground">{roleLabel(user.role)}</span>
+                </span>
               </Link>
             </div>
           </header>
           <main className={`page-content ${pathname.startsWith('/khach-hang') ? 'split-view-active' : ''}`}>
-            <div className="breadcrumb">
-              <span>Không gian làm việc</span>
-              <ChevronRight size={12} />
-              <span className="text-foreground">{label}</span>
-            </div>
             {children}
           </main>
         </div>

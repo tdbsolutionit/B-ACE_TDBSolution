@@ -5,7 +5,7 @@ import { TodayWidget } from '@/components/dashboard/today-widget';
 import { useRealtime } from '@/lib/realtime';
 import { HotDealsWidget } from '@/components/dashboard/hot-deals-widget';
 import { useEffect, useState } from 'react';
-import { ArrowRight, ArrowUpRight, CalendarDays, Check, Target, TrendingUp, UsersRound, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, Target, TrendingUp, UsersRound, Wallet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '@/lib/auth';
 import { initials } from '@/lib/utils';

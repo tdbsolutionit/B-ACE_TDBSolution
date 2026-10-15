@@ -22,6 +22,19 @@ type AuthValue = {
 const AuthContext = createContext<AuthValue | null>(null);
 const KEY = 'bace.session';
 
+export function getApiBase(): string {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:3001/api';
+    }
+    if (hostname) {
+      return `http://${hostname}:3001/api`;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
@@ -41,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
-    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    const base = getApiBase();
     let next: Session | null = null;
     try {
       const res = await fetch(`${base}/auth/login`, {
@@ -80,7 +93,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const raw = typeof window === 'undefined' ? null : localStorage.getItem(KEY);
   const session = raw ? (JSON.parse(raw) as Session) : null;
   if (!session?.accessToken) throw new Error('Chưa đăng nhập');
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  const base = getApiBase();
   const res = await fetch(`${base}${path}`, {
     ...init,
     headers: {
@@ -97,7 +110,7 @@ function authHeader() {
   const raw = typeof window === 'undefined' ? null : localStorage.getItem(KEY);
   const session = raw ? (JSON.parse(raw) as Session) : null;
   if (!session?.accessToken) throw new Error('Chưa đăng nhập');
-  return { token: session.accessToken, base: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api' };
+  return { token: session.accessToken, base: getApiBase() };
 }
 
 export async function apiForm<T>(path: string, body: FormData): Promise<T> {

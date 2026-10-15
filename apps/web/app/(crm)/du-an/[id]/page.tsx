@@ -103,6 +103,11 @@ export default function ProjectPage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-xl font-bold">{project.name}</h1>
+              {project.code && (
+                <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+                  {project.code}
+                </span>
+              )}
               <span className="stage-badge" style={{ background: `${project.stageColor}20`, color: project.stageColor }}>{project.stage}</span>
             </div>
             <div className="mt-2.5 flex flex-wrap items-center text-xs text-slate-500">
@@ -207,21 +212,113 @@ export default function ProjectPage() {
       {edit && (
         <>
           <div className="modal-backdrop" onClick={() => setEdit(false)} />
-          <form className="modal-card" onSubmit={(event) => save(event).catch((err: Error) => setError(err.message))}>
+
+          <form
+            className="modal-card"
+            onSubmit={(event) =>
+              save(event).catch((err: Error) => setError(err.message))
+            }
+          >
             <h2 className="text-base font-semibold">Sửa dự án</h2>
-            <div className="mt-4 grid gap-3">
-              <input name="name" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={project.name} />
-              <div className="grid grid-cols-2 gap-3">
-                <input name="value" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={project.value} />
-                <input name="probability" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={project.probability} />
+
+            <div className="mt-4 grid gap-4">
+              {/* Tên dự án */}
+              <div className="grid gap-1.5">
+                <label htmlFor="project-name" className="text-sm font-medium">
+                  Tên dự án <span className="text-destructive">*</span>
+                </label>
+                <input
+                  id="project-name"
+                  name="name"
+                  required
+                  className="h-10 rounded-md border border-input px-3 text-sm"
+                  placeholder="Nhập tên dự án"
+                  defaultValue={project.name}
+                />
               </div>
-              <input name="closeDate" type="date" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={project.closeDate} />
-              <select name="stageId" className="crm-select" defaultValue={project.stageId}>
-                {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-              </select>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setEdit(false)} className="h-9 rounded-md border px-4 text-sm">Hủy</button>
-                <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Lưu</button>
+
+              {/* Giá trị và xác suất */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <label htmlFor="project-value" className="text-sm font-medium">
+                    Giá trị dự án (VNĐ)
+                  </label>
+                  <input
+                    id="project-value"
+                    name="value"
+                    type="number"
+                    min="0"
+                    className="h-10 rounded-md border border-input px-3 text-sm"
+                    placeholder="VD: 50000000"
+                    defaultValue={project.value}
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <label htmlFor="project-probability" className="text-sm font-medium">
+                    Xác suất thành công (%)
+                  </label>
+                  <input
+                    id="project-probability"
+                    name="probability"
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="h-10 rounded-md border border-input px-3 text-sm"
+                    placeholder="0–100"
+                    defaultValue={project.probability}
+                  />
+                </div>
+              </div>
+
+              {/* Ngày dự kiến chốt */}
+              <div className="grid gap-1.5">
+                <label htmlFor="project-close-date" className="text-sm font-medium">
+                  Ngày dự kiến chốt dự án
+                </label>
+                <input
+                  id="project-close-date"
+                  name="closeDate"
+                  type="date"
+                  className="h-10 rounded-md border border-input px-3 text-sm"
+                  defaultValue={project.closeDate}
+                />
+              </div>
+
+              {/* Giai đoạn */}
+              <div className="grid gap-1.5">
+                <label htmlFor="project-stage" className="text-sm font-medium">
+                  Giai đoạn bán hàng
+                </label>
+                <select
+                  id="project-stage"
+                  name="stageId"
+                  className="crm-select"
+                  defaultValue={project.stageId}
+                >
+                  {stages.map((stage) => (
+                    <option key={stage.id} value={stage.id}>
+                      {stage.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Nút thao tác */}
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEdit(false)}
+                  className="h-9 rounded-md border px-4 text-sm"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground"
+                >
+                  Lưu thay đổi
+                </button>
               </div>
             </div>
           </form>

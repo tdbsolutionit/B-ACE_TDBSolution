@@ -39,6 +39,11 @@ export function KanbanCard({ deal, dragging, highlighted, onDragStart, onDragEnd
         } ${highlighted ? 'ring-2 ring-primary animate-pulse' : ''    // ← THÊM
         }`}
     >
+      {deal.code && (
+        <p className="mb-1 truncate font-mono text-[10px] font-semibold text-primary">
+          {deal.code}
+        </p>
+      )}
       <div className="flex items-start justify-between gap-2">
         <p className="line-clamp-2 text-sm font-semibold leading-snug">{deal.name}</p>
         {deal.value > 0 && (

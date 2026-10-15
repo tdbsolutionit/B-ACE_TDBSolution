@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from '@/components/ui/toast';
-import { useAuth } from '@/lib/auth';
+import { getApiBase, useAuth } from '@/lib/auth';
 
 type RealtimeEvent = {
   type: string;
@@ -30,7 +30,6 @@ export function useRealtime() {
   return useContext(RealtimeContext);
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const TOAST_KEY = 'bace.realtime.toast';
 
 const TOAST_MAP: Record<string, (p: any) => string | null> = {
@@ -39,6 +38,8 @@ const TOAST_MAP: Record<string, (p: any) => string | null> = {
   'deal:created': (p) => `💼 Cơ hội mới: ${p.name}`,
   'deal:stage-changed': (p) => `🔄 Deal "${p.name}" → ${p.stage}`,
   'customer:created': (p) => `👤 Khách hàng mới: ${p.name}`,
+  'customer:assigned': (p) => `👥 Đã gán ${p.count} khách cho ${p.assigneeName}`,
+  'quote:accepted': (p) => `🎉 Báo giá "${p.quoteNumber}" đã được chốt thành công!`,
   // Chat events — chỉ listen, KHÔNG toast (để UI tự handle)
   'message:created': () => null,
   'message:updated': () => null,
@@ -143,7 +144,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     }
 
     const token = session.accessToken;
-    const url = `${API_BASE}/realtime/stream?token=${encodeURIComponent(token)}`;
+    const url = `${getApiBase()}/realtime/stream?token=${encodeURIComponent(token)}`;
 
     const es = new EventSource(url);
     esRef.current = es;
@@ -161,19 +162,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           const msg = toastFn ? toastFn(data.payload) : null;
           if (msg) {
             pushToast(type, data.payload, toastEnabledRef.current);
-          }
-
-          // Lưu vào activity feed (chỉ với events chính, không phải chat)
-          if (!type.startsWith('message:') && !type.startsWith('user:') && !type.startsWith('room:')) {
-            setEvents((prev) => {
-              const item: ActivityItem = {
-                id: `${data.at}-${Math.random()}`,
-                type: data.type,
-                payload: data.payload,
-                at: data.at,
-              };
-              return [item, ...prev].slice(0, 30);
-            });
           }
 
           // Custom listeners LUÔN chạy
