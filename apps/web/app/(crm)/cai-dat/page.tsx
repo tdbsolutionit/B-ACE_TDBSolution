@@ -3,7 +3,9 @@
 import { useEffect, useId, useState } from 'react';
 import { api } from '@/lib/auth';
 import { UsersManagement } from '@/components/users/UsersManagement';
-/* ---------- Types & data ---------- */
+import { PipelineSection } from '@/components/settings/PipelineSection';
+import { TeamsManagement } from '@/components/settings/TeamsManagement';
+import { RolesManagement } from '@/components/settings/RolesManagement';
 
 
 
@@ -11,6 +13,8 @@ type SectionKey =
     | 'company'
     | 'users'
     | 'pipeline'
+    | 'teams'
+    | 'roles'
     | 'fields'
     | 'notifications'
     | 'security'
@@ -20,6 +24,8 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
     { key: 'company', label: 'Thông tin công ty' },
     { key: 'users', label: 'Người dùng & phân quyền' },
     { key: 'pipeline', label: 'Pipeline & giai đoạn' },
+    { key: 'teams', label: 'Nhóm & nhân viên' },
+    { key: 'roles', label: 'Vai trò & quyền hạn' },
     { key: 'fields', label: 'Trường tùy chỉnh' },
     { key: 'notifications', label: 'Thông báo' },
     { key: 'security', label: 'Bảo mật' },
@@ -557,7 +563,10 @@ export default function SettingsPage() {
                         />
                     )}
                     {active === 'users' && <UsersManagement />}
-                    {active !== 'company' && active !== 'notifications' && active !== 'users' && (
+                    {active === 'pipeline' && <PipelineSection />}
+                    {active === 'teams' && <TeamsManagement />}
+                    {active === 'roles' && <RolesManagement />}
+                    {active !== 'company' && active !== 'notifications' && active !== 'users' && active !== 'pipeline' && active !== 'teams' && active !== 'roles' && (
                         <ComingSoon label={activeLabel} />
                     )}
                 </div>
