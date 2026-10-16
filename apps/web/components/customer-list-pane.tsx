@@ -16,8 +16,10 @@ import { CustomerTable } from '@/components/customer-table';
 import { BulkActionBar } from '@/components/bulk-action-bar';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { toast } from '@/components/ui/toast';
+import { usePermission } from '@/lib/use-permission';
 
 function ListPane() {
+  const perm = usePermission();
   const params = useSearchParams();
   const pathname = usePathname();
   const [rows, setRows] = useState<CustomerRow[]>([]);
@@ -51,7 +53,7 @@ function ListPane() {
 
     api<Array<{ id: string; name: string; role?: string }>>('/users')
       .then(setUsers)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Lắng nghe sự kiện sửa/tạo khách hàng để tự động cập nhật danh sách ngay lập tức không cần F5
@@ -72,7 +74,7 @@ function ListPane() {
               setRows((prev) => (prev.some((r) => r.id === c.id) ? prev : [c, ...prev]));
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     });
 
@@ -288,22 +290,31 @@ function ListPane() {
           >
             <Download size={14} />
           </Button>
-          <Button
-            variant="outline"
-            className="h-8 px-2.5 text-xs"
-            title="Nhập khách từ file CSV"
-            onClick={() => csvInput.current?.click()}
-          >
-            <FileUp size={14} />
-          </Button>
+          {perm.has('customer:create') && (
+            <>
+              <Button
+                variant="outline"
+                className="h-8 px-2.5 text-xs"
+                title="Nhập khách từ file CSV"
+                onClick={() => csvInput.current?.click()}
+              >
+                <FileUp size={14} />
+              </Button>
+              <input ref={csvInput} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (file) importCsv(file).catch((err: Error) => setImportNote(err.message));
+              }} />
+              <Button className="h-8 gap-1 px-2.5 text-xs" onClick={() => setOpen(true)}>
+                <Plus size={14} /> Thêm
+              </Button>
+            </>
+          )}
           <input ref={csvInput} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => {
             const file = event.target.files?.[0];
             event.target.value = '';
             if (file) importCsv(file).catch((err: Error) => setImportNote(err.message));
           }} />
-          <Button className="h-8 gap-1 px-2.5 text-xs" onClick={() => setOpen(true)}>
-            <Plus size={14} /> Thêm
-          </Button>
         </div>
       </div>
 
@@ -320,9 +331,8 @@ function ListPane() {
               key={key}
               type="button"
               onClick={() => setTab(key)}
-              className={`relative whitespace-nowrap px-2.5 py-2.5 text-xs font-medium ${
-                tab === key ? 'text-primary' : 'text-muted-foreground'
-              }`}
+              className={`relative whitespace-nowrap px-2.5 py-2.5 text-xs font-medium ${tab === key ? 'text-primary' : 'text-muted-foreground'
+                }`}
             >
               {label}
               <span className="ml-1 text-[10px] text-muted-foreground">{count}</span>

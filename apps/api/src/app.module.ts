@@ -17,6 +17,9 @@ import { HealthController } from './health.controller';
 import { JwtAuthGuard } from './common/guards';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SettingsModule } from './settings/settings.module';
+import { RolesModule } from './roles/roles.module';
+import { TeamsModule } from './teams/teams.module';
+import { StagesModule } from './stages/stages.module';
 
 @Module({
   imports: [
@@ -39,6 +42,9 @@ import { SettingsModule } from './settings/settings.module';
     FilesModule,
     ChatModule,
     SettingsModule,
+    RolesModule,
+    TeamsModule,
+    StagesModule,
   ],
   controllers: [HealthController],
   providers: [

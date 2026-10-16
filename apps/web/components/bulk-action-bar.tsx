@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Download, Tag, Trash2, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { usePermission } from '@/lib/use-permission';
 
 type UserOption = {
   id: string;
@@ -29,6 +30,7 @@ export function BulkActionBar({
   onExport,
   onDelete,
 }: Props) {
+  const perm = usePermission();
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -46,20 +48,17 @@ export function BulkActionBar({
 
           <div className="mx-1 h-5 border-l border-border" />
 
-          {onAssign && (
-            <Button
-              variant="ghost"
-              className="h-8 gap-1.5 px-2.5 text-xs"
+          {onAssign && perm.has('customer:update') && (
+            <Button variant="ghost" className="h-8 gap-1.5 px-2.5 text-xs"
               onClick={() => {
                 setSelectedUserId(users[0]?.id || '');
                 setShowAssignModal(true);
-              }}
-            >
+              }}>
               <UserPlus size={14} /> Gán cho
             </Button>
           )}
 
-          {onChangeStatus && (
+          {onChangeStatus && perm.has('customer:update') && (
             <Button
               variant="ghost"
               className="h-8 gap-1.5 px-2.5 text-xs"
@@ -81,7 +80,7 @@ export function BulkActionBar({
 
           <div className="mx-1 h-5 border-l border-border" />
 
-          {onDelete && (
+          {onDelete && perm.has('customer:delete') && (
             <Button
               variant="ghost"
               className="h-8 gap-1.5 px-2.5 text-xs text-destructive hover:bg-destructive/10"

@@ -5,17 +5,33 @@ import { api, useAuth } from '@/lib/auth';
 import { initials, roleLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePermission } from '@/lib/use-permission';
 
 /* ---------- Types ---------- */
 
-type Role = 'admin' | 'manager' | 'sales';
+type LegacyRole = 'admin' | 'manager' | 'sales';
 type UserStatus = 'active' | 'inactive';
+
+type RoleOption = {
+  id: string;
+  name: string;
+  isSystem: boolean;
+};
+
+type TeamOption = {
+  id: string;
+  name: string;
+};
 
 type UserRow = {
   id: string;
   name: string;
   email: string;
-  role: Role;
+  role: LegacyRole;
+  roleId: string | null;
+  teamId: string | null;
+  roleRef: { id: string; name: string } | null;
+  team: { id: string; name: string } | null;
   phone: string | null;
   status: UserStatus;
   createdAt: string;
@@ -25,7 +41,8 @@ type UserForm = {
   name: string;
   email: string;
   phone: string;
-  role: Role;
+  roleId: string;
+  teamId: string;
   status: UserStatus;
   password: string;
 };
@@ -34,12 +51,11 @@ const EMPTY_FORM: UserForm = {
   name: '',
   email: '',
   phone: '',
-  role: 'sales',
+  roleId: '',
+  teamId: '',
   status: 'active',
   password: '',
 };
-
-const ROLES: Role[] = ['admin', 'manager', 'sales'];
 
 const STATUS_LABEL: Record<UserStatus, string> = {
   active: 'Đang hoạt động',
@@ -52,7 +68,6 @@ const selectCls =
 
 /* ---------- Helpers ---------- */
 
-// api() ném Error có message là chuỗi JSON của NestJS -> đổi sang tiếng Việt
 function errorMessage(err: unknown, fallback: string): string {
   if (!(err instanceof Error)) return fallback;
 
@@ -82,6 +97,8 @@ export function UsersManagement() {
   const isAdmin = session?.user.role === 'admin';
 
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [teams, setTeams] = useState<TeamOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -93,9 +110,16 @@ export function UsersManagement() {
 
   async function load() {
     try {
-      setUsers(await api<UserRow[]>('/users'));
+      const [u, r, t] = await Promise.all([
+        api<UserRow[]>('/users'),
+        api<RoleOption[]>('/roles'),
+        api<TeamOption[]>('/teams'),
+      ]);
+      setUsers(u);
+      setRoles(r);
+      setTeams(t);
     } catch (err) {
-      setError(errorMessage(err, 'Không tải được danh sách người dùng.'));
+      setError(errorMessage(err, 'Không tải được dữ liệu.'));
     } finally {
       setLoading(false);
     }
@@ -107,7 +131,10 @@ export function UsersManagement() {
 
   function openCreate() {
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    // Mặc định chọn role đầu tiên không phải hệ thống, nếu không có thì chọn role đầu
+    const defaultRole =
+      roles.find((r) => !r.isSystem)?.id ?? roles[0]?.id ?? '';
+    setForm({ ...EMPTY_FORM, roleId: defaultRole });
     setError('');
     setNotice('');
     setFormOpen(true);
@@ -119,7 +146,8 @@ export function UsersManagement() {
       name: u.name,
       email: u.email,
       phone: u.phone ?? '',
-      role: u.role,
+      roleId: u.roleId ?? u.roleRef?.id ?? '',
+      teamId: u.teamId ?? '',
       status: u.status,
       password: '',
     });
@@ -141,9 +169,13 @@ export function UsersManagement() {
     setError('');
     setNotice('');
 
-    // Backend tự đặt mật khẩu mặc định nếu thiếu -> bắt buộc nhập khi tạo mới
     if (!editingId && form.password.length < 6) {
       setError('Mật khẩu tối thiểu 6 ký tự');
+      return;
+    }
+
+    if (!form.roleId) {
+      setError('Vui lòng chọn vai trò');
       return;
     }
 
@@ -153,7 +185,8 @@ export function UsersManagement() {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
-        role: form.role,
+        roleId: form.roleId,
+        teamId: form.teamId || null,
         status: form.status,
         ...(form.password ? { password: form.password } : {}),
       };
@@ -184,6 +217,11 @@ export function UsersManagement() {
     } catch (err) {
       setError(errorMessage(err, 'Không xóa được người dùng.'));
     }
+  }
+
+  // Hiển thị tên vai trò: ưu tiên roleRef.name, fallback roleLabel
+  function displayRole(u: UserRow): string {
+    return u.roleRef?.name ?? roleLabel(u.role);
   }
 
   return (
@@ -240,11 +278,24 @@ export function UsersManagement() {
             </label>
             <label className="text-xs font-medium">
               Vai trò
-              <select className={selectCls} value={form.role}
-                onChange={(e) => setField('role', e.target.value as Role)}>
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {roleLabel(r)}
+              <select className={selectCls} value={form.roleId} required
+                onChange={(e) => setField('roleId', e.target.value)}>
+                <option value="" disabled>-- Chọn vai trò --</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-medium">
+              Team
+              <select className={selectCls} value={form.teamId}
+                onChange={(e) => setField('teamId', e.target.value)}>
+                <option value="">-- Không thuộc team nào --</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
                   </option>
                 ))}
               </select>
@@ -277,11 +328,12 @@ export function UsersManagement() {
             Chưa có người dùng nào. Bấm &quot;Thêm người dùng&quot; để mời thành viên đầu tiên.
           </p>
         ) : (
-          <table className="w-full min-w-[640px] text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="py-2 pr-3 font-medium">Người dùng</th>
                 <th className="py-2 pr-3 font-medium">Vai trò</th>
+                <th className="py-2 pr-3 font-medium">Team</th>
                 <th className="py-2 pr-3 font-medium">Điện thoại</th>
                 <th className="py-2 pr-3 font-medium">Trạng thái</th>
                 {isAdmin && <th className="py-2 font-medium" />}
@@ -303,7 +355,16 @@ export function UsersManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 pr-3">{roleLabel(u.role)}</td>
+                    <td className="py-3 pr-3">
+                      <span className="inline-flex rounded-md bg-teal-50 px-2 py-0.5 text-xs font-medium">
+                        {displayRole(u)}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-3">
+                      {u.team?.name ?? (
+                        <span className="text-xs italic text-muted-foreground">Chưa xếp</span>
+                      )}
+                    </td>
                     <td className="py-3 pr-3">{u.phone || '—'}</td>
                     <td className="py-3 pr-3">
                       <span

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowDown,
   ArrowUp,
@@ -54,6 +55,7 @@ export function CustomerTable({
   isPartial,
   activeId,
 }: Props) {
+  const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [focusedIdx, setFocusedIdx] = useState<number>(-1);
@@ -96,7 +98,7 @@ export function CustomerTable({
       } else if (e.key === 'Enter') {
         if (focusedIdx >= 0 && sorted[focusedIdx]) {
           e.preventDefault();
-          window.location.href = `/khach-hang/${sorted[focusedIdx].id}`;
+          router.push(`/khach-hang/${sorted[focusedIdx].id}`);
         }
       } else if (e.key === 'Escape') {
         onClearSelection();
@@ -104,7 +106,7 @@ export function CustomerTable({
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [sorted, focusedIdx, onToggle, onClearSelection]);
+  }, [sorted, focusedIdx, onToggle, onClearSelection, router]);
 
   useEffect(() => {
     rowRefs.current[focusedIdx]?.scrollIntoView({ block: 'nearest' });
@@ -127,16 +129,15 @@ export function CustomerTable({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              <th className="w-10 px-3 py-2.5 text-left">
-                <button
-                  type="button"
-                  onClick={() => (isAllSelected ? onClearSelection() : onSelectAll())}
-                  className="flex size-4 items-center justify-center rounded border border-input bg-background transition-colors hover:border-primary"
-                  aria-label="Chọn tất cả"
-                >
-                  {isAllSelected && <Check size={11} className="text-primary" />}
-                  {isPartial && <span className="h-0.5 w-2 bg-primary" />}
-                </button>
+              <th className="sticky left-0 z-20 w-10 bg-muted/30 px-3 py-2.5 text-left">                <button
+                type="button"
+                onClick={() => (isAllSelected ? onClearSelection() : onSelectAll())}
+                className="flex size-4 items-center justify-center rounded border border-input bg-background transition-colors hover:border-primary"
+                aria-label="Chọn tất cả"
+              >
+                {isAllSelected && <Check size={11} className="text-primary" />}
+                {isPartial && <span className="h-0.5 w-2 bg-primary" />}
+              </button>
               </th>
 
               <SortHeader
@@ -144,6 +145,7 @@ export function CustomerTable({
                 active={sortKey === 'name'}
                 dir={sortDir}
                 onClick={() => toggleSort('name')}
+                sticky
               />
               <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Liên hệ
@@ -201,35 +203,38 @@ export function CustomerTable({
                     ref={(el) => {
                       rowRefs.current[index] = el;
                     }}
-                    onClick={() => setFocusedIdx(index)}
-                    className={`group border-b border-border/60 transition-colors ${
-                      activeId === row.id
-                        ? 'bg-primary/10 border-l-2 border-l-primary'
-                        : isSel
-                          ? 'bg-primary/5'
-                          : isFocus
-                            ? 'bg-accent'
-                            : 'hover:bg-accent/50'
-                    }`}
+                    onClick={(e) => {
+                      setFocusedIdx(index);
+                      const target = e.target as HTMLElement;
+                      if (target.closest('button') || target.closest('a')) return;
+                      router.push(`/khach-hang/${row.id}`);
+                    }}
+                    className={`group border-b border-border/60 transition-colors ${activeId === row.id
+                      ? 'bg-primary/10 border-l-2 border-l-primary'
+                      : isSel
+                        ? 'bg-primary/5'
+                        : isFocus
+                          ? 'bg-accent'
+                          : 'hover:bg-accent/50'
+                      }`}
                   >
-                    <td className={`${cellPy} px-3`}>
+                    <td className={`sticky left-0 z-10 ${cellPy} bg-background px-3 ${activeId === row.id ? 'bg-primary/10' : isSel ? 'bg-primary/5' : isFocus ? 'bg-accent' : 'group-hover:bg-accent/50'}`}>
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           onToggle(row.id, index, e.shiftKey);
                         }}
-                        className={`flex size-4 items-center justify-center rounded border transition-colors ${
-                          isSel
-                            ? 'border-primary bg-primary'
-                            : 'border-input bg-background hover:border-primary'
-                        }`}
+                        className={`flex size-4 items-center justify-center rounded border transition-colors ${isSel
+                          ? 'border-primary bg-primary'
+                          : 'border-input bg-background hover:border-primary'
+                          }`}
                       >
                         {isSel && <Check size={11} className="text-primary-foreground" />}
                       </button>
                     </td>
 
-                    <td className={`${cellPy} px-3`}>
+                    <td className={`sticky left-10 z-10 ${cellPy} bg-background px-3 ${activeId === row.id ? 'bg-primary/10' : isSel ? 'bg-primary/5' : isFocus ? 'bg-accent' : 'group-hover:bg-accent/50'}`}>
                       <Link
                         href={`/khach-hang/${row.id}`}
                         className="flex items-center gap-3"
@@ -396,14 +401,16 @@ function SortHeader({
   active,
   dir,
   onClick,
+  sticky = false,
 }: {
   label: string;
   active: boolean;
   dir: SortDir;
   onClick: () => void;
+  sticky?: boolean;
 }) {
   return (
-    <th className="px-3 py-2.5 text-left">
+    <th className={`px-3 py-2.5 text-left ${sticky ? 'sticky left-10 z-20 bg-muted/30' : ''}`}>
       <button
         type="button"
         onClick={onClick}

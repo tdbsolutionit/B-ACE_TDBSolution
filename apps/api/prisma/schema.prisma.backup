@@ -1,0 +1,423 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id            String        @id @default(uuid())
+  name          String
+  slug          String        @unique
+  taxCode       String?       @map("tax_code")
+  email         String?
+  phone         String?
+  timezone      String        @default("Asia/Ho_Chi_Minh")
+  currency      String        @default("VND")
+  language      String        @default("vi")
+  dateFormat    String        @default("DD/MM/YYYY") @map("date_format")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  users         User[]
+  customers     Customer[]
+  leadSources   LeadSource[]
+  stages        Stage[]
+  opportunities Opportunity[]
+  tasks         Task[]
+  activities    Activity[]
+  quotes        Quote[]
+  projectFiles  ProjectFile[]
+  chatRooms     ChatRoom[]
+  messages      Message[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  tenantId     String        @map("tenant_id")
+  name         String
+  email        String
+  passwordHash String        @map("password_hash")
+  role         UserRole      @default(sales)
+  phone        String?
+  status       UserStatus    @default(active)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  chatMembers  ChatMember[]
+  messages     Message[]
+  reactions    Reaction[]
+  messageReads MessageRead[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId, status])
+  @@map("users")
+}
+
+model LeadSource {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  color     String   @default("#C9A961")
+  createdAt DateTime @default(now()) @map("created_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("lead_sources")
+}
+
+model Stage {
+  id            String        @id @default(uuid())
+  tenantId      String        @map("tenant_id")
+  name          String
+  orderIndex    Int           @map("order_index")
+  color         String        @default("#C9A961")
+  isWon         Boolean       @default(false) @map("is_won")
+  isLost        Boolean       @default(false) @map("is_lost")
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunities Opportunity[]
+
+  @@index([tenantId, orderIndex])
+  @@map("stages")
+}
+
+model Customer {
+  id            String         @id @default(uuid())
+  tenantId      String         @map("tenant_id")
+  code          String? // Mã KH (ví dụ: KH00001)
+  shortCode     String?        @map("short_code") // Mã số (ví dụ: 01)
+  name          String
+  company       String?
+  phone         String?
+  email         String?
+  address       String?
+  taxCode       String?        @map("tax_code")
+  industry      String?
+  contactName   String?        @map("contact_name")
+  contactPhone  String?        @map("contact_phone")
+  contactEmail  String?        @map("contact_email")
+  type          CustomerType   @default(business)
+  status        CustomerStatus @default(lead)
+  sourceName    String?        @map("source_name")
+  assignedTo    String?        @map("assigned_to")
+  notes         String?
+  createdBy     String?        @map("created_by")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunities Opportunity[]
+  quotes        Quote[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, email])
+  @@index([tenantId, code])
+  @@map("customers")
+}
+
+model Opportunity {
+  id                String            @id @default(uuid())
+  tenantId          String            @map("tenant_id")
+  code              String? // Mã dự án (ví dụ: 20240124-0101_Z751_Mua hàng 20 bộ treo xe)
+  name              String
+  customerId        String            @map("customer_id")
+  stageId           String            @map("stage_id")
+  value             Decimal           @default(0) @db.Decimal(15, 2)
+  probability       Int               @default(0)
+  expectedCloseDate DateTime?         @map("expected_close_date") @db.Date
+  assignedTo        String?           @map("assigned_to")
+  description       String?
+  status            OpportunityStatus @default(open)
+  lostReason        String?           @map("lost_reason")
+  createdBy         String?           @map("created_by")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  stage             Stage             @relation(fields: [stageId], references: [id])
+  quotes            Quote[]
+  files             ProjectFile[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, stageId])
+  @@index([tenantId, customerId])
+  @@map("opportunities")
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  tenantId    String       @map("tenant_id")
+  title       String
+  description String?
+  relatedType String?      @map("related_type")
+  relatedId   String?      @map("related_id")
+  dueDate     DateTime?    @map("due_date")
+  priority    TaskPriority @default(medium)
+  status      TaskStatus   @default(pending)
+  assignedTo  String?      @map("assigned_to")
+  createdBy   String?      @map("created_by")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, dueDate])
+  @@map("tasks")
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  type        String
+  subject     String
+  content     String?
+  relatedType String?  @map("related_type")
+  relatedId   String?  @map("related_id")
+  userId      String?  @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("activities")
+}
+
+model Quote {
+  id            String        @id @default(uuid())
+  tenantId      String        @map("tenant_id")
+  opportunityId String        @map("opportunity_id")
+  customerId    String        @map("customer_id")
+  quoteNumber   String        @map("quote_number")
+  kind          QuoteKind     @default(quote)
+  title         String
+  scenario      QuoteScenario @default(mid)
+  workingDays   Int           @default(98) @map("working_days")
+  freelancers   Int           @default(2)
+  freelanceRate BigInt        @default(1000000) @map("freelance_rate")
+  personnelCost BigInt        @default(0) @map("personnel_cost")
+  otherCost     BigInt        @default(0) @map("other_cost")
+  totalCost     BigInt        @default(0) @map("total_cost")
+  profitMargin  Decimal       @default(50) @map("profit_margin") @db.Decimal(5, 2)
+  sellingPrice  BigInt        @default(0) @map("selling_price")
+  status        QuoteStatus   @default(draft)
+  validUntil    DateTime?     @map("valid_until") @db.Date
+  notes         String?
+  createdBy     String?       @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity   @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items         QuoteItem[]
+
+  @@unique([tenantId, quoteNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, opportunityId])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id         String @id @default(uuid())
+  tenantId   String @map("tenant_id")
+  quoteId    String @map("quote_id")
+  moduleCode String @map("module_code")
+  moduleName String @map("module_name")
+  quantity   Int    @default(1)
+  unitPrice  BigInt @default(0) @map("unit_price")
+  total      BigInt @default(0)
+  sortOrder  Int    @default(0) @map("sort_order")
+  quote      Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, quoteId])
+  @@map("quote_items")
+}
+
+model ProjectFile {
+  id            String      @id @default(uuid())
+  tenantId      String      @map("tenant_id")
+  opportunityId String      @map("opportunity_id")
+  name          String
+  mimeType      String      @map("mime_type")
+  size          Int
+  storedName    String      @map("stored_name")
+  createdBy     String?     @map("created_by")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, opportunityId])
+  @@map("project_files")
+}
+
+enum UserRole {
+  admin
+  manager
+  sales
+}
+
+enum UserStatus {
+  active
+  inactive
+}
+
+enum CustomerType {
+  personal
+  business
+}
+
+enum CustomerStatus {
+  lead
+  active
+  inactive
+}
+
+enum OpportunityStatus {
+  open
+  won
+  lost
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+enum TaskStatus {
+  pending
+  done
+}
+
+enum QuoteScenario {
+  low
+  mid
+  high
+  custom
+}
+
+enum QuoteKind {
+  proposal
+  quote
+  po
+}
+
+enum QuoteStatus {
+  draft
+  sent
+  accepted
+  rejected
+  expired
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHAT MODELS
+// ═══════════════════════════════════════════════════════════
+
+model ChatRoom {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String?
+  type      String // general | dm | deal | customer
+  refId     String?  @map("ref_id")
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members  ChatMember[]
+  messages Message[]
+
+  @@index([tenantId, type])
+  @@map("chat_rooms")
+}
+
+model ChatMember {
+  id         String   @id @default(uuid())
+  roomId     String   @map("room_id")
+  userId     String   @map("user_id")
+  lastReadAt DateTime @default(now()) @map("last_read_at")
+  joinedAt   DateTime @default(now()) @map("joined_at")
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@map("chat_members")
+}
+
+model Message {
+  id        String    @id @default(uuid())
+  tenantId  String    @map("tenant_id")
+  roomId    String    @map("room_id")
+  senderId  String    @map("sender_id")
+  content   String
+  type      String    @default("text") // text | file | system
+  replyToId String?   @map("reply_to_id")
+  editedAt  DateTime? @map("edited_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  room        ChatRoom      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender      User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo     Message?      @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies     Message[]     @relation("MessageReplies")
+  attachments Attachment[]
+  reactions   Reaction[]
+  reads       MessageRead[]
+
+  @@index([tenantId, roomId, createdAt])
+  @@map("messages")
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  name      String
+  url       String
+  mimeType  String   @map("mime_type")
+  size      Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  emoji     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("reactions")
+}
+
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  readAt    DateTime @default(now()) @map("read_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_reads")
+}
+
+model Presence {
+  userId     String   @id
+  tenantId   String   @map("tenant_id")
+  status     String   @default("offline") // online | away | offline
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+
+  @@map("presence")
+}

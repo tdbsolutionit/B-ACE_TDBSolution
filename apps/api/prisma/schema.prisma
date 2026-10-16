@@ -30,6 +30,8 @@ model Tenant {
   projectFiles  ProjectFile[]
   chatRooms     ChatRoom[]
   messages      Message[]
+  roles         Role[]
+  teams         Team[]
 
   @@map("tenants")
 }
@@ -50,6 +52,10 @@ model User {
   messages     Message[]
   reactions    Reaction[]
   messageReads MessageRead[]
+  roleId       String?       @map("role_id")
+  teamId       String?       @map("team_id")
+  roleRef      Role?         @relation("UserRoleRef", fields: [roleId], references: [id], onDelete: SetNull)
+  team         Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -420,4 +426,60 @@ model Presence {
   lastSeenAt DateTime @default(now()) @map("last_seen_at")
 
   @@map("presence")
+}
+
+// ═══════════════════════════════════════════════════════════
+// RBAC + TEAM
+// ═══════════════════════════════════════════════════════════
+
+model Role {
+  id          String           @id @default(uuid())
+  tenantId    String           @map("tenant_id")
+  name        String
+  description String?
+  isSystem    Boolean          @default(false) @map("is_system")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  users       User[]           @relation("UserRoleRef")
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  module      String
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users       User[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("teams")
 }
