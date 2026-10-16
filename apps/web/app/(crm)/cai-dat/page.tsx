@@ -6,8 +6,7 @@ import { UsersManagement } from '@/components/users/UsersManagement';
 import { PipelineSection } from '@/components/settings/PipelineSection';
 import { TeamsManagement } from '@/components/settings/TeamsManagement';
 import { RolesManagement } from '@/components/settings/RolesManagement';
-
-
+import { SecuritySection } from '@/components/settings/SecuritySection';
 
 type SectionKey =
     | 'company'
@@ -566,7 +565,10 @@ export default function SettingsPage() {
                     {active === 'pipeline' && <PipelineSection />}
                     {active === 'teams' && <TeamsManagement />}
                     {active === 'roles' && <RolesManagement />}
-                    {active !== 'company' && active !== 'notifications' && active !== 'users' && active !== 'pipeline' && active !== 'teams' && active !== 'roles' && (
+                    {active === 'security' && <SecuritySection />}
+                    {active !== 'company' && active !== 'notifications' && active !== 'users' 
+                        && active !== 'pipeline' && active !== 'teams' && active !== 'roles' 
+                        && active !== 'security' && (
                         <ComingSoon label={activeLabel} />
                     )}
                 </div>
