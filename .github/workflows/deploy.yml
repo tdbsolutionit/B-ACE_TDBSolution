@@ -19,7 +19,7 @@ jobs:
       - name: Stop PM2
         shell: powershell
         run: |
-          pm2 stop all
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" stop all
           Start-Sleep -Seconds 2
         continue-on-error: true
 
@@ -59,9 +59,9 @@ jobs:
       - name: Restart PM2
         shell: powershell
         run: |
-          pm2 restart all
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" restart all
           Start-Sleep -Seconds 3
-          pm2 status
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd"  status
 
       - name: Health check
         shell: powershell
