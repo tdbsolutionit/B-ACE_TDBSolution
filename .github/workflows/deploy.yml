@@ -1,0 +1,74 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*'   # Trigger khi push tag bắt đầu bằng "v", VD: v1.0.0, v1.2.3
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Stop PM2
+        shell: powershell
+        run: |
+          pm2 stop all
+          Start-Sleep -Seconds 2
+        continue-on-error: true
+
+      - name: Pull latest code
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: |
+          git fetch --all --tags
+          git checkout main
+          git pull origin main
+
+      - name: Install dependencies
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: npm install
+
+      - name: Run DB migrations
+        shell: powershell
+        working-directory: C:\apps\bace-crm\apps\api
+        run: npx prisma migrate deploy
+
+      - name: Build shared
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: npm run build -w @bace/shared
+
+      - name: Build API
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: npm run build -w @bace/api
+
+      - name: Build Web
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: npm run build -w @bace/web
+
+      - name: Restart PM2
+        shell: powershell
+        run: |
+          pm2 restart all
+          Start-Sleep -Seconds 3
+          pm2 status
+
+      - name: Health check
+        shell: powershell
+        run: |
+          $response = curl.exe -s -o NUL -w "%{http_code}" http://localhost:3000
+          if ($response -ne "200") {
+            Write-Error "Web không phản hồi (HTTP $response)"
+            exit 1
+          }
+          Write-Host "Health check OK"
