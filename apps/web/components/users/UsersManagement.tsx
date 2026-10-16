@@ -380,12 +380,11 @@ export function UsersManagement() {
                     {isAdmin && (
                       <td className="py-3 text-right">
                         <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" size="sm" onClick={() => openEdit(u)}>
-                            Sửa
+<Button type="button" variant="outline" onClick={() => openEdit(u)}>                            Sửa
                           </Button>
                           {!isSelf && (
-                            <Button type="button" variant="outline" size="sm"
-                              className="text-destructive" onClick={() => remove(u)}>
+                            <Button type="button" variant="outline"
+  className="text-destructive" onClick={() => remove(u)}>
                               Xóa
                             </Button>
                           )}
