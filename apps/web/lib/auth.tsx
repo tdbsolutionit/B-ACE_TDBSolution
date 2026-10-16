@@ -8,6 +8,11 @@ export type SessionUser = {
   role: 'admin' | 'manager' | 'sales';
   email: string;
   name: string;
+
+  roleId?: string;
+  roleName?: string;
+  teamId?: string | null;
+  permissions?: string[];
 };
 
 type Session = { accessToken: string; user: SessionUser };

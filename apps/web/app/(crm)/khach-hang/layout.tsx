@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CustomerListPane } from '@/components/customer-list-pane';
 
@@ -11,6 +11,9 @@ const MAX_PCT = 65;
 
 export default function KhachHangLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isFullMode = searchParams.get('full') === '1';
   const hasDetail = /^\/khach-hang\/[^/]+/.test(pathname);
   const [isNarrow, setIsNarrow] = useState(false);
   const [leftPct, setLeftPct] = useState(DEFAULT_PCT);
@@ -28,13 +31,25 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
   }, []);
 
   // Load saved pct
+    // ESC để đóng preview (quay về danh sách)
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const n = Number(saved);
-      if (n >= MIN_PCT && n <= MAX_PCT) setLeftPct(n);
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      const target = e.target as HTMLElement;
+      // Không đóng nếu đang gõ trong input/textarea/modal
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) return;
+      // Không đóng nếu đang mở modal (có class modal-backdrop ở DOM)
+      if (document.querySelector('.modal-backdrop')) return;
+
+      if (hasDetail) router.push('/khach-hang');
     }
-  }, []);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [hasDetail, router]);
 
   // Drag handlers
   const onMouseDown = useCallback(() => {
@@ -80,7 +95,7 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
   }
 
   // Màn hình hẹp → chỉ detail
-  if (isNarrow) {
+  if (isNarrow || isFullMode) {
     return (
       <div className="h-full w-full">
         <div className="subtle-scrollbar h-full overflow-auto">

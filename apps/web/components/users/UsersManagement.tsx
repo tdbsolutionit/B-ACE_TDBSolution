@@ -5,6 +5,7 @@ import { api, useAuth } from '@/lib/auth';
 import { initials, roleLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePermission } from '@/lib/use-permission';
 
 /* ---------- Types ---------- */
 

@@ -2,8 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { ArrowLeft, Building2, CheckCircle, FolderKanban, History, Mail, MapPin, Pencil, Phone, Plus, StickyNote, TrendingUp, User, Wallet } from 'lucide-react';
+import { useParams, useSearchParams } from 'next/navigation';
+import {
+  ArrowLeft, Building2, CheckCircle, ExternalLink, FolderKanban, History, Mail, MapPin,
+  Pencil, Phone, Plus, StickyNote, TrendingUp, User, Wallet,
+} from 'lucide-react';
 import { api } from '@/lib/auth';
 import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
 import { compactMoney, initials } from '@/lib/utils';
@@ -11,6 +14,7 @@ import { ActivityForm } from '@/components/activity-form';
 import { Loading } from '@/components/loading';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { toast } from '@/components/ui/toast';
+import { usePermission } from '@/lib/use-permission';
 
 const STATUS: Record<string, string> = { lead: 'Lead', active: 'Đang hoạt động', inactive: 'Ngừng hoạt động' };
 const OPP: Record<string, string> = { open: 'Đang mở', won: 'Thắng', lost: 'Thua' };
@@ -22,6 +26,9 @@ type Detail = CustomerRow & {
 
 export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const isFullMode = searchParams.get('full') === '1';
+  const perm = usePermission();
   const [customer, setCustomer] = useState<Detail | null>(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('Thông tin');
@@ -60,6 +67,7 @@ export default function CustomerDetailPage() {
   const open = projects.filter((row) => row.status === 'open' && !row.isLead);
   const leads = projects.filter((row) => row.isLead);
   const pipeline = open.reduce((sum, row) => sum + row.value, 0);
+
   const tabs = useMemo(() => [
     ['Thông tin', User],
     [`Dự án (${projects.length})`, FolderKanban],
@@ -148,6 +156,7 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="w-full px-5 py-4">
+      {/* HEADER: back + actions */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/khach-hang"
@@ -155,22 +164,46 @@ export default function CustomerDetailPage() {
         >
           <ArrowLeft size={14} /> Danh sách
         </Link>
-        <div className="flex gap-2 ml-auto">
-          {!isBusiness && (
-            <button type="button" onClick={() => convert().catch((err: Error) => setError(err.message))} className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground whitespace-nowrap">
+
+        <div className="ml-auto flex gap-2">
+          {!isBusiness && perm.has('customer:update') && (
+            <button
+              type="button"
+              onClick={() => convert().catch((err: Error) => setError(err.message))}
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground whitespace-nowrap"
+            >
               <Building2 size={16} /> <span className="hidden sm:inline">Chuyển thành</span> DN
             </button>
           )}
-          <button type="button" onClick={() => setEdit(true)} className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent whitespace-nowrap">
-            <Pencil size={14} /> Sửa
-          </button>
+          {!isFullMode && (
+            <button
+              type="button"
+              onClick={() => window.open(`/khach-hang/${customer.id}?full=1`, '_blank')}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent whitespace-nowrap"
+              title="Mở chi tiết trong tab mới"
+            >
+              <ExternalLink size={14} /> <span className="hidden sm:inline">Mở rộng</span>
+            </button>
+          )}
+          {perm.has('customer:update') && (
+            <button
+              type="button"
+              onClick={() => setEdit(true)}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent whitespace-nowrap"
+            >
+              <Pencil size={14} /> Sửa
+            </button>
+          )}
         </div>
       </div>
 
+      {/* CARD: thông tin khách hàng */}
       <div className="detail-card-compact mb-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <span className="avatar-initials inline-flex size-12 items-center justify-center rounded-full text-base font-bold">{initials(customer.name)}</span>
+            <span className="avatar-initials inline-flex size-12 items-center justify-center rounded-full text-base font-bold">
+              {initials(customer.name)}
+            </span>
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-xl font-bold">{customer.name}</h1>
@@ -195,7 +228,9 @@ export default function CustomerDetailPage() {
                 {!isBusiness && customer.company && customer.company === customer.name && <p>{customer.company}</p>}
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className={customer.status === 'active' ? 'status-badge status-success' : customer.status === 'inactive' ? 'status-badge status-warning' : 'status-badge status-blue'}>{STATUS[customer.status]}</span>
+                <span className={customer.status === 'active' ? 'status-badge status-success' : customer.status === 'inactive' ? 'status-badge status-warning' : 'status-badge status-blue'}>
+                  {STATUS[customer.status]}
+                </span>
                 {customer.sourceName && <span className="source-badge">{customer.sourceName}</span>}
               </div>
             </div>
@@ -209,6 +244,7 @@ export default function CustomerDetailPage() {
         </div>
       </div>
 
+      {/* STATS */}
       <div className="mb-3 grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
         <Stat icon={<FolderKanban size={20} />} label="Tổng dự án" value={String(projects.length)} note={`${leads.length} lead · ${open.length + won.length} cơ hội`} tone="bg-primary/10 text-primary" />
         <Stat icon={<TrendingUp size={20} />} label="Đang triển khai" value={String(open.length)} tone="bg-blue-100 text-blue-600" />
@@ -216,22 +252,26 @@ export default function CustomerDetailPage() {
         <Stat icon={<Wallet size={20} />} label="Pipeline" value={compactMoney(pipeline)} tone="bg-amber-100 text-amber-600" />
       </div>
 
+      {/* CARD: tabs + content */}
       <div className="detail-card-compact">
         <div className="mb-4 flex flex-wrap gap-1 border-b border-border pb-2">
           {tabs.map(([label, Icon]) => (
-            <button key={label} type="button" onClick={() => setTab(label)} className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium ${tab === label || (label.startsWith('Dự án') && tab.startsWith('Dự án')) ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent'}`}>
+            <button
+              key={label}
+              type="button"
+              onClick={() => setTab(label)}
+              className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium ${tab === label || (label.startsWith('Dự án') && tab.startsWith('Dự án')) ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent'}`}
+            >
               <Icon size={16} /> {label}
             </button>
           ))}
         </div>
 
+        {/* TAB: Thông tin */}
         {tab === 'Thông tin' && (
           <dl className="w-full space-y-1.5 text-sm">
             {customer.code && (
-              <Row
-                label="Mã khách hàng"
-                value={`${customer.code} ${customer.shortCode ? `(Mã số: ${customer.shortCode})` : ''}`}
-              />
+              <Row label="Mã khách hàng" value={`${customer.code} ${customer.shortCode ? `(Mã số: ${customer.shortCode})` : ''}`} />
             )}
             <Row label="Tên gọi / Tên ngắn" value={customer.name} />
             {customer.company && <Row label="Tên công ty đầy đủ" value={customer.company} />}
@@ -247,6 +287,7 @@ export default function CustomerDetailPage() {
           </dl>
         )}
 
+        {/* TAB: Dự án */}
         {tab.startsWith('Dự án') && (
           <>
             <div className="mb-4 flex items-center justify-between">
@@ -254,7 +295,15 @@ export default function CustomerDetailPage() {
                 <p className="text-sm font-semibold text-foreground">Danh sách dự án và cơ hội</p>
                 <p className="text-xs text-muted-foreground">Tổng cộng {projects.length} dự án liên kết với khách hàng này</p>
               </div>
-              <button type="button" onClick={() => setAdding(true)} className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"><Plus size={16} /> Thêm dự án</button>
+              {perm.has('deal:create') && (
+                <button
+                  type="button"
+                  onClick={() => setAdding(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+                >
+                  <Plus size={16} /> Thêm dự án
+                </button>
+              )}
             </div>
             {projects.length === 0 ? (
               <p className="py-16 text-center text-sm text-muted-foreground">Chưa có dự án nào cho khách hàng này.</p>
@@ -276,17 +325,22 @@ export default function CustomerDetailPage() {
                     {projects.map((project) => {
                       const pCode = project.code || project.description?.match(/Mã dự án: ([^|]+)/)?.[1]?.trim();
                       const pStatusText = project.description?.match(/Tình trạng: (.*)/)?.[1]?.trim();
-
                       return (
-                        <tr key={project.id} className="cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => { window.location.href = `/du-an/${project.id}`; }}>
-                          <td className="whitespace-nowrap font-mono text-xs font-semibold text-primary">
-                            {pCode || '—'}
-                          </td>
+                        <tr
+                          key={project.id}
+                          className="cursor-pointer hover:bg-muted/40 transition-colors"
+                          onClick={() => { window.location.href = `/du-an/${project.id}`; }}
+                        >
+                          <td className="whitespace-nowrap font-mono text-xs font-semibold text-primary">{pCode || '—'}</td>
                           <td>
                             <p className="font-medium text-foreground">{project.name}</p>
                             <p className="mt-0.5 text-[11px] text-muted-foreground">{project.isLead ? 'Lead' : 'Cơ hội'}</p>
                           </td>
-                          <td><span className="stage-badge" style={{ background: `${project.stageColor}20`, color: project.stageColor }}>{project.stage}</span></td>
+                          <td>
+                            <span className="stage-badge" style={{ background: `${project.stageColor}20`, color: project.stageColor }}>
+                              {project.stage}
+                            </span>
+                          </td>
                           <td>
                             {pStatusText ? (
                               <span className={`status-badge ${pStatusText.toLowerCase().includes('done') || pStatusText.toLowerCase().includes('triển khai') ? 'status-success' : 'status-blue'}`}>
@@ -302,7 +356,9 @@ export default function CustomerDetailPage() {
                           <td>
                             {project.isLead ? <span className="text-xs text-muted-foreground">—</span> : (
                               <div className="flex items-center gap-2">
-                                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${project.probability}%` }} /></div>
+                                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                                  <div className="h-full bg-primary" style={{ width: `${project.probability}%` }} />
+                                </div>
                                 <span className="text-xs">{project.probability}%</span>
                               </div>
                             )}
@@ -318,6 +374,7 @@ export default function CustomerDetailPage() {
           </>
         )}
 
+        {/* TAB: Lịch sử */}
         {tab === 'Lịch sử tương tác' && (
           <>
             <ActivityForm relatedType="customer" relatedId={customer.id} onSaved={() => load().catch((err: Error) => setError(err.message))} />
@@ -328,7 +385,9 @@ export default function CustomerDetailPage() {
                 {customer.activities.map((item) => (
                   <li key={item.id} className="border-b border-border pb-3">
                     <p className="text-sm font-medium">{item.subject}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{item.content} · {item.owner} · {new Date(item.createdAt).toLocaleString('vi-VN')}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.content} · {item.owner} · {new Date(item.createdAt).toLocaleString('vi-VN')}
+                    </p>
                   </li>
                 ))}
               </ul>
@@ -336,15 +395,30 @@ export default function CustomerDetailPage() {
           </>
         )}
 
+        {/* TAB: Ghi chú */}
         {tab === 'Ghi chú' && (
           <div className="space-y-3">
-            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ghi chú về khách hàng..." className="h-32 w-full rounded-md border border-input bg-background p-3 text-sm" />
-            <button type="button" onClick={() => saveNotes().catch((err: Error) => setError(err.message))} className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">Lưu ghi chú</button>
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Ghi chú về khách hàng..."
+              className="h-32 w-full rounded-md border border-input bg-background p-3 text-sm"
+            />
+            {perm.has('customer:update') && (
+              <button
+                type="button"
+                onClick={() => saveNotes().catch((err: Error) => setError(err.message))}
+                className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+              >
+                Lưu ghi chú
+              </button>
+            )}
             {saved && <p className="text-sm text-success">Đã lưu ghi chú</p>}
           </div>
         )}
       </div>
 
+      {/* MODAL: Sửa */}
       {edit && (
         <>
           <div className="modal-backdrop" onClick={() => setEdit(false)} />
@@ -371,6 +445,7 @@ export default function CustomerDetailPage() {
         </>
       )}
 
+      {/* MODAL: Thêm dự án */}
       {adding && (
         <>
           <div className="modal-backdrop" onClick={() => setAdding(false)} />
@@ -395,26 +470,19 @@ export default function CustomerDetailPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1">
-                    Giai đoạn bán hàng
-                  </label>
+                  <label className="block text-xs font-semibold mb-1">Giai đoạn bán hàng</label>
                   <select
                     className="crm-select w-full"
                     value={projectStageId || stages[0]?.id || ''}
                     onChange={(e) => setProjectStageId(e.target.value)}
                   >
                     {stages.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.name}
-                      </option>
+                      <option key={st.id} value={st.id}>{st.name}</option>
                     ))}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold mb-1">
-                    Giá trị dự kiến (VNĐ)
-                  </label>
+                  <label className="block text-xs font-semibold mb-1">Giá trị dự kiến (VNĐ)</label>
                   <CurrencyInput
                     name="value"
                     defaultValue={projectValue}
@@ -427,9 +495,7 @@ export default function CustomerDetailPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1">
-                    Xác suất thành công (%)
-                  </label>
+                  <label className="block text-xs font-semibold mb-1">Xác suất thành công (%)</label>
                   <input
                     type="number"
                     min={0}
@@ -439,11 +505,8 @@ export default function CustomerDetailPage() {
                     onChange={(e) => setProjectProbability(Number(e.target.value))}
                   />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold mb-1">
-                    Ngày dự kiến chốt
-                  </label>
+                  <label className="block text-xs font-semibold mb-1">Ngày dự kiến chốt</label>
                   <input
                     type="date"
                     className="h-10 w-full rounded-md border border-input px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
@@ -454,9 +517,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1">
-                  Mô tả / Yêu cầu sơ bộ
-                </label>
+                <label className="block text-xs font-semibold mb-1">Mô tả / Yêu cầu sơ bộ</label>
                 <textarea
                   className="w-full h-20 rounded-md border border-input p-2.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="Ghi chú nhu cầu khách hàng, thông tin liên hệ phụ..."
