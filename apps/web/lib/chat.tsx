@@ -142,8 +142,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (!activeRoomRef.current && res.rooms.length > 0) {
         const firstRoomId = res.rooms[0].id;
         setActiveRoomId(firstRoomId);
-        activeRoomRef.current = firstRoomId;   // ← THÊM DÒNG NÀY
-        loadMessages(firstRoomId);              // ← THÊM: load tin luôn
+        activeRoomRef.current = firstRoomId;  
+        loadMessages(firstRoomId);              
       }
     } catch {
       // silent
@@ -176,7 +176,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   function setActiveRoom(roomId: string | null) {
     setActiveRoomId(roomId);
-    activeRoomRef.current = roomId;   // ← THÊM DÒNG NÀY
+    activeRoomRef.current = roomId;  
     if (roomId) loadMessages(roomId);
   }
 

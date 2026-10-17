@@ -94,7 +94,7 @@ export default function QuoteDetailPage() {
   }
 
   const cost = lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0);
-  const price = Math.round(cost * (1 + (Number(margin) || 0) / 100));
+  const price = Math.round(cost / (1 - (Number(margin) || 0) / 100));
 
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!quote) return <p className="text-sm text-muted-foreground">Đang tải báo giá…</p>;
