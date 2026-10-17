@@ -148,7 +148,7 @@ export default function ProjectsPage() {
               >
                 {/* Cột Mã dự án: Cắt bớt nếu quá dài, font mono */}
                 <td className="px-4 py-3">
-                  <span className="font-mono text-xs font-semibold text-primary truncate block max-w-[250px]" title={project.code}>
+                  <span className="font-mono text-xs font-semibold text-primary truncate block max-w-[250px]" title={project.code || ''}>
                     {project.code || '—'}
                   </span>
                 </td>
