@@ -285,7 +285,7 @@ export class QuotesController {
         subject: 'Cập nhật hạng mục báo giá',
         content: quote.quoteNumber,
         relatedType: 'opportunity',
-        relatedId: quote.opportunityId,
+        relatedId: quote.opportunityId ?? undefined,
       });
       return {
         id: updated.id,
