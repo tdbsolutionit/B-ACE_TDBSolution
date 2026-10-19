@@ -20,7 +20,6 @@ jobs:
         shell: powershell
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          # Dùng kill thay vì stop để ép PM2 giải phóng hoàn toàn file .dll
           pm2 kill
           Start-Sleep -Seconds 2
         continue-on-error: true
@@ -35,6 +34,12 @@ jobs:
           git fetch --all --tags
           git checkout main
           git pull origin main
+          
+          # BẢO VỆ FILE CONFIG VÀ ENV: Đảm bảo file ecosystem tồn tại
+          if (-not (Test-Path "C:\apps\bace-crm\ecosystem.config.js")) {
+            Write-Error "LỖI: File ecosystem.config.js bị thiếu! Hãy commit file này lên Git."
+            exit 1
+          }
 
       - name: Install dependencies
         shell: powershell
@@ -43,14 +48,24 @@ jobs:
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm ci
 
-      - name: Run DB migrations and Prisma Generate
+      - name: Run DB migrations, Prisma Generate and Seed
         shell: powershell
         working-directory: C:\apps\bace-crm\apps\api
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          # Thêm --accept-data-loss để tự động đồng ý, không bị treo ở màn hình chờ
+          
+          # 1. Đồng bộ DB
           npx prisma db push --accept-data-loss
+          
+          # 2. Generate Client
           npx prisma generate
+          
+          # 3. CHẠY SEED (Tạo user admin)
+          # Tạm thời chuyển NODE_ENV về development để chạy seed, sau đó trả lại production
+          $currentEnv = $env:NODE_ENV
+          $env:NODE_ENV = "development"
+          npx prisma db seed
+          $env:NODE_ENV = $currentEnv
 
       - name: Build shared
         shell: powershell
@@ -73,14 +88,27 @@ jobs:
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/web
 
-      - name: Start PM2
+      - name: Start PM2 and Verify Status
         shell: powershell
         working-directory: C:\apps\bace-crm
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
+          
+          # 1. Khởi động lại
           pm2 start ecosystem.config.js
           pm2 save
           Start-Sleep -Seconds 5
+          
+          # 2. KIỂM TRA XEM CÓ CHẠY THẬT KHÔNG (Bắt lỗi ngầm)
+          $status = pm2 jlist | ConvertFrom-Json
+          $onlineApps = $status | Where-Object { $_.pm2_env.status -eq "online" }
+          
+          if ($onlineApps.Count -eq 0) {
+            Write-Error "LỖI: Không có ứng dụng nào chạy! Đang in log lỗi..."
+            pm2 logs --lines 50 --nostream
+            exit 1
+          }
+          Write-Host "PM2 đang chạy $($onlineApps.Count) ứng dụng."
 
       - name: Health check with retry
         shell: powershell
