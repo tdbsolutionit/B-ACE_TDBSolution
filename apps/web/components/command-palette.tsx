@@ -7,13 +7,11 @@ import {
   Briefcase,
   CalendarPlus,
   FolderKanban,
-  Home,
   LayoutDashboard,
   ListTodo,
   Plus,
   Search,
   Settings,
-  User,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -21,12 +19,14 @@ import { api } from '@/lib/auth';
 import { type CustomerRow } from '@/lib/crm';
 import { initials } from '@/lib/utils';
 
+// <-- SỬA LẠI TYPE CHO ĐÚNG VỚI API TRẢ VỀ -->
 type OpportunityRow = {
   id: string;
-  title: string;
+  code?: string;
+  name: string;      // API trả về 'name', không phải 'title'
   value?: number;
   stage?: string;
-  customerName?: string;
+  customer?: string; // API trả về 'customer', không phải 'customerName'
 };
 
 type TaskRow = {
@@ -99,7 +99,7 @@ export function CommandPalette() {
         <div className="flex items-center gap-2 border-b border-border px-4">
           <Search size={18} className="text-muted-foreground" />
           <Command.Input
-            placeholder="Tìm khách, cơ hội, công việc hoặc gõ lệnh..."
+            placeholder="Tìm khách, dự án, công việc hoặc gõ lệnh..." // <-- Sửa placeholder
             className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
@@ -120,8 +120,8 @@ export function CommandPalette() {
             <Item onSelect={() => go('/khach-hang?new=1')} icon={<UserPlus size={16} />}>
               Tạo khách hàng mới
             </Item>
-            <Item onSelect={() => go('/co-hoi?new=1')} icon={<Plus size={16} />}>
-              Tạo cơ hội mới
+            <Item onSelect={() => go('/du-an?new=1')} icon={<Plus size={16} />}>
+              Tạo dự án mới
             </Item>
             <Item onSelect={() => go('/cong-viec?new=1')} icon={<CalendarPlus size={16} />}>
               Tạo công việc mới
@@ -161,21 +161,25 @@ export function CommandPalette() {
             </Command.Group>
           )}
 
-          {/* CƠ HỘI */}
+          {/* DỰ ÁN */}
           {opportunities.length > 0 && (
             <Command.Group
-              heading={`Cơ hội (${opportunities.length})`}
+              heading={`Dự án (${opportunities.length})`} // <-- Đổi tên heading
               className="mt-2 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
             >
               {opportunities.slice(0, 15).map((o) => (
                 <Item
                   key={o.id}
-                  value={`cohoi ${o.title} ${o.customerName || ''}`}
-                  onSelect={() => go(`/co-hoi/${o.id}`)}
-                  icon={<Briefcase size={16} />}
+                  // <-- SỬA VALUE ĐỂ TÌM KIẾM ĐƯỢC -->
+                  value={`duan ${o.name} ${o.code || ''} ${o.customer || ''}`} 
+                  onSelect={() => go(`/du-an/${o.id}`)} // <-- SỬA LINK ĐIỀU HƯỚNG
+                  icon={<FolderKanban size={16} />} // <-- Đổi icon
                 >
                   <span className="flex flex-1 items-center justify-between">
-                    <span className="font-medium">{o.title}</span>
+                    <span className="font-medium flex items-center gap-2">
+                      {o.code && <span className="text-xs text-muted-foreground">{o.code}</span>}
+                      {o.name} 
+                    </span>
                     {o.value != null && (
                       <span className="text-[11px] font-medium text-primary">
                         {formatCompactVND(o.value)}
@@ -226,9 +230,6 @@ export function CommandPalette() {
             </Item>
             <Item onSelect={() => go('/du-an')} icon={<FolderKanban size={16} />}>
               Dự án
-            </Item>
-            <Item onSelect={() => go('/co-hoi')} icon={<Briefcase size={16} />}>
-              Cơ hội
             </Item>
             <Item onSelect={() => go('/cong-viec')} icon={<ListTodo size={16} />}>
               Công việc

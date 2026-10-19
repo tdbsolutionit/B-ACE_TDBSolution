@@ -29,7 +29,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
   // Load saved pct
     // ESC để đóng preview (quay về danh sách)
   useEffect(() => {

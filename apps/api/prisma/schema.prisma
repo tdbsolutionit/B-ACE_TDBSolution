@@ -193,8 +193,11 @@ model Activity {
 model Quote {
   id            String        @id @default(uuid())
   tenantId      String        @map("tenant_id")
-  opportunityId String        @map("opportunity_id")
-  customerId    String        @map("customer_id")
+  
+  // 1. Cho phép Null (thêm dấu ?)
+  opportunityId String?       @map("opportunity_id") 
+  customerId    String?       @map("customer_id")    
+  
   quoteNumber   String        @map("quote_number")
   kind          QuoteKind     @default(quote)
   title         String
@@ -213,9 +216,16 @@ model Quote {
   createdBy     String?       @map("created_by")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  prospectName  String?       @map("prospect_name")  
+  prospectPhone String?       @map("prospect_phone") 
+  prospectEmail String?       @map("prospect_email") 
+
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  opportunity   Opportunity   @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  opportunity   Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: Cascade) 
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: Cascade)    
+  
   items         QuoteItem[]
 
   @@unique([tenantId, quoteNumber])

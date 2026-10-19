@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   UserPen,
   UsersRound,
+  FileSignature,
 } from 'lucide-react';
 import { api, useAuth } from '@/lib/auth';
 import { useRealtime } from '@/lib/realtime';
@@ -40,8 +41,9 @@ import { Celebration } from '@/components/celebration';
 const NAV = [
   { href: '/', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/khach-hang', label: 'Khách hàng', icon: UsersRound },
-  { href: '/du-an', label: 'Dự án', icon: FolderKanban },
   { href: '/co-hoi', label: 'Cơ hội', icon: Layers3 },
+  { href: '/du-an', label: 'Dự án', icon: FolderKanban },
+  { href: '/bao-gia', label: 'Báo giá', icon: FileSignature },
   { href: '/cong-viec', label: 'Công việc', icon: ListTodo },
   { href: '/lich', label: 'Lịch', icon: CalendarDays },
   { href: '/bao-cao', label: 'Báo cáo', icon: ChartNoAxesCombined },
@@ -247,9 +249,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {items.map((item) => {
               const active = item.href === '/'
                 ? pathname === '/'
-                : item.href === '/du-an'
-                  ? pathname.startsWith('/du-an') || pathname.startsWith('/bao-gia')
-                  : pathname.startsWith(item.href);
+                : pathname.startsWith(item.href);
+                
               const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href} title={item.label} className={active ? 'nav-item nav-active' : 'nav-item'}>

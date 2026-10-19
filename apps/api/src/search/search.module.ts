@@ -38,8 +38,8 @@ export class SearchController {
       ]);
       return {
         customers: customers.map((row) => ({ id: row.id, name: row.name, phone: row.phone, href: `/khach-hang/${row.id}` })),
-        opportunities: opportunities.map((row) => ({ id: row.id, name: row.name, customer: row.customer.name, href: `/du-an/${row.id}` })),
-        quotes: quotes.map((row) => ({ id: row.id, name: `${row.quoteNumber} · ${row.title}`, customer: row.customer.name, href: `/bao-gia/${row.id}` })),
+        opportunities: opportunities.map((row) => ({ id: row.id, name: row.name, customer: row.customer?.name?? 'Khách vãng lai', href: `/du-an/${row.id}` })),
+        quotes: quotes.map((row) => ({ id: row.id, name: `${row.quoteNumber} · ${row.title}`, customer: row.customer?.name ?? 'Khách vãng lai', href: `/bao-gia/${row.id}` })),
       };
     });
   }
