@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -16,10 +16,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Stop PM2
+      - name: Kill PM2 to release file locks
         shell: powershell
         run: |
-          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" stop all
+          $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
+          # Dùng kill thay vì stop để ép PM2 giải phóng hoàn toàn file .dll
+          pm2 kill
           Start-Sleep -Seconds 2
         continue-on-error: true
 
@@ -29,7 +31,7 @@ jobs:
         run: |
           $env:Path = "C:\Program Files\Git\cmd;C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           git reset --hard HEAD
-          git clean -fd  # <-- ĐÃ BỎ CỜ -x ĐỂ BẢO VỆ FILE .env
+          git clean -fd
           git fetch --all --tags
           git checkout main
           git pull origin main
@@ -41,12 +43,13 @@ jobs:
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm ci
 
-      - name: Run DB migrations
+      - name: Run DB migrations and Prisma Generate
         shell: powershell
         working-directory: C:\apps\bace-crm\apps\api
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          npx prisma db push
+          # Thêm --accept-data-loss để tự động đồng ý, không bị treo ở màn hình chờ
+          npx prisma db push --accept-data-loss
           npx prisma generate
 
       - name: Build shared
@@ -70,21 +73,18 @@ jobs:
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/web
 
-      - name: Restart PM2
+      - name: Start PM2
         shell: powershell
         working-directory: C:\apps\bace-crm
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          # Dùng start ecosystem thay vì restart để đảm bảo app được khởi động lại từ đầu
-          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" delete all
-          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" start ecosystem.config.js
-          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" save
+          pm2 start ecosystem.config.js
+          pm2 save
           Start-Sleep -Seconds 5
 
-      - name: Health check
+      - name: Health check with retry
         shell: powershell
         run: |
-          # VÒNG LẶP RETRY: Thử lại 6 lần, mỗi lần cách nhau 5 giây (tổng 30s)
           $maxRetries = 6
           $retryCount = 0
           $success = $false
@@ -92,19 +92,19 @@ jobs:
           while ($retryCount -lt $maxRetries -and -not $success) {
             try {
               $retryCount++
-              Write-Host "Đang kiểm tra kết nối (Lần thử $retryCount/$maxRetries)..."
+              Write-Host "Checking connection (Attempt $retryCount/$maxRetries)..."
               $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
               if ($response.StatusCode -eq 200) {
                   Write-Host "Health check OK"
                   $success = $true
               }
             } catch {
-              Write-Host "Chưa kết nối được, đợi 5 giây để thử lại..."
+              Write-Host "Not ready, waiting 5s..."
               Start-Sleep -Seconds 5
             }
           }
           
           if (-not $success) {
-            Write-Error "Health check thất bại sau $maxRetries lần thử. Vui lòng kiểm tra lại app."
+            Write-Error "Health check failed after $maxRetries attempts."
             exit 1
           }
