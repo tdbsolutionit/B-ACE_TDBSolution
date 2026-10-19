@@ -1,0 +1,79 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*'   # Trigger khi push tag bắt đầu bằng "v", VD: v1.0.0, v1.2.3
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Stop PM2
+        shell: powershell
+        run: |
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" stop all
+          Start-Sleep -Seconds 2
+        continue-on-error: true
+
+      - name: Pull latest code
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: |
+          git fetch --all --tags
+          git checkout main
+          git pull origin main
+
+      - name: Install dependencies
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: npm install
+
+      - name: Run DB migrations
+        shell: powershell
+        working-directory: C:\apps\bace-crm\apps\api
+        run: npx prisma migrate deploy
+
+      - name: Build shared
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: npm run build -w @bace/shared
+
+      - name: Build API
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: npm run build -w @bace/api
+
+      - name: Build Web
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: npm run build -w @bace/web
+
+      - name: Restart PM2
+        shell: powershell
+        run: |
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" restart all
+          Start-Sleep -Seconds 3
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd"  status
+
+      - name: Health check
+        shell: pwsh
+        run: |
+          try {
+            $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10
+            if ($response.StatusCode -ne 200) {
+                Write-Error "Health check failed with status code: $($response.StatusCode)"
+                exit 1
+            }
+            Write-Host "Health check OK"
+          } catch {
+            Write-Error "Health check failed: $_"
+            exit 1
+          }

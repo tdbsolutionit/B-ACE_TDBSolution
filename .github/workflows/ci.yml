@@ -15,6 +15,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run prisma:generate -w @bace/api
       - run: npm run build -w @bace/shared
       - run: npm test
       - run: npm run lint -w @bace/api
