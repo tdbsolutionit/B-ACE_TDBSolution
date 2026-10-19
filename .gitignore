@@ -4,6 +4,7 @@ dist
 .turbo
 .env
 .env.local
+.env.production
 *.log
 .DS_Store
 coverage
@@ -12,3 +13,6 @@ apps/api/dist
 apps/api/uploads
 packages/shared/dist
 *.tsbuildinfo
+
+update.ps1
+*.ps1

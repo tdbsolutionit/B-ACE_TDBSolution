@@ -23,7 +23,7 @@ jobs:
           Start-Sleep -Seconds 2
         continue-on-error: true
 
-      - name: Pull latest code
+      - name: Clean Workspace and Pull Latest Code
         shell: powershell
         working-directory: C:\apps\bace-crm
         run: |
@@ -73,7 +73,9 @@ jobs:
       - name: Restart PM2
         shell: powershell
         run: |
-          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" restart all
+          $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
+          
+          pm2 restart all
           Start-Sleep -Seconds 3
           & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" status
 
