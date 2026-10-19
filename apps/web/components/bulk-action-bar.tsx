@@ -14,9 +14,10 @@ type UserOption = {
 type Props = {
   count: number;
   users?: UserOption[];
+  entityName?: string; 
   onClear: () => void;
   onAssign?: (userId: string) => void;
-  onChangeStatus?: (status: 'lead' | 'active' | 'inactive') => void;
+  onChangeStatus?: (status: any) => void; 
   onExport?: () => void;
   onDelete?: () => void;
 };
@@ -24,6 +25,7 @@ type Props = {
 export function BulkActionBar({
   count,
   users = [],
+  entityName = 'mục',
   onClear,
   onAssign,
   onChangeStatus,

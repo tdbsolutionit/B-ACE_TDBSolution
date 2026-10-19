@@ -168,9 +168,6 @@ export default function ProjectsPage() {
   const bulk = useBulkSelection(filteredRows);
 
   async function handleBulkDelete() {
-    // BỎ DÒNG CONFIRM NÀY ĐI VÌ BULKACTIONBAR ĐÃ GỌI RỒI
-    // if (!confirm(`Bạn có chắc muốn xóa ${bulk.count} dự án này?`)) return; 
-
     try {
       const selectedIds = Array.from(bulk.selected);
       await api('/opportunities/bulk-delete', {
@@ -368,7 +365,7 @@ export default function ProjectsPage() {
       <BulkActionBar
         count={bulk.count}
         users={users}
-        entityName="dự án" // <-- Thêm dòng này để đổi chữ "khách hàng" thành "dự án"
+        entityName="dự án"
         onClear={bulk.clear}
         onAssign={handleBulkAssign}
         onChangeStatus={handleBulkStatus}
