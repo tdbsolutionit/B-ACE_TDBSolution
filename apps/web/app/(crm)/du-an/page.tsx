@@ -8,8 +8,8 @@ import { api } from '@/lib/auth';
 import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
 import { compactMoney, exportToExcel } from '@/lib/utils';
 import { Download, FileUp, Search } from 'lucide-react';
-import { CurrencyInput } from '@/components/ui/currency-input';
-
+import { BulkActionBar } from '@/components/bulk-action-bar';
+import { useBulkSelection } from '@/hooks/use-bulk-selection';
 
 const STATUS: Record<string, string> = { open: 'Đang thực hiện', won: 'Hoàn thành', lost: 'Tạm dừng' };
 
@@ -28,88 +28,23 @@ export default function ProjectsPage() {
   const [rows, setRows] = useState<ProjectRow[]>([]);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [stages, setStages] = useState<StageRow[]>([]);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const [importNote, setImportNote] = useState('');
   const [q, setQ] = useState('');
-  const csvInput = useRef<HTMLInputElement>(null);
-
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const bstr = event.target?.result;
-        // Đọc file (hỗ trợ cả xlsx và csv)
-        const workbook = XLSX.read(bstr, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        
-        // Chuyển sheet thành JSON
-        const data: any[] = XLSX.utils.sheet_to_json(worksheet);
-
-        if (!data.length) {
-          toast.error('File trống hoặc không đúng định dạng');
-          return;
-        }
-
-        // Map dữ liệu linh hoạt (chấp nhận cả tiếng Việt có dấu và không dấu)
-        const formattedRows = data.map(row => {
-          // Hàm phụ để tìm giá trị của cột bất kể hoa/thường
-          const getVal = (keys: string[]) => {
-            for (const key of keys) {
-              const matchedKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
-              if (matchedKey) return row[matchedKey];
-            }
-            return '';
-          };
-
-          return {
-            name: getVal(['Tên dự án', 'Ten du an', 'name']),
-            customerName: getVal(['Khách hàng', 'Khach hang', 'customer']),
-            stageName: getVal(['Giai đoạn', 'Giai doan', 'stage']),
-            value: Number(getVal(['Giá trị (VND)', 'Giá trị', 'value']) || 0),
-            probability: Number(getVal(['Xác suất (%)', 'Xác suất', 'probability']) || 0),
-            closeDate: getVal(['Ngày dự kiến chốt', 'Ngày chốt', 'closeDate']),
-          };
-        });
-
-        // Gọi API
-        const res = await api<{ created: number, skipped: any[] }>('/opportunities/import', {
-          method: 'POST',
-          body: JSON.stringify({ rows: formattedRows })
-        });
-
-        if (res.created > 0) {
-          toast.success(`Đã import thành công ${res.created} dự án!`);
-        }
-        
-        if (res.skipped.length > 0) {
-          console.log('Danh sách lỗi:', res.skipped);
-          toast.error(`Có ${res.skipped.length} dòng bị bỏ qua. Lý do: Không tìm thấy Khách hàng tương ứng.`);
-        }
-        
-        load(); // Load lại danh sách
-      } catch (err: any) {
-        toast.error(err.message || 'Lỗi khi đọc file');
-      }
-    };
-    reader.readAsBinaryString(file);
-    e.target.value = ''; 
-  };
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function load() {
     return api<ProjectRow[]>('/opportunities').then(setRows);
   }
 
+  // GỘP CHUNG 1 USE_EFFECT DUY NHẤT ĐỂ TRÁNH GỌI API 2 LẦN
   useEffect(() => {
-    load().catch((err: Error) => setError(err.message));
+    load().catch((err: Error) => setError(formatErrorMessage(err)));
     api<CustomerRow[]>('/customers').then(setCustomers).catch(() => setCustomers([]));
     api<StageRow[]>('/opportunities/stages').then(setStages).catch(() => setStages([]));
+    api<Array<{ id: string; name: string; role?: string }>>('/users').then(setUsers).catch(() => setUsers([]));
   }, []);
 
   function handleExport() {
@@ -118,21 +53,93 @@ export default function ProjectsPage() {
     exportToExcel('danh-sach-du-an', formattedRows, PROJECT_EXPORT_COLS);
   }
 
-  async function importCsv(file: File) {
-    const text = await file.text();
-    // Giả sử bạn đã có hàm parseProjectCsv từ tin nhắn trước
-    const importRows = [{ name: "Test Import", customerName: "KDC", value: 1000 }]; // Placeholder
-    try {
-      const result = await api<{ created: number; skipped: any[] }>('/opportunities/import', {
-        method: 'POST',
-        body: JSON.stringify({ rows: importRows }),
-      });
-      await load();
-      setImportNote(`Đã thêm thành công ${result.created} dự án.`);
-    } catch (err: any) {
-      setImportNote(err.message || 'Lỗi khi import');
-    }
-  }
+  // --- XỬ LÝ IMPORT (TÁCH BIỆT CSV VÀ EXCEL ĐỂ TRÁNH LỖI) ---
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = async (event) => {
+      try {
+        const buffer = event.target?.result as ArrayBuffer;
+        let formattedRows: any[] = [];
+
+        // NẾU LÀ FILE CSV -> DÙNG PARSER TỰ VIẾT (KHÔNG DÙNG XLSX)
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          const decoder = new TextDecoder('utf-8');
+          const text = decoder.decode(buffer);
+          formattedRows = parseProjectCsv(text); 
+        } 
+        // NẾU LÀ FILE EXCEL -> DÙNG XLSX
+        else {
+          const workbook = XLSX.read(buffer, { type: 'array' });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const data: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+          formattedRows = data.map((row: any) => {
+            const getVal = (keys: string[]) => {
+              for (const key of keys) {
+                const matchedKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
+                if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) {
+                  const val = String(row[matchedKey]).trim();
+                  if (val !== 'N/A') return val;
+                }
+              }
+              return '';
+            };
+
+            const name = getVal(['Tên dự án', 'Tên DA', 'name']);
+            if (!name) return null;
+
+            const statusStr = getVal(['Trạng thái', 'status']);
+            let status = 'open';
+            if (statusStr.includes('Hoàn thành') || statusStr.includes('Thắng') || statusStr.toLowerCase() === 'won') status = 'won';
+            else if (statusStr.includes('Tạm dừng') || statusStr.includes('Thua') || statusStr.toLowerCase() === 'lost') status = 'lost';
+
+            return {
+              name: name,
+              customerName: getVal(['Khách hàng', 'Khach hang', 'customer']),
+              stageName: getVal(['Giai đoạn', 'Giai doan', 'stage']),
+              value: Number(getVal(['Giá trị (VND)', 'Giá trị', 'value']).replace(/[^0-9]/g, '') || 0),
+              probability: status === 'won' ? 100 : status === 'lost' ? 0 : 30,
+              closeDate: getVal(['Ngày dự kiến chốt', 'Ngày chốt', 'closeDate']),
+              status: status,
+            };
+          }).filter(Boolean);
+        }
+
+        if (!formattedRows || !formattedRows.length) {
+          toast.error('Không tìm thấy dữ liệu dự án hợp lệ trong file.');
+          return;
+        }
+
+        const res = await api<{ created: number, skipped: any[] }>('/opportunities/import', {
+          method: 'POST',
+          body: JSON.stringify({ rows: formattedRows })
+        });
+
+        await load();
+        
+        if (res.created > 0) {
+          toast.success(`Đã import thành công ${res.created} dự án!`);
+        }
+        
+        if (res.skipped.length > 0) {
+          console.log('Danh sách lỗi:', res.skipped);
+          toast.error(`Có ${res.skipped.length} dòng bị bỏ qua (Không tìm thấy Khách hàng).`);
+        }
+        
+      } catch (err: any) {
+        toast.error(formatErrorMessage ? formatErrorMessage(err) : err.message || 'Lỗi khi đọc file');
+      }
+    };
+
+    // Đọc dưới dạng ArrayBuffer
+    reader.readAsArrayBuffer(file);
+    
+    e.target.value = ''; // Reset input
+  };
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -144,7 +151,7 @@ export default function ProjectsPage() {
         customerId: String(data.get('customerId') || ''),
         stageId: String(data.get('stageId') || ''),
         value: Number(data.get('value') || 0),
-        probability: 100, // Dự án thực thi mặc định 100%
+        probability: 100,
         expectedCloseDate: String(data.get('closeDate') || ''),
       }),
     });
@@ -157,6 +164,69 @@ export default function ProjectsPage() {
     (r.customer && r.customer.toLowerCase().includes(q.toLowerCase()))
   );
 
+  // --- KHU VỰC BULK ACTIONS ---
+  const bulk = useBulkSelection(filteredRows);
+
+  async function handleBulkDelete() {
+    // BỎ DÒNG CONFIRM NÀY ĐI VÌ BULKACTIONBAR ĐÃ GỌI RỒI
+    // if (!confirm(`Bạn có chắc muốn xóa ${bulk.count} dự án này?`)) return; 
+
+    try {
+      const selectedIds = Array.from(bulk.selected);
+      await api('/opportunities/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      setRows((prev) => prev.filter((r) => !bulk.selected.has(r.id)));
+      toast.success(`Đã xóa ${selectedIds.length} dự án`);
+      bulk.clear();
+    } catch (err: any) {
+      toast.error(formatErrorMessage(err));
+    }
+  }
+
+  async function handleBulkStatus(newStatus: 'open' | 'won' | 'lost') {
+    try {
+      const selectedIds = Array.from(bulk.selected);
+      await api('/opportunities/bulk-status', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds, status: newStatus }),
+      });
+      setRows((prev) =>
+        prev.map((r) => (bulk.selected.has(r.id) ? { ...r, status: newStatus } : r))
+      );
+      toast.success(`Đã cập nhật trạng thái cho ${selectedIds.length} dự án`);
+      bulk.clear();
+    } catch (err: any) {
+      toast.error(formatErrorMessage(err));
+    }
+  }
+
+  async function handleBulkAssign(targetUserId: string) {
+    try {
+      const selectedIds = Array.from(bulk.selected);
+      const res = await api<{ count: number; assigneeName: string }>('/opportunities/bulk-assign', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds, assignedTo: targetUserId }),
+      });
+
+      toast.success(`Đã gán ${res.count} dự án cho ${res.assigneeName}`);
+      bulk.clear();
+
+      // Gọi lại load() để lấy dữ liệu mới nhất thay vì tự gán bằng tay
+      await load();
+    } catch (err: any) {
+      toast.error(formatErrorMessage(err));
+    }
+  }
+
+  function handleBulkExport() {
+    const selectedRows = rows.filter((r) => bulk.selected.has(r.id));
+    const formattedRows = selectedRows.map(row => ({ ...row, status: STATUS[row.status] || row.status }));
+    exportToExcel('danh-sach-du-an-da-chon', formattedRows, PROJECT_EXPORT_COLS);
+    toast.success(`Đã xuất ${selectedRows.length} dự án`);
+  }
+
   return (
     <>
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
@@ -168,31 +238,38 @@ export default function ProjectsPage() {
           <button type="button" onClick={handleExport} className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
             <Download size={16} className="mr-2" /> Xuất
           </button>
-          <button 
-            type="button" 
-            onClick={() => fileInputRef.current?.click()} 
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
             className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
           >
-            <FileUp size={16} className="mr-2" /> Import Excel
+            <FileUp size={16} className="mr-2" /> Import
           </button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            accept=".xlsx, .xls" 
-            className="hidden" 
-            onChange={handleImportExcel} 
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".csv, .xlsx, .xls"
+            className="hidden"
+            onChange={handleImport}
           />
-          <input ref={csvInput} type="file" accept=".csv" className="hidden" onChange={(e) => {
-            const file = e.target.files?.[0]; e.target.value = ''; if (file) importCsv(file);
-          }} />
           <button type="button" onClick={() => setOpen(true)} className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
             + Thêm dự án
           </button>
         </div>
       </div>
 
-      {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
-      {importNote && <p className="mb-3 rounded-md border border-primary/30 bg-secondary px-3 py-2 text-xs">{importNote}</p>}
+      {error && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <span className="mt-0.5">⚠️</span>
+          <p>{error}</p>
+        </div>
+      )}
+
+      {importNote && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+          {importNote}
+        </div>
+      )}
 
       {/* Thanh công cụ Lọc/Tìm kiếm */}
       <div className="mb-4 flex items-center gap-2">
@@ -208,59 +285,69 @@ export default function ProjectsPage() {
       </div>
 
       {/* Bảng Dữ liệu Dự án */}
-      {/* Bảng Dữ liệu Dự án */}
       <section className="data-panel overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <table className="w-full text-left text-sm whitespace-nowrap">
           <thead className="border-b border-border bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
             <tr>
-              <th className="px-4 py-3 font-semibold w-[28%]">Mã dự án</th>
-              <th className="px-4 py-3 font-semibold w-[25%]">Tên dự án</th>
-              <th className="px-4 py-3 font-semibold w-[15%]">Khách hàng</th>
-              <th className="px-4 py-3 font-semibold w-[12%] text-center">Trạng thái</th>
-              <th className="px-4 py-3 font-semibold w-[10%] text-right">Giá trị</th>
-              <th className="px-4 py-3 font-semibold w-[10%] text-right">Ngày chốt</th>
+              <th className="px-4 py-3 w-12 text-center">
+                <input
+                  type="checkbox"
+                  className="cursor-pointer"
+                  checked={bulk.isAllSelected}
+                  onChange={bulk.isAllSelected ? bulk.clear : bulk.selectAll}
+                />
+              </th>
+              <th className="px-4 py-3 font-semibold">Mã dự án</th>
+              <th className="px-4 py-3 font-semibold">Tên dự án</th>
+              <th className="px-4 py-3 font-semibold">Khách hàng</th>
+              <th className="px-4 py-3 font-semibold text-center">Trạng thái</th>
+              <th className="px-4 py-3 font-semibold text-right">Giá trị</th>
+              <th className="px-4 py-3 font-semibold text-right">Ngày chốt</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {filteredRows.map((project) => (
               <tr
                 key={project.id}
-                className="group cursor-pointer hover:bg-muted/30 transition-colors"
+                className={`group cursor-pointer hover:bg-muted/30 transition-colors ${bulk.selected.has(project.id) ? 'bg-muted/50' : ''}`}
                 onClick={() => router.push(`/du-an/${project.id}`)}
               >
-                {/* Cột Mã dự án: Cắt bớt nếu quá dài, font mono */}
+                <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    className="cursor-pointer"
+                    checked={bulk.selected.has(project.id)}
+                    onChange={() => bulk.toggle(project.id)}
+                  />
+                </td>
+
                 <td className="px-4 py-3">
                   <span className="font-mono text-xs font-semibold text-primary truncate block max-w-[250px]" title={project.code || ''}>
                     {project.code || '—'}
                   </span>
                 </td>
 
-                {/* Cột Tên dự án */}
                 <td className="px-4 py-3 font-medium text-foreground truncate max-w-[250px]">
                   {project.name}
                 </td>
 
-                {/* Cột Khách hàng */}
                 <td className="px-4 py-3 text-xs text-muted-foreground">
                   {project.customer || '—'}
                 </td>
 
-                {/* Cột Trạng thái: Thêm whitespace-nowrap để không rớt dòng */}
                 <td className="px-4 py-3 text-center">
                   <span className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${project.status === 'won' ? 'bg-green-100 text-green-700' :
-                      project.status === 'lost' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
+                    project.status === 'lost' ? 'bg-red-100 text-red-700' :
+                      'bg-blue-100 text-blue-700'
                     }`}>
                     {STATUS[project.status]}
                   </span>
                 </td>
 
-                {/* Cột Giá trị: Căn phải, font đậm */}
                 <td className="px-4 py-3 text-right font-medium">
                   {project.value > 0 ? compactMoney(project.value) : <span className="text-muted-foreground/50">—</span>}
                 </td>
 
-                {/* Cột Ngày chốt: Căn phải */}
                 <td className="px-4 py-3 text-right text-xs text-muted-foreground">
                   {project.closeDate || <span className="text-muted-foreground/50">—</span>}
                 </td>
@@ -268,7 +355,7 @@ export default function ProjectsPage() {
             ))}
             {filteredRows.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
+                <td colSpan={7} className="py-12 text-center text-sm text-muted-foreground">
                   Chưa có dự án nào.
                 </td>
               </tr>
@@ -277,14 +364,25 @@ export default function ProjectsPage() {
         </table>
       </section>
 
-      {/* Modal Thêm Dự Án (Giữ nguyên) */}
+      {/* Thanh Bulk Action */}
+      <BulkActionBar
+        count={bulk.count}
+        users={users}
+        entityName="dự án" // <-- Thêm dòng này để đổi chữ "khách hàng" thành "dự án"
+        onClear={bulk.clear}
+        onAssign={handleBulkAssign}
+        onChangeStatus={handleBulkStatus}
+        onExport={handleBulkExport}
+        onDelete={handleBulkDelete}
+      />
+
+      {/* Modal Thêm Dự Án */}
       {open && (
         <>
           <div className="modal-backdrop" onClick={() => setOpen(false)} />
           <form className="modal-card" onSubmit={create}>
             <h2 className="text-base font-semibold">Thêm dự án thực thi</h2>
             <div className="mt-4 grid gap-4">
-              {/* ... Copy phần Form thêm dự án của bạn vào đây ... */}
               <div className="grid gap-1.5">
                 <label className="text-sm font-medium">Tên dự án <span className="text-destructive">*</span></label>
                 <input name="name" required className="h-10 rounded-md border border-input px-3 text-sm" />
@@ -306,4 +404,72 @@ export default function ProjectsPage() {
       )}
     </>
   );
+}
+
+// --- CÁC HÀM HELPER XỬ LÝ LỖI VÀ CSV ---
+function formatErrorMessage(err: any): string {
+  const msg = err?.message || String(err);
+
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ERR_NETWORK')) {
+    return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại đường truyền mạng hoặc thử lại sau ít phút.';
+  }
+  if (msg.includes('401')) return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+  if (msg.includes('403')) return 'Bạn không có quyền thực hiện thao tác này.';
+
+  return msg || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+}
+
+// --- CÁC HÀM HELPER XỬ LÝ CSV ---
+function parseProjectCsv(text: string) {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+  
+  const header = splitCsv(lines[0]).map((cell) => cell.toLowerCase().trim());
+  const find = (...names: string[]) => header.findIndex((cell) => names.some((name) => cell.includes(name)));
+  
+  const nameAt = find('tên dự án', 'ten du an', 'name', 'dự án');
+  const customerAt = find('khách hàng', 'khach hang', 'customer');
+  const stageAt = find('giai đoạn', 'giai doan', 'stage');
+  const valueAt = find('giá trị', 'gia tri', 'value');
+  const dateAt = find('ngày dự kiến chốt', 'ngày chốt', 'ngay chot', 'close date');
+
+  return lines.slice(1).map((line) => {
+    const cells = splitCsv(line);
+    const getVal = (index: number) => index >= 0 ? (cells[index] || '').trim() : '';
+
+    return {
+      name: getVal(nameAt),
+      customerName: getVal(customerAt),
+      stageName: getVal(stageAt),
+      value: Number(getVal(valueAt).replace(/[^0-9]/g, '') || 0),
+      probability: 30, // Mặc định nếu file csv không có
+      closeDate: getVal(dateAt),
+      status: 'open',
+    };
+  }).filter((row) => row.name && row.customerName);
+}
+
+function splitCsv(line: string) {
+  const cells: string[] = [];
+  let current = '';
+  let quoted = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (quoted && line[i + 1] === '"') {
+        current += '"';
+        i++; 
+      } else {
+        quoted = !quoted;
+      }
+    } else if ((char === ',' || char === ';') && !quoted) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
 }

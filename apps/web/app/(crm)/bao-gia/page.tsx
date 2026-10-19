@@ -38,7 +38,12 @@ export default function QuotesPage() {
         <h1 className="font-display text-[28px] font-bold">Báo giá</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">Đề xuất, báo giá và đơn hàng đã lưu theo từng dự án.</p>
       </div>
-      {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+      {error && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <span className="mt-0.5">⚠️</span>
+          <p>{error}</p>
+        </div>
+      )}
       <section className="data-panel overflow-x-auto">
         <table className="crm-table">
           <thead><tr><th>SỐ</th><th>TIÊU ĐỀ</th><th>KHÁCH HÀNG</th><th>DỰ ÁN</th><th>GIÁ BÁN</th><th>TRẠNG THÁI</th></tr></thead>

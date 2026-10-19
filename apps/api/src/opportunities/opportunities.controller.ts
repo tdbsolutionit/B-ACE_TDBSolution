@@ -9,7 +9,7 @@ import { OpportunityDto, OpportunityPatchDto, MoveDto } from './dto/opportunity.
 @ApiBearerAuth()
 @Controller('opportunities')
 export class OpportunitiesController {
-  constructor(private readonly opportunitiesService: OpportunitiesService) {}
+  constructor(private readonly opportunitiesService: OpportunitiesService) { }
 
   @Get('stages')
   getStages(@CurrentUser() user: AuthUser) {
@@ -18,8 +18,8 @@ export class OpportunitiesController {
 
   @Get()
   findAll(
-    @CurrentUser() user: AuthUser, 
-    @Query('q') q?: string, 
+    @CurrentUser() user: AuthUser,
+    @Query('q') q?: string,
     @Query('customerId') customerId?: string
   ) {
     return this.opportunitiesService.findAll(user, q, customerId);
@@ -53,5 +53,20 @@ export class OpportunitiesController {
   @Delete(':id')
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.opportunitiesService.remove(user, id);
+  }
+
+  @Post('bulk-delete')
+  bulkDelete(@CurrentUser() user: AuthUser, @Body() body: { ids: string[] }) {
+    return this.opportunitiesService.bulkDelete(user, body.ids);
+  }
+
+  @Post('bulk-status')
+  bulkStatus(@CurrentUser() user: AuthUser, @Body() body: { ids: string[]; status: 'open' | 'won' | 'lost' }) {
+    return this.opportunitiesService.bulkStatus(user, body.ids, body.status);
+  }
+
+  @Post('bulk-assign')
+  bulkAssign(@CurrentUser() user: AuthUser, @Body() body: { ids: string[]; assignedTo: string }) {
+    return this.opportunitiesService.bulkAssign(user, body.ids, body.assignedTo);
   }
 }

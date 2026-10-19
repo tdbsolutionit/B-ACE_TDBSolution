@@ -11,7 +11,7 @@ export class OpportunitiesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
-  ) {}
+  ) { }
 
   async getStages(user: AuthUser) {
     return this.prisma.withTenant(user.tenantId, (tx) =>
@@ -44,14 +44,14 @@ export class OpportunitiesService {
         include: { customer: true, stage: true, quotes: { orderBy: { createdAt: 'desc' } } },
       });
       if (!row) return null;
-      
+
       const names = await this.names(tx, user.tenantId);
       const activities = await tx.activity.findMany({
         where: scope(user.tenantId, { relatedType: 'opportunity', relatedId: id }),
         orderBy: { createdAt: 'desc' },
         take: 20,
       });
-      
+
       return {
         ...this.present(row, names),
         quotes: row.quotes.map((quote) => ({
@@ -80,7 +80,7 @@ export class OpportunitiesService {
       const stage = dto.stageId
         ? await tx.stage.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.stageId }) })
         : await tx.stage.findFirstOrThrow({ where: scope(user.tenantId), orderBy: { orderIndex: 'asc' } });
-      
+
       const created = await tx.opportunity.create({
         data: {
           tenantId: user.tenantId,
@@ -124,6 +124,55 @@ export class OpportunitiesService {
     return result;
   }
 
+  async bulkDelete(user: AuthUser, ids: string[]) {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const result = await tx.opportunity.deleteMany({
+        where: scope(user.tenantId, {
+          id: { in: ids },
+          ...(user.role === 'sales' ? { assignedTo: user.sub } : {}),
+        }),
+      });
+      return { count: result.count };
+    });
+  }
+
+  async bulkStatus(user: AuthUser, ids: string[], status: 'open' | 'won' | 'lost') {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const result = await tx.opportunity.updateMany({
+        where: scope(user.tenantId, {
+          id: { in: ids },
+          ...(user.role === 'sales' ? { assignedTo: user.sub } : {}),
+        }),
+        data: {
+          status,
+          ...(status === 'won' ? { probability: 100 } : {}),
+          ...(status === 'lost' ? { probability: 0 } : {}),
+        },
+      });
+      return { count: result.count };
+    });
+  }
+
+  async bulkAssign(user: AuthUser, ids: string[], assignedTo: string) {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      // 1. Kiểm tra user được giao việc có tồn tại không
+      const targetUser = await tx.user.findFirstOrThrow({
+        where: scope(user.tenantId, { id: assignedTo }),
+      });
+
+      // 2. Cập nhật người phụ trách cho các dự án
+      const result = await tx.opportunity.updateMany({
+        where: scope(user.tenantId, {
+          id: { in: ids },
+          ...(user.role === 'sales' ? { assignedTo: user.sub } : {}),
+        }),
+        data: { assignedTo },
+      });
+
+      return { count: result.count, assigneeName: targetUser.name };
+    });
+  }
+
   async importOpportunities(user: AuthUser, rows: any[]) {
     if (!rows || !Array.isArray(rows)) {
       throw new BadRequestException('Dữ liệu import không hợp lệ');
@@ -162,6 +211,9 @@ export class OpportunitiesService {
             if (!isNaN(parsedDate.getTime())) closeDate = parsedDate;
           }
 
+          // SỬ DỤNG STATUS TỪ FILE (nếu có), nếu không thì fallback theo stage
+          const finalStatus = row.status || (stage.isWon ? 'won' : stage.isLost ? 'lost' : 'open');
+
           const created = await tx.opportunity.create({
             data: {
               tenantId: user.tenantId,
@@ -171,7 +223,7 @@ export class OpportunitiesService {
               value: Number(row.value || 0),
               probability: Number(row.probability || 0),
               expectedCloseDate: closeDate,
-              status: stage.isWon ? 'won' : stage.isLost ? 'lost' : 'open',
+              status: finalStatus, // <-- Đã dùng status từ file
               assignedTo: user.sub,
               createdBy: user.sub,
             },
@@ -194,7 +246,6 @@ export class OpportunitiesService {
       return { created: createdCount, skipped };
     });
   }
-
   async move(user: AuthUser, id: string, dto: MoveDto) {
     const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
       const stage = await tx.stage.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.stageId }) });
@@ -202,7 +253,7 @@ export class OpportunitiesService {
       if (stage.isLost && !dto.lostReason?.trim()) {
         throw new BadRequestException('Cần lý do thua');
       }
-      
+
       const updated = await tx.opportunity.update({
         where: { id: current.id },
         data: {
@@ -243,7 +294,7 @@ export class OpportunitiesService {
       const stage = dto.stageId
         ? await tx.stage.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.stageId }) })
         : null;
-        
+
       const updated = await tx.opportunity.update({
         where: { id: current.id },
         data: {
@@ -264,7 +315,7 @@ export class OpportunitiesService {
         relatedType: 'opportunity',
         relatedId: updated.id,
       });
-      
+
       return this.present(updated, await this.names(tx, user.tenantId));
     });
   }
@@ -293,10 +344,10 @@ export class OpportunitiesService {
       code: row.code ?? null,
       name: row.name,
       customerId: row.customerId,
-      customer: row.customer?.name ?? 'Khách vãng lai', 
-      stageId: row.stage?.id,                           
-      stage: row.stage?.name ?? 'Chưa xác định',        
-      stageColor: row.stage?.color ?? '#ccc',           
+      customer: row.customer?.name ?? 'Khách vãng lai',
+      stageId: row.stage?.id,
+      stage: row.stage?.name ?? 'Chưa xác định',
+      stageColor: row.stage?.color ?? '#ccc',
       value: Number(row.value || 0),
       probability: row.probability || 0,
       closeDate: row.expectedCloseDate ? new Date(row.expectedCloseDate).toISOString().slice(0, 10) : '',
@@ -307,4 +358,5 @@ export class OpportunitiesService {
       lostReason: row.lostReason,
     };
   }
+
 }

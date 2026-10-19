@@ -83,7 +83,12 @@ export default function DashboardPage() {
           <CalendarDays size={16} /> Xem báo cáo
         </Link>
       </div>
-      {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+      {error && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <span className="mt-0.5">⚠️</span>
+          <p>{error}</p>
+        </div>
+      )}
 
       {/* ⬇️ THÊM MỚI — 2 widget actionable */}
       <div className="mb-5 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
