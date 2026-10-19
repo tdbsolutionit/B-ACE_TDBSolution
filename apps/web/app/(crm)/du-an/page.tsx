@@ -36,7 +36,7 @@ export default function ProjectsPage() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -44,48 +44,61 @@ export default function ProjectsPage() {
     reader.onload = async (event) => {
       try {
         const bstr = event.target?.result;
+        // Đọc file (hỗ trợ cả xlsx và csv)
         const workbook = XLSX.read(bstr, { type: 'binary' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        // Chuyển sheet Excel thành mảng JSON
+        // Chuyển sheet thành JSON
         const data: any[] = XLSX.utils.sheet_to_json(worksheet);
 
         if (!data.length) {
-          toast.error('File Excel trống hoặc không đúng định dạng');
+          toast.error('File trống hoặc không đúng định dạng');
           return;
         }
 
-        // Map dữ liệu từ Excel sang cấu trúc Backend yêu cầu
-        const formattedRows = data.map(row => ({
-          name: row['Tên dự án'] || row['name'] || '',
-          customerName: row['Khách hàng'] || row['customerName'] || '',
-          stageName: row['Giai đoạn'] || row['stageName'] || '',
-          value: Number(row['Giá trị'] || row['value'] || 0),
-          probability: Number(row['Xác suất'] || row['probability'] || 0),
-          closeDate: row['Ngày dự kiến chốt'] || row['closeDate'] || '',
-        }));
+        // Map dữ liệu linh hoạt (chấp nhận cả tiếng Việt có dấu và không dấu)
+        const formattedRows = data.map(row => {
+          // Hàm phụ để tìm giá trị của cột bất kể hoa/thường
+          const getVal = (keys: string[]) => {
+            for (const key of keys) {
+              const matchedKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
+              if (matchedKey) return row[matchedKey];
+            }
+            return '';
+          };
 
-        // Gọi API Backend để lưu vào Database
+          return {
+            name: getVal(['Tên dự án', 'Ten du an', 'name']),
+            customerName: getVal(['Khách hàng', 'Khach hang', 'customer']),
+            stageName: getVal(['Giai đoạn', 'Giai doan', 'stage']),
+            value: Number(getVal(['Giá trị (VND)', 'Giá trị', 'value']) || 0),
+            probability: Number(getVal(['Xác suất (%)', 'Xác suất', 'probability']) || 0),
+            closeDate: getVal(['Ngày dự kiến chốt', 'Ngày chốt', 'closeDate']),
+          };
+        });
+
+        // Gọi API
         const res = await api<{ created: number, skipped: any[] }>('/opportunities/import', {
           method: 'POST',
           body: JSON.stringify({ rows: formattedRows })
         });
 
-        toast.success(`Đã import thành công ${res.created} dự án!`);
-        if (res.skipped.length > 0) {
-          toast.error(`Có ${res.skipped.length} dòng bị bỏ qua (Không tìm thấy Khách hàng).`);
+        if (res.created > 0) {
+          toast.success(`Đã import thành công ${res.created} dự án!`);
         }
         
-        // Load lại danh sách
-        load(); 
+        if (res.skipped.length > 0) {
+          console.log('Danh sách lỗi:', res.skipped);
+          toast.error(`Có ${res.skipped.length} dòng bị bỏ qua. Lý do: Không tìm thấy Khách hàng tương ứng.`);
+        }
+        
+        load(); // Load lại danh sách
       } catch (err: any) {
-        toast.error(err.message || 'Lỗi khi đọc file Excel');
+        toast.error(err.message || 'Lỗi khi đọc file');
       }
     };
     reader.readAsBinaryString(file);
-    
-    // Reset input để có thể chọn lại cùng 1 file
     e.target.value = ''; 
   };
 
