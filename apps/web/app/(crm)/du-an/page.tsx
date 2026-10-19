@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
+import { toast } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/auth';
 import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
 import { compactMoney, exportToExcel } from '@/lib/utils';
 import { Download, FileUp, Search } from 'lucide-react';
 import { CurrencyInput } from '@/components/ui/currency-input';
+
 
 const STATUS: Record<string, string> = { open: 'Đang thực hiện', won: 'Hoàn thành', lost: 'Tạm dừng' };
 
@@ -28,8 +31,63 @@ export default function ProjectsPage() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const [importNote, setImportNote] = useState('');
-  const [q, setQ] = useState(''); // Thêm tìm kiếm cục bộ
+  const [q, setQ] = useState('');
   const csvInput = useRef<HTMLInputElement>(null);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const bstr = event.target?.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Chuyển sheet Excel thành mảng JSON
+        const data: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        if (!data.length) {
+          toast.error('File Excel trống hoặc không đúng định dạng');
+          return;
+        }
+
+        // Map dữ liệu từ Excel sang cấu trúc Backend yêu cầu
+        const formattedRows = data.map(row => ({
+          name: row['Tên dự án'] || row['name'] || '',
+          customerName: row['Khách hàng'] || row['customerName'] || '',
+          stageName: row['Giai đoạn'] || row['stageName'] || '',
+          value: Number(row['Giá trị'] || row['value'] || 0),
+          probability: Number(row['Xác suất'] || row['probability'] || 0),
+          closeDate: row['Ngày dự kiến chốt'] || row['closeDate'] || '',
+        }));
+
+        // Gọi API Backend để lưu vào Database
+        const res = await api<{ created: number, skipped: any[] }>('/opportunities/import', {
+          method: 'POST',
+          body: JSON.stringify({ rows: formattedRows })
+        });
+
+        toast.success(`Đã import thành công ${res.created} dự án!`);
+        if (res.skipped.length > 0) {
+          toast.error(`Có ${res.skipped.length} dòng bị bỏ qua (Không tìm thấy Khách hàng).`);
+        }
+        
+        // Load lại danh sách
+        load(); 
+      } catch (err: any) {
+        toast.error(err.message || 'Lỗi khi đọc file Excel');
+      }
+    };
+    reader.readAsBinaryString(file);
+    
+    // Reset input để có thể chọn lại cùng 1 file
+    e.target.value = ''; 
+  };
 
   function load() {
     return api<ProjectRow[]>('/opportunities').then(setRows);
@@ -97,9 +155,20 @@ export default function ProjectsPage() {
           <button type="button" onClick={handleExport} className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
             <Download size={16} className="mr-2" /> Xuất
           </button>
-          <button type="button" onClick={() => csvInput.current?.click()} className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
-            <FileUp size={16} className="mr-2" /> Import
+          <button 
+            type="button" 
+            onClick={() => fileInputRef.current?.click()} 
+            className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
+          >
+            <FileUp size={16} className="mr-2" /> Import Excel
           </button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            accept=".xlsx, .xls" 
+            className="hidden" 
+            onChange={handleImportExcel} 
+          />
           <input ref={csvInput} type="file" accept=".csv" className="hidden" onChange={(e) => {
             const file = e.target.files?.[0]; e.target.value = ''; if (file) importCsv(file);
           }} />
