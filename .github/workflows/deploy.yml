@@ -91,13 +91,11 @@ jobs:
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           
-          # 1. Khởi động lại
           pm2 start ecosystem.config.js
           pm2 save
           Start-Sleep -Seconds 5
+          $status = pm2 jlist | ConvertFrom-Json -AsHashtable
           
-          # 2. KIỂM TRA XEM CÓ CHẠY THẬT KHÔNG (Bắt lỗi ngầm)
-          $status = pm2 jlist | ConvertFrom-Json
           $onlineApps = $status | Where-Object { $_.pm2_env.status -eq "online" }
           
           if ($onlineApps.Count -eq 0) {
