@@ -39,6 +39,25 @@ jobs:
             Write-Error "LỖI: File ecosystem.config.js bị thiếu! Hãy commit file này lên Git."
             exit 1
           }
+      - name: Create .env files
+        shell: powershell
+        working-directory: C:\apps\bace-crm
+        run: |
+          $envApi = @"
+          DATABASE_URL="${{ secrets.DATABASE_URL }}"
+          JWT_SECRET="${{ secrets.JWT_SECRET }}"
+          JWT_EXPIRES="8h"
+          API_PORT=3001
+          WEB_ORIGIN="http://192.168.103.8:3000"
+          NODE_ENV="production"
+          "@
+          Set-Content -Path "apps\api\.env" -Value $envApi
+
+          # Tạo .env cho Web
+          $envWeb = @"
+          NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}"
+          "@
+          Set-Content -Path "apps\web\.env.production" -Value $envWeb
 
       - name: Install dependencies
         shell: powershell
