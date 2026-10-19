@@ -23,18 +23,23 @@ jobs:
           Start-Sleep -Seconds 2
         continue-on-error: true
 
-      - name: Pull latest code
+      - name: Clean Workspace and Pull Latest Code
         shell: powershell
         working-directory: C:\apps\bace-crm
         run: |
+          $env:Path = "C:\Program Files\Git\cmd;C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
+          Get-ChildItem -Path . -Filter "*.lock" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+          git reset --hard HEAD
+          git clean -fdx
           git fetch --all --tags
-          git checkout main
           git pull origin main
 
       - name: Install dependencies
         shell: powershell
         working-directory: C:\apps\bace-crm
-        run: npm install
+        run: 
+        $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
+        npm ci
 
       - name: Run DB migrations
         shell: powershell
@@ -59,12 +64,14 @@ jobs:
       - name: Restart PM2
         shell: powershell
         run: |
-          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" restart all
+          $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
+          
+          pm2 restart all
           Start-Sleep -Seconds 3
-          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd"  status
+          pm2 status
 
       - name: Health check
-        shell: pwsh
+        shell: powershell
         run: |
           try {
             $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10
