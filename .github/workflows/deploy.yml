@@ -94,16 +94,28 @@ jobs:
           pm2 start ecosystem.config.js
           pm2 save
           Start-Sleep -Seconds 5
-          $status = pm2 jlist | ConvertFrom-Json -AsHashtable
           
-          $onlineApps = $status | Where-Object { $_.pm2_env.status -eq "online" }
+          # Lấy dữ liệu dạng chuỗi (string)
+          $statusRaw = pm2 jlist
           
-          if ($onlineApps.Count -eq 0) {
-            Write-Error "LỖI: Không có ứng dụng nào chạy! Đang in log lỗi..."
+          # Dùng Regex để đếm số lần xuất hiện của "status":"online"
+          $onlineCount = ([regex]::Matches($statusRaw, '"status":"online"')).Count
+          $errorCount = ([regex]::Matches($statusRaw, '"status":"errored"')).Count
+          
+          if ($errorCount -gt 0) {
+            Write-Error "LỖI: Có ứng dụng bị crash (errored)! Đang in log..."
             pm2 logs --lines 50 --nostream
             exit 1
           }
-          Write-Host "PM2 đang chạy $($onlineApps.Count) ứng dụng."
+          
+          # Vì chúng ta có 2 app (api và web), nên onlineCount phải >= 2
+          if ($onlineCount -lt 2) {
+            Write-Error "LỖI: Chỉ có $onlineCount ứng dụng chạy (cần ít nhất 2). Đang in log..."
+            pm2 logs --lines 50 --nostream
+            exit 1
+          }
+          
+          Write-Host "PM2 đang chạy $onlineCount ứng dụng."
 
       - name: Health check with retry
         shell: powershell
