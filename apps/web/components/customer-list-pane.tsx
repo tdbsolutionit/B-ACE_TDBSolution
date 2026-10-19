@@ -447,33 +447,73 @@ function ListPane() {
 function parseCustomerCsv(text: string) {
   const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (lines.length < 2) return [];
-  const header = splitCsv(lines[0]).map((cell) => cell.toLowerCase());
+  const header = splitCsv(lines[0]).map((cell) => cell.toLowerCase().trim());
   const find = (...names: string[]) => header.findIndex((cell) => names.some((name) => cell.includes(name)));
-  const nameAt = find('tên', 'ten', 'name', 'khách', 'khach');
-  const phoneAt = find('điện', 'dien', 'phone', 'sđt', 'sdt');
+  
+  const nameAt = find('tên khách', 'tên', 'ten', 'name');
+  const companyAt = find('công ty', 'cong ty', 'company');
+  const phoneAt = find('điện thoại', 'dien thoai', 'phone', 'sđt', 'sdt');
   const emailAt = find('email');
-  const companyAt = find('công', 'cong', 'company');
-  const taxAt = find('mst', 'thuế', 'thue', 'tax');
+  const addressAt = find('địa chỉ', 'dia chi', 'address');
+  const taxAt = find('mã số thuế', 'mst', 'tax');
+  const industryAt = find('ngành nghề', 'nganh nghe', 'industry');
+  const typeAt = find('loại khách', 'loai khach', 'type');
+  const statusAt = find('trạng thái', 'trang thai', 'status');
+  const sourceAt = find('nguồn', 'nguon', 'source');
+
   return lines.slice(1).map((line) => {
     const cells = splitCsv(line);
+    
+    // Lấy giá trị, nếu cột không tồn tại thì trả về rỗng
+    const getVal = (index: number) => index >= 0 ? (cells[index] || '').trim() : '';
+
+    // Chuẩn hóa Enum cho Type
+    let type = getVal(typeAt).toLowerCase();
+    if (type.includes('cá nhân') || type === 'individual') type = 'individual';
+    else type = 'business'; // Mặc định là doanh nghiệp
+
+    // Chuẩn hóa Enum cho Status
+    let status = getVal(statusAt).toLowerCase();
+    if (status.includes('lead') || status.includes('tiềm năng')) status = 'lead';
+    else if (status.includes('ngừng') || status.includes('inactive')) status = 'inactive';
+    else status = 'active'; // Mặc định là active
+
     return {
-      name: (nameAt >= 0 ? cells[nameAt] : cells[0]) || '',
-      phone: phoneAt >= 0 ? cells[phoneAt] || '' : '',
-      email: emailAt >= 0 ? cells[emailAt] || '' : '',
-      company: companyAt >= 0 ? cells[companyAt] || '' : '',
-      taxCode: taxAt >= 0 ? cells[taxAt] || '' : '',
+      name: getVal(nameAt) || getVal(0), // Nếu không tìm thấy cột tên, lấy cột đầu tiên
+      company: getVal(companyAt),
+      phone: getVal(phoneAt),
+      email: getVal(emailAt),
+      address: getVal(addressAt),
+      taxCode: getVal(taxAt),
+      industry: getVal(industryAt),
+      type,
+      status,
+      sourceName: getVal(sourceAt) || 'Import CSV',
     };
-  }).filter((row) => row.name);
+  }).filter((row) => row.name); 
 }
 
 function splitCsv(line: string) {
   const cells: string[] = [];
   let current = '';
   let quoted = false;
-  for (const char of line) {
-    if (char === '"') { quoted = !quoted; continue; }
-    if ((char === ',' || char === ';') && !quoted) { cells.push(current.trim()); current = ''; continue; }
-    current += char;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (quoted && line[i + 1] === '"') {
+        current += '"';
+        i++; 
+      } else {
+        quoted = !quoted;
+      }
+    } else if ((char === ',' || char === ';') && !quoted) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
   }
   cells.push(current.trim());
   return cells;
