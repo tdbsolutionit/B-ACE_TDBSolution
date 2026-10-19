@@ -35,7 +35,6 @@ jobs:
           git checkout main
           git pull origin main
           
-          # BẢO VỆ FILE CONFIG VÀ ENV: Đảm bảo file ecosystem tồn tại
           if (-not (Test-Path "C:\apps\bace-crm\ecosystem.config.js")) {
             Write-Error "LỖI: File ecosystem.config.js bị thiếu! Hãy commit file này lên Git."
             exit 1
@@ -91,8 +90,15 @@ jobs:
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           
+          # 1. Khởi động app
           pm2 start ecosystem.config.js
+          
+          # 2. Lưu danh sách app hiện tại
           pm2 save
+          
+          # 3. Cấu hình để PM2 tự khởi động cùng Windows
+          pm2 startup
+          
           Start-Sleep -Seconds 5
           
           # Lấy dữ liệu dạng chuỗi (string)
@@ -108,7 +114,6 @@ jobs:
             exit 1
           }
           
-          # Vì chúng ta có 2 app (api và web), nên onlineCount phải >= 2
           if ($onlineCount -lt 2) {
             Write-Error "LỖI: Chỉ có $onlineCount ứng dụng chạy (cần ít nhất 2). Đang in log..."
             pm2 logs --lines 50 --nostream
