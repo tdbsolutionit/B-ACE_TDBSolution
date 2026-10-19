@@ -51,17 +51,14 @@ jobs:
       - name: Run DB migrations, Prisma Generate and Seed
         shell: powershell
         working-directory: C:\apps\bace-crm\apps\api
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           
-          # 1. Đồng bộ DB
           npx prisma db push --accept-data-loss
-          
-          # 2. Generate Client
           npx prisma generate
           
-          # 3. CHẠY SEED (Tạo user admin)
-          # Tạm thời chuyển NODE_ENV về development để chạy seed, sau đó trả lại production
           $currentEnv = $env:NODE_ENV
           $env:NODE_ENV = "development"
           npx prisma db seed
