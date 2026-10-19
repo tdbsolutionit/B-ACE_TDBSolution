@@ -16,4 +16,3 @@ packages/shared/dist
 
 update.ps1
 *.ps1
-ecosystem.config.js
