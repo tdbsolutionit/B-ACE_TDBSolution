@@ -107,10 +107,17 @@ export default function QuoteDetailPage() {
           <h1 className="mt-3 font-display text-[28px] font-bold">{quote.quoteNumber}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{quote.title} · {quote.customer?.name} · {quote.opportunity?.name}</p>
         </div>
-        <button type="button" onClick={() => printQuote(quote, lines, margin, price)} className="inline-flex h-9 items-center gap-2 rounded-md border border-primary/40 bg-secondary px-4 text-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
+        
+        {/* NÚT XUẤT PDF ĐÃ CÓ SẴN Ở ĐÂY */}
+        <button 
+          type="button" 
+          onClick={() => printQuote(quote, lines, margin, price)} 
+          className="inline-flex h-9 items-center gap-2 rounded-md border border-primary/40 bg-secondary px-4 text-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+        >
           <FileDown size={16} /> Xuất PDF / In báo giá
         </button>
       </div>
+      
       <div className="flex flex-wrap gap-2">
         {STATUSES.map((status) => (
           <button key={status} type="button" onClick={() => setStatus(status)} className={quote.status === status ? 'rounded-full bg-primary px-3 py-1 text-xs text-primary-foreground' : 'rounded-full border px-3 py-1 text-xs hover:bg-accent'}>
@@ -118,6 +125,7 @@ export default function QuoteDetailPage() {
           </button>
         ))}
       </div>
+
       <section className="data-panel mt-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold">Hạng mục</h2>
@@ -199,20 +207,9 @@ function printQuote(quote: Quote, lines: Line[], margin: number, price: number) 
   <meta charset="utf-8" />
   <title>BÁO GIÁ - ${escapeHtml(quote.quoteNumber)}</title>
   <style>
-    @page {
-      size: A4;
-      margin: 15mm 15mm 15mm 15mm;
-    }
+    @page { size: A4; margin: 15mm; }
     * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Times New Roman", serif;
-      color: #1f2937;
-      margin: 0;
-      padding: 20px;
-      font-size: 13px;
-      line-height: 1.5;
-      background: #fff;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Times New Roman", serif; color: #1f2937; margin: 0; padding: 20px; font-size: 13px; line-height: 1.5; background: #fff; }
     .header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
     .company-title { font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 4px; text-transform: uppercase; }
     .company-info { font-size: 11.5px; color: #475569; line-height: 1.4; }
@@ -237,10 +234,7 @@ function printQuote(quote: Quote, lines: Line[], margin: number, price: number) 
     .sig-title { font-weight: bold; }
     .sig-sub { font-size: 10.5px; color: #64748b; font-style: italic; margin-bottom: 60px; }
     .sig-name { font-weight: 600; }
-    @media print {
-      body { padding: 0; }
-      .no-print { display: none; }
-    }
+    @media print { body { padding: 0; } .no-print { display: none; } }
   </style>
 </head>
 <body>
@@ -377,10 +371,8 @@ function printQuote(quote: Quote, lines: Line[], margin: number, price: number) 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
 
-  // Mở tab blob URL - hoàn toàn tránh about:blank và modern security block
   const popup = window.open(url, '_blank');
   if (!popup) {
-    // Dự phòng khi bị pop-up blocker
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
