@@ -3,7 +3,7 @@ name: Deploy to Production
 on:
   push:
     tags:
-      - 'v*'   # Trigger khi push tag bắt đầu bằng "v", VD: v1.0.0, v1.2.3
+      - 'v*'
 
 jobs:
   deploy:
@@ -29,7 +29,7 @@ jobs:
         run: |
           $env:Path = "C:\Program Files\Git\cmd;C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           git reset --hard HEAD
-          git clean -fdx
+          git clean -fd  # <-- ĐÃ BỎ CỜ -x ĐỂ BẢO VỆ FILE .env
           git fetch --all --tags
           git checkout main
           git pull origin main
@@ -72,24 +72,39 @@ jobs:
 
       - name: Restart PM2
         shell: powershell
+        working-directory: C:\apps\bace-crm
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          
-          pm2 restart all
-          Start-Sleep -Seconds 3
-          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" status
+          # Dùng start ecosystem thay vì restart để đảm bảo app được khởi động lại từ đầu
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" delete all
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" start ecosystem.config.js
+          & "C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd" save
+          Start-Sleep -Seconds 5
 
       - name: Health check
         shell: powershell
         run: |
-          try {
-            $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10
-            if ($response.StatusCode -ne 200) {
-                Write-Error "Health check failed with status code: $($response.StatusCode)"
-                exit 1
+          # VÒNG LẶP RETRY: Thử lại 6 lần, mỗi lần cách nhau 5 giây (tổng 30s)
+          $maxRetries = 6
+          $retryCount = 0
+          $success = $false
+          
+          while ($retryCount -lt $maxRetries -and -not $success) {
+            try {
+              $retryCount++
+              Write-Host "Đang kiểm tra kết nối (Lần thử $retryCount/$maxRetries)..."
+              $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+              if ($response.StatusCode -eq 200) {
+                  Write-Host "Health check OK"
+                  $success = $true
+              }
+            } catch {
+              Write-Host "Chưa kết nối được, đợi 5 giây để thử lại..."
+              Start-Sleep -Seconds 5
             }
-            Write-Host "Health check OK"
-          } catch {
-            Write-Error "Health check failed: $_"
+          }
+          
+          if (-not $success) {
+            Write-Error "Health check thất bại sau $maxRetries lần thử. Vui lòng kiểm tra lại app."
             exit 1
           }
