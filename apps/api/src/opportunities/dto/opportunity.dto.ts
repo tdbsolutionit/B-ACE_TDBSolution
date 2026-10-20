@@ -32,6 +32,10 @@ export class OpportunityDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  code?: string;
 }
 
 export class MoveDto {
@@ -72,4 +76,8 @@ export class OpportunityPatchDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  code?: string;
 }

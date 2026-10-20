@@ -270,6 +270,7 @@ model ProjectFile {
   mimeType      String      @map("mime_type")
   size          Int
   storedName    String      @map("stored_name")
+  previewName   String?     @map("preview_name")
   createdBy     String?     @map("created_by")
   createdAt     DateTime    @default(now()) @map("created_at")
   tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)

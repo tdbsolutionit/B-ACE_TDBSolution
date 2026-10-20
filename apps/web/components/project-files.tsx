@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Download, Eye, Paperclip, Trash2 } from 'lucide-react';
-import { api, apiBlob, apiForm } from '@/lib/auth';
 import { type ProjectFileRow } from '@/lib/crm';
+import { api, apiBlob } from '@/lib/auth';
 
 function sizeLabel(size: number) {
   if (size >= 1_000_000) return `${(size / 1_000_000).toFixed(1)} MB`;
@@ -15,10 +15,12 @@ export function ProjectFiles({ opportunityId }: { opportunityId: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<ProjectFileRow[]>([]);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // SỬA 1: Đổi API lấy danh sách file
   function load() {
-    return api<ProjectFileRow[]>(`/opportunities/${opportunityId}/files`).then(setRows);
+    return api<ProjectFileRow[]>(`/files?opportunityId=${opportunityId}`).then(setRows);
   }
 
   useEffect(() => {
@@ -26,36 +28,69 @@ export function ProjectFiles({ opportunityId }: { opportunityId: string }) {
   }, [opportunityId]);
 
   async function upload(file: File) {
-    const body = new FormData();
-    body.append('file', file);
-    setBusy(true);
+    setBusy(true); 
+    setError(''); 
+    
     try {
-      const created = await apiForm<ProjectFileRow>(`/opportunities/${opportunityId}/files`, body);
-      setRows((current) => [created, ...current]);
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được tệp');
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // SỬA 2: Đổi projectId thành opportunityId
+      formData.append('opportunityId', opportunityId); 
+
+      await api<any>('/files/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      // SỬA 3: Đổi loadFiles() thành load()
+      await load(); 
+      
+    } catch (err: any) {
+      setError(err.message || 'Lỗi khi tải file lên');
     } finally {
       setBusy(false);
     }
   }
-
   async function openFile(row: ProjectFileRow, download: boolean) {
-    const blob = await apiBlob(`/opportunities/${opportunityId}/files/${row.id}${download ? '?download=1' : ''}`);
-    const url = URL.createObjectURL(blob);
-    if (download) {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = row.name;
-      link.click();
-    } else {
-      window.open(url, '_blank', 'noopener');
+    try {
+      setError(''); 
+      setInfo('');
+
+      if (download) {
+        const blob = await apiBlob(`/files/${row.id}/download`);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = row.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      } else {
+        const isDoc = row.name.match(/\.(doc|docx|xls|xlsx)$/i);
+        if (isDoc) setInfo('Đang chuẩn bị bản xem trước, vui lòng đợi trong giây lát...');
+
+        const blob = await apiBlob(`/files/${row.id}/preview`);
+        const url = URL.createObjectURL(blob);
+        
+        const newWindow = window.open(url, '_blank');
+        if (!newWindow) {
+          setError('Trình duyệt đang chặn tab mới. Vui lòng cho phép pop-up.');
+        }
+        
+        setInfo('');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+    } catch (err: any) {
+      setError('Không thể tải hoặc xem file: ' + err.message);
+      setInfo('');
     }
-    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }
 
   async function remove(row: ProjectFileRow) {
-    await api(`/opportunities/${opportunityId}/files/${row.id}`, { method: 'DELETE' });
+    // SỬA 4: Đổi API xóa file
+    await api(`/files/${row.id}`, { method: 'DELETE' });
     setRows((current) => current.filter((item) => item.id !== row.id));
   }
 
@@ -78,6 +113,7 @@ export function ProjectFiles({ opportunityId }: { opportunityId: string }) {
         />
       </div>
       {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
+      {info && <p className="mb-2 text-sm text-blue-600">{info}</p>}
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">Chưa có hợp đồng, brief hay tài liệu đính kèm.</p>
       ) : (

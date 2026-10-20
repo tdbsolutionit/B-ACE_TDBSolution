@@ -81,19 +81,18 @@ export default function ProjectsPage() {
             let name = getVal(['Tên dự án', 'Ten du an', 'name']);
             let code = getVal(['Mã dự án', 'Ma du an', 'code']);
 
-            // Nếu Tên dự án bắt đầu bằng mã dự án (dạng 20240221-...), tự động tách ra
             if (!code && /^\d{8}-\d{4}/.test(name)) {
-              const match = name.match(/^(\d{8}-\d{4}_[^_]+_[^_]+_)/); // Tách phần đầu làm mã
+              const match = name.match(/^(\d{8}-\d{4}_[^_]+_[^_]+_)/); 
               if (match) {
-                code = match[1].replace(/_$/, ''); // Xóa dấu _ ở cuối
-                name = name.replace(match[0], '').trim(); // Phần còn lại làm tên
+                code = match[1].replace(/_$/, ''); 
+                name = name.replace(match[0], '').trim();
               }
             }
 
             if (!name) return null;
 
             return {
-              code: code || null, // Gửi mã dự án lên backend
+              code: code || null,
               name: name,
               customerName: getVal(['Khách hàng', 'Khach hang', 'customer']),
               stageName: getVal(['Giai đoạn', 'Giai doan', 'stage']),
@@ -126,7 +125,6 @@ export default function ProjectsPage() {
         
         if (res.skipped.length > 0) {
           console.log('Danh sách dòng lỗi:', res.skipped);
-          // Hiển thị rõ lý do lỗi ra màn hình
           const firstError = res.skipped[0]?.reason || 'Không rõ lý do';
           toast.error(`Bỏ qua ${res.skipped.length} dòng. Lý do: ${firstError}`);
         }
@@ -149,6 +147,7 @@ export default function ProjectsPage() {
       method: 'POST',
       body: JSON.stringify({
         name: String(data.get('name') || ''),
+        code: String(data.get('code') || '') || undefined,
         customerId: String(data.get('customerId') || ''),
         stageId: String(data.get('stageId') || ''),
         value: Number(data.get('value') || 0),
@@ -381,6 +380,10 @@ export default function ProjectsPage() {
           <form className="modal-card" onSubmit={create}>
             <h2 className="text-base font-semibold">Thêm dự án thực thi</h2>
             <div className="mt-4 grid gap-4">
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Mã dự án</label>
+                <input name="code" className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Để trống để hệ thống tự động sinh mã" />
+              </div>
               <div className="grid gap-1.5">
                 <label className="text-sm font-medium">Tên dự án <span className="text-destructive">*</span></label>
                 <input name="name" required className="h-10 rounded-md border border-input px-3 text-sm" />

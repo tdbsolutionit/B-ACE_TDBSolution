@@ -57,6 +57,7 @@ export default function ProjectPage() {
       method: 'PATCH',
       body: JSON.stringify({
         name: String(data.get('name') || ''),
+        code: String(data.get('code') || ''),
         value: Number(data.get('value') || 0),
         probability: Number(data.get('probability') || 0),
         expectedCloseDate: String(data.get('closeDate') || ''),
@@ -220,6 +221,11 @@ export default function ProjectPage() {
             }
           >
             <h2 className="text-base font-semibold">Sửa dự án</h2>
+
+            <div className="mt-4 grid gap-4">
+              <label className="block text-xs font-semibold mb-1">Mã dự án</label>
+              <input name="code" className="h-10 w-full rounded-md border border-input px-3 text-sm" defaultValue={project.code || ''} placeholder="Chưa có mã dự án" />
+            </div>
 
             <div className="mt-4 grid gap-4">
               {/* Tên dự án */}

@@ -76,14 +76,32 @@ export class OpportunitiesService {
 
   async create(user: AuthUser, dto: OpportunityDto) {
     const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
-      await tx.customer.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.customerId }) });
+      const customer = await tx.customer.findFirstOrThrow({ 
+        where: scope(user.tenantId, { id: dto.customerId }) 
+      });
       const stage = dto.stageId
         ? await tx.stage.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.stageId }) })
         : await tx.stage.findFirstOrThrow({ where: scope(user.tenantId), orderBy: { orderIndex: 'asc' } });
 
+      let finalCode = dto.code?.trim(); 
+      
+      if (!finalCode) {
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); 
+        const customerCode = customer.shortCode || customer.name.substring(0, 4).toUpperCase();
+        const startOfYear = new Date(today.getFullYear(), 0, 1);
+        const projectCount = await tx.opportunity.count({
+          where: { tenantId: user.tenantId, customerId: customer.id, createdAt: { gte: startOfYear } }
+        });
+        const seqStr = String(projectCount + 1).padStart(2, '0');
+        const cleanName = dto.name.trim().replace(/\s+/g, '_').replace(/[^\w\-_]/g, '');
+        finalCode = `${dateStr}-${customerCode}${seqStr}_${cleanName}`;
+      }
+
       const created = await tx.opportunity.create({
         data: {
           tenantId: user.tenantId,
+          code: finalCode,
           name: dto.name.trim(),
           customerId: dto.customerId,
           stageId: stage.id,
@@ -105,13 +123,7 @@ export class OpportunitiesService {
         relatedType: 'opportunity',
         relatedId: created.id,
       });
-      await logActivity(tx, user, {
-        type: 'note',
-        subject: 'Tạo dự án',
-        content: created.name,
-        relatedType: 'customer',
-        relatedId: created.customerId,
-      });
+      
       return this.present(created, new Map([[user.sub, user.name]]));
     });
 
@@ -155,12 +167,10 @@ export class OpportunitiesService {
 
   async bulkAssign(user: AuthUser, ids: string[], assignedTo: string) {
     return this.prisma.withTenant(user.tenantId, async (tx) => {
-      // 1. Kiểm tra user được giao việc có tồn tại không
       const targetUser = await tx.user.findFirstOrThrow({
         where: scope(user.tenantId, { id: assignedTo }),
       });
 
-      // 2. Cập nhật người phụ trách cho các dự án
       const result = await tx.opportunity.updateMany({
         where: scope(user.tenantId, {
           id: { in: ids },
@@ -299,6 +309,7 @@ export class OpportunitiesService {
       const updated = await tx.opportunity.update({
         where: { id: current.id },
         data: {
+          ...(dto.code !== undefined ? { code: dto.code.trim() } : {}),
           ...(dto.name ? { name: dto.name.trim() } : {}),
           ...(dto.value !== undefined ? { value: dto.value } : {}),
           ...(dto.probability !== undefined ? { probability: dto.probability } : {}),
