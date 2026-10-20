@@ -26,6 +26,8 @@ export class CustomersService {
                 { email: { contains: q, mode: 'insensitive' as const } },
                 { phone: { contains: q, mode: 'insensitive' as const } },
                 { taxCode: { contains: q, mode: 'insensitive' as const } },
+                { code: { contains: q, mode: 'insensitive' as const } },
+                { shortCode: { contains: q, mode: 'insensitive' as const } },
               ],
             }
           : {}),
@@ -105,12 +107,14 @@ export class CustomersService {
           data: {
             tenantId: user.tenantId,
             name: row.name.trim(),
+            code: this.blank(row.code),
+            shortCode: this.blank(row.shortCode),
             phone: this.blank(row.phone),
             email: this.blank(row.email),
             company: this.blank(row.company),
             taxCode: this.blank(row.taxCode),
-            address: this.blank(row.address), // Lưu địa chỉ
-            industry: this.blank(row.industry), // Lưu ngành nghề
+            address: this.blank(row.address),
+            industry: this.blank(row.industry),
             type: row.company || row.type === 'business' ? 'business' : 'personal',
             status: (row.status === 'active' || row.status === 'inactive') ? row.status : 'lead',
             sourceName: this.blank(row.sourceName) || 'Import Excel/CSV',

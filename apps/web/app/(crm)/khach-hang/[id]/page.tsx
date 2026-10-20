@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, Building2, CheckCircle, ExternalLink, FolderKanban, History, Mail, MapPin,
-  Pencil, Phone, Plus, StickyNote, TrendingUp, User, Wallet,
+  Pencil, Phone, Plus, StickyNote, TrendingUp, User, Wallet, X
 } from 'lucide-react';
 import { api } from '@/lib/auth';
 import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
@@ -93,13 +93,17 @@ export default function CustomerDetailPage() {
       const updated = await api<Detail>(`/customers/${params.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
+          code: String(data.get('code') || ''),
           name: String(data.get('name') || ''),
+          company: String(data.get('company') || ''),
           phone: String(data.get('phone') || ''),
           email: String(data.get('email') || ''),
           address: String(data.get('address') || ''),
           taxCode: String(data.get('taxCode') || ''),
           industry: String(data.get('industry') || ''),
+          type: String(data.get('type') || 'business'),
           status: String(data.get('status') || 'lead'),
+          sourceName: String(data.get('sourceName') || ''),
         }),
       });
       setCustomer((prev) => (prev ? { ...prev, ...updated } : prev));
@@ -194,6 +198,14 @@ export default function CustomerDetailPage() {
               <Pencil size={14} /> Sửa
             </button>
           )}
+
+          <Link
+            href="/khach-hang"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Đóng chi tiết"
+          >
+            <X size={16} />
+          </Link>
         </div>
       </div>
 
@@ -422,24 +434,84 @@ export default function CustomerDetailPage() {
       {edit && (
         <>
           <div className="modal-backdrop" onClick={() => setEdit(false)} />
-          <form className="modal-card" onSubmit={(event) => saveEdit(event).catch((err: Error) => setError(err.message))}>
-            <h2 className="text-base font-semibold">Sửa khách hàng</h2>
-            <div className="mt-4 grid gap-3">
-              <input name="name" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.name} />
-              <input name="phone" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.phone || ''} placeholder="Điện thoại" />
-              <input name="email" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.email || ''} placeholder="Email" />
-              <input name="address" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.address || ''} placeholder="Địa chỉ" />
-              {isBusiness && <input name="taxCode" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.taxCode || ''} placeholder="Mã số thuế" />}
-              {isBusiness && <input name="industry" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.industry || ''} placeholder="Lĩnh vực" />}
-              <select name="status" className="crm-select" defaultValue={customer.status}>
-                <option value="lead">Lead</option>
-                <option value="active">Đang hoạt động</option>
-                <option value="inactive">Ngừng hoạt động</option>
-              </select>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setEdit(false)} className="h-9 rounded-md border px-4 text-sm">Hủy</button>
-                <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Lưu</button>
+          <form className="modal-card max-w-2xl" onSubmit={(event) => saveEdit(event).catch((err: Error) => setError(err.message))}>
+            <h2 className="text-lg font-semibold">Sửa thông tin khách hàng</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Cập nhật thông tin chi tiết của khách hàng.</p>
+            
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {/* Hàng 1: Mã KH & Tên khách hàng */}
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Mã khách hàng</label>
+                <input name="code" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.code || ''} placeholder="VD: KH00001" />
               </div>
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Tên gọi / Tên ngắn <span className="text-destructive">*</span></label>
+                <input required name="name" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.name} placeholder="VD: KDC" />
+              </div>
+
+              {/* Hàng 2: Tên công ty (Chiếm 2 cột) */}
+              <div className="grid gap-1.5 sm:col-span-2">
+                <label className="text-sm font-medium">Tên công ty đầy đủ</label>
+                <input name="company" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.company || ''} placeholder="VD: CÔNG TY TNHH..." />
+              </div>
+
+              {/* Hàng 3: SĐT & Email */}
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Số điện thoại</label>
+                <input name="phone" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.phone || ''} placeholder="0909 xxx xxx" />
+              </div>
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Email</label>
+                <input name="email" type="email" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.email || ''} placeholder="email@congty.vn" />
+              </div>
+
+              {/* Hàng 4: Địa chỉ (Chiếm 2 cột) */}
+              <div className="grid gap-1.5 sm:col-span-2">
+                <label className="text-sm font-medium">Địa chỉ</label>
+                <input name="address" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.address || ''} placeholder="Số nhà, đường, phường, quận..." />
+              </div>
+
+              {/* Hàng 5: MST & Lĩnh vực */}
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Mã số thuế</label>
+                <input name="taxCode" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.taxCode || ''} placeholder="Mã số thuế" />
+              </div>
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Lĩnh vực / Ngành nghề</label>
+                <input name="industry" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.industry || ''} placeholder="VD: Xây dựng, Công nghệ..." />
+              </div>
+
+              {/* Hàng 6: Loại khách, Trạng thái, Nguồn */}
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Loại khách</label>
+                <select name="type" className="crm-select" defaultValue={customer.type}>
+                  <option value="business">Doanh nghiệp</option>
+                  <option value="personal">Cá nhân</option>
+                </select>
+              </div>
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium">Trạng thái</label>
+                <select name="status" className="crm-select" defaultValue={customer.status}>
+                  <option value="lead">Lead</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="inactive">Ngừng hoạt động</option>
+                </select>
+              </div>
+              <div className="grid gap-1.5 sm:col-span-2">
+                <label className="text-sm font-medium">Nguồn khách hàng</label>
+                <input name="sourceName" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={customer.sourceName || ''} placeholder="VD: Website, Giới thiệu, Zalo..." />
+              </div>
+            </div>
+
+            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+
+            <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+              <button type="button" onClick={() => setEdit(false)} className="h-9 rounded-md border px-4 text-sm hover:bg-accent">
+                Hủy
+              </button>
+              <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                Lưu thay đổi
+              </button>
             </div>
           </form>
         </>

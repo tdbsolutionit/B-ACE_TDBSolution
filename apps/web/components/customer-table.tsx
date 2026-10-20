@@ -1,24 +1,10 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Check,
-  Mail,
-  MessageSquare,
-  MoreHorizontal,
-  Phone,
-  StickyNote,
-} from 'lucide-react';
-import type { CustomerRow } from '@/lib/crm';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { type CustomerRow } from '@/lib/crm';
 import { initials } from '@/lib/utils';
-import { LoadingRows } from '@/components/loading';
-import { QuickLogCall } from '@/components/quick-log-call';
-import { QuickNote } from '@/components/quick-note';
+import { Loading } from '@/components/loading';
 
 const STATUS: Record<string, string> = {
   lead: 'Lead',
@@ -26,27 +12,16 @@ const STATUS: Record<string, string> = {
   inactive: 'Ngừng hoạt động',
 };
 
-type SortKey = 'name' | 'createdAt' | 'openOppCount';
-type SortDir = 'asc' | 'desc';
-type Density = 'compact' | 'comfortable';
-
-type Props = {
-  rows: CustomerRow[];
-  loading?: boolean;
-  density?: Density;
-  activeId?: string;
-  selected: Set<string>;
-  onToggle: (id: string, index?: number, shiftKey?: boolean) => void;
-  onSelectAll: () => void;
-  onClearSelection: () => void;
-  isAllSelected: boolean;
-  isPartial: boolean;
+const statusClass: Record<string, string> = {
+  lead: 'bg-amber-100 text-amber-800',
+  active: 'bg-green-100 text-green-800',
+  inactive: 'bg-slate-100 text-slate-600',
 };
 
 export function CustomerTable({
   rows,
   loading,
-  density = 'comfortable',
+  density,
   selected,
   onToggle,
   onSelectAll,
@@ -54,379 +29,189 @@ export function CustomerTable({
   isAllSelected,
   isPartial,
   activeId,
-}: Props) {
-  const router = useRouter();
-  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [focusedIdx, setFocusedIdx] = useState<number>(-1);
-  const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
-
-  const [logCallCustomer, setLogCallCustomer] = useState<CustomerRow | null>(null);
-  const [noteCustomer, setNoteCustomer] = useState<CustomerRow | null>(null);
-
-  const sorted = [...rows].sort((a, b) => {
-    let cmp = 0;
-    if (sortKey === 'name') cmp = (a.name || '').localeCompare(b.name || '');
-    else if (sortKey === 'createdAt')
-      cmp = (a.createdAt || '').localeCompare(b.createdAt || '');
-    else if (sortKey === 'openOppCount')
-      cmp = (a.openOppCount || 0) - (b.openOppCount || 0);
-    return sortDir === 'asc' ? cmp : -cmp;
-  });
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      )
-        return;
-
-      if (e.key === 'j' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        setFocusedIdx((i) => Math.min(i + 1, sorted.length - 1));
-      } else if (e.key === 'k' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        setFocusedIdx((i) => Math.max(i - 1, 0));
-      } else if (e.key === 'x' || e.key === ' ') {
-        if (focusedIdx >= 0 && sorted[focusedIdx]) {
-          e.preventDefault();
-          onToggle(sorted[focusedIdx].id, focusedIdx);
-        }
-      } else if (e.key === 'Enter') {
-        if (focusedIdx >= 0 && sorted[focusedIdx]) {
-          e.preventDefault();
-          router.push(`/khach-hang/${sorted[focusedIdx].id}`);
-        }
-      } else if (e.key === 'Escape') {
-        onClearSelection();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [sorted, focusedIdx, onToggle, onClearSelection, router]);
-
-  useEffect(() => {
-    rowRefs.current[focusedIdx]?.scrollIntoView({ block: 'nearest' });
-  }, [focusedIdx]);
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
-  }
-
-  const cellPy = density === 'compact' ? 'py-2' : 'py-3';
-
-  return (
-    <>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/30">
-              <th className="sticky left-0 z-20 w-10 bg-muted/30 px-3 py-2.5 text-left">                <button
-                type="button"
-                onClick={() => (isAllSelected ? onClearSelection() : onSelectAll())}
-                className="flex size-4 items-center justify-center rounded border border-input bg-background transition-colors hover:border-primary"
-                aria-label="Chọn tất cả"
-              >
-                {isAllSelected && <Check size={11} className="text-primary" />}
-                {isPartial && <span className="h-0.5 w-2 bg-primary" />}
-              </button>
-              </th>
-
-              <SortHeader
-                label="Khách hàng"
-                active={sortKey === 'name'}
-                dir={sortDir}
-                onClick={() => toggleSort('name')}
-                sticky
-              />
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Liên hệ
-              </th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Nguồn
-              </th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Trạng thái
-              </th>
-              <SortHeader
-                label="Cơ hội"
-                active={sortKey === 'openOppCount'}
-                dir={sortDir}
-                onClick={() => toggleSort('openOppCount')}
-              />
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Phụ trách
-              </th>
-              <SortHeader
-                label="Ngày tạo"
-                active={sortKey === 'createdAt'}
-                dir={sortDir}
-                onClick={() => toggleSort('createdAt')}
-              />
-              <th className="w-32 px-3 py-2.5" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={9} className="p-0">
-                  <LoadingRows count={6} />
-                </td>
-              </tr>
-            )}
-
-            {!loading && sorted.length === 0 && (
-              <tr>
-                <td colSpan={9} className="py-12 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Không có khách hàng nào khớp bộ lọc
-                  </p>
-                </td>
-              </tr>
-            )}
-
-            {!loading &&
-              sorted.map((row, index) => {
-                const isSel = selected.has(row.id);
-                const isFocus = focusedIdx === index;
-                return (
-                  <tr
-                    key={row.id}
-                    ref={(el) => {
-                      rowRefs.current[index] = el;
-                    }}
-                    onClick={(e) => {
-                      setFocusedIdx(index);
-                      const target = e.target as HTMLElement;
-                      if (target.closest('button') || target.closest('a')) return;
-                      router.push(`/khach-hang/${row.id}`);
-                    }}
-                    className={`group border-b border-border/60 transition-colors ${activeId === row.id
-                      ? 'bg-primary/10 border-l-2 border-l-primary'
-                      : isSel
-                        ? 'bg-primary/5'
-                        : isFocus
-                          ? 'bg-accent'
-                          : 'hover:bg-accent/50'
-                      }`}
-                  >
-                    <td className={`sticky left-0 z-10 ${cellPy} bg-background px-3 ${activeId === row.id ? 'bg-primary/10' : isSel ? 'bg-primary/5' : isFocus ? 'bg-accent' : 'group-hover:bg-accent/50'}`}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggle(row.id, index, e.shiftKey);
-                        }}
-                        className={`flex size-4 items-center justify-center rounded border transition-colors ${isSel
-                          ? 'border-primary bg-primary'
-                          : 'border-input bg-background hover:border-primary'
-                          }`}
-                      >
-                        {isSel && <Check size={11} className="text-primary-foreground" />}
-                      </button>
-                    </td>
-
-                    <td className={`sticky left-10 z-10 ${cellPy} bg-background px-3 ${activeId === row.id ? 'bg-primary/10' : isSel ? 'bg-primary/5' : isFocus ? 'bg-accent' : 'group-hover:bg-accent/50'}`}>
-                      <Link
-                        href={`/khach-hang/${row.id}`}
-                        className="flex items-center gap-3"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <span
-                          className={`avatar-initials avatar-tone-${index % 4} inline-flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold`}
-                        >
-                          {initials(row.name)}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="flex items-center gap-1.5 font-medium text-foreground">
-                            <span className="truncate">{row.name}</span>
-                            {row.code && (
-                              <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
-                                {row.code}
-                              </span>
-                            )}
-                          </span>
-                          {row.company && (
-                            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                              {row.company}
-                            </span>
-                          )}
-                        </span>
-                      </Link>
-                    </td>
-
-                    <td className={`${cellPy} px-3`}>
-                      <p className="text-xs">{row.phone || '—'}</p>
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {row.email || '—'}
-                      </p>
-                    </td>
-
-                    <td className={`${cellPy} px-3`}>
-                      <span className="source-badge">{row.sourceName || '—'}</span>
-                    </td>
-
-                    <td className={`${cellPy} px-3`}>
-                      <span
-                        className={
-                          row.status === 'active'
-                            ? 'status-badge status-success'
-                            : row.status === 'inactive'
-                              ? 'status-badge status-warning'
-                              : 'status-badge status-blue'
-                        }
-                      >
-                        {STATUS[row.status]}
-                      </span>
-                    </td>
-
-                    <td className={`${cellPy} px-3`}>
-                      {row.openOppCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                          {row.openOppCount} đang mở
-                        </span>
-                      ) : row.oppCount > 0 ? (
-                        <span className="text-xs text-muted-foreground">
-                          ({row.oppCount} lead)
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-
-                    <td className={`${cellPy} px-3 text-xs`}>
-                      {row.assigneeName || '—'}
-                    </td>
-
-                    <td className={`${cellPy} px-3 text-[11px] text-muted-foreground`}>
-                      {row.createdAt.slice(0, 10)}
-                    </td>
-
-                    <td className={`${cellPy} px-3`}>
-                      <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          type="button"
-                          title="Ghi cuộc gọi"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLogCallCustomer(row);
-                          }}
-                          className="rounded-md p-1.5 text-muted-foreground hover:bg-green-50 hover:text-green-600"
-                        >
-                          <Phone size={14} />
-                        </button>
-
-                        <button
-                          type="button"
-                          title="Ghi chú"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setNoteCustomer(row);
-                          }}
-                          className="rounded-md p-1.5 text-muted-foreground hover:bg-amber-50 hover:text-amber-600"
-                        >
-                          <StickyNote size={14} />
-                        </button>
-
-                        {row.phone && (
-                          <button
-                            type="button"
-                            title="Nhắn tin"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.location.href = `tel:${row.phone}`;
-                            }}
-                            className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          >
-                            <MessageSquare size={14} />
-                          </button>
-                        )}
-
-                        {row.email && (
-                          <button
-                            type="button"
-                            title="Email"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.location.href = `mailto:${row.email}`;
-                            }}
-                            className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          >
-                            <Mail size={14} />
-                          </button>
-                        )}
-
-                        <Link
-                          href={`/khach-hang/${row.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          title="Chi tiết"
-                        >
-                          <MoreHorizontal size={14} />
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Quick modals */}
-      <QuickLogCall
-        open={!!logCallCustomer}
-        onClose={() => setLogCallCustomer(null)}
-        customer={logCallCustomer}
-      />
-      <QuickNote
-        open={!!noteCustomer}
-        onClose={() => setNoteCustomer(null)}
-        customer={noteCustomer}
-      />
-    </>
-  );
-}
-
-function SortHeader({
-  label,
-  active,
-  dir,
-  onClick,
-  sticky = false,
+  onSort,
+  sortConfig,
 }: {
-  label: string;
-  active: boolean;
-  dir: SortDir;
-  onClick: () => void;
-  sticky?: boolean;
+  rows: CustomerRow[];
+  loading?: boolean;
+  density: 'compact' | 'comfortable';
+  selected: Set<string>;
+  onToggle: (id: string) => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
+  isAllSelected: boolean;
+  isPartial: boolean;
+  activeId?: string;
+  onSort?: (key: string) => void;
+  sortConfig?: { key: string; direction: 'asc' | 'desc' } | null;
 }) {
+  const router = useRouter();
+
+  if (loading) return <Loading text="Đang tải danh sách..." />;
+
+  const rowPadding = density === 'compact' ? 'py-2' : 'py-3.5';
+
   return (
-    <th className={`px-3 py-2.5 text-left ${sticky ? 'sticky left-10 z-20 bg-muted/30' : ''}`}>
-      <button
-        type="button"
-        onClick={onClick}
-        className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
-      >
-        {label}
-        {active ? (
-          dir === 'asc' ? (
-            <ArrowUp size={11} className="text-primary" />
-          ) : (
-            <ArrowDown size={11} className="text-primary" />
-          )
-        ) : (
-          <ArrowUpDown size={11} className="opacity-40" />
+    <table className="w-full text-left whitespace-nowrap">
+      <thead className="sticky top-0 z-10 border-b border-border bg-card text-[11px] uppercase tracking-wider text-muted-foreground shadow-sm">
+        <tr>
+          {/* Checkbox */}
+          <th className="w-10 px-4 py-3 text-center">
+            <input
+              type="checkbox"
+              className="cursor-pointer"
+              checked={isAllSelected}
+              ref={(input) => {
+                if (input) input.indeterminate = isPartial;
+              }}
+              onChange={(e) => {
+                if (e.target.checked) onSelectAll();
+                else onClearSelection();
+              }}
+            />
+          </th>
+          
+          {/* CỘT MỚI: MÃ KHÁCH HÀNG */}
+          <th className="px-2 py-3 font-semibold">Mã KH</th>
+
+          {/* Tên khách hàng */}
+          <th className="px-4 py-3 font-semibold">
+            <button type="button" onClick={() => onSort?.('name')} className="inline-flex items-center gap-1 hover:text-foreground">
+              Khách hàng
+              {(!sortConfig || sortConfig.key !== 'name') && <ArrowUpDown size={12} className="opacity-40" />}
+              {sortConfig?.key === 'name' && sortConfig.direction === 'asc' && <ArrowUp size={12} />}
+              {sortConfig?.key === 'name' && sortConfig.direction === 'desc' && <ArrowDown size={12} />}
+            </button>
+          </th>
+
+          <th className="px-4 py-3 font-semibold">Liên hệ</th>
+          <th className="px-4 py-3 font-semibold">Nguồn</th>
+          <th className="px-4 py-3 font-semibold">Trạng thái</th>
+          
+          <th className="px-4 py-3 font-semibold text-center">
+            <button type="button" onClick={() => onSort?.('oppCount')} className="inline-flex items-center gap-1 hover:text-foreground">
+              Cơ hội
+              {(!sortConfig || sortConfig.key !== 'oppCount') && <ArrowUpDown size={12} className="opacity-40" />}
+              {sortConfig?.key === 'oppCount' && sortConfig.direction === 'asc' && <ArrowUp size={12} />}
+              {sortConfig?.key === 'oppCount' && sortConfig.direction === 'desc' && <ArrowDown size={12} />}
+            </button>
+          </th>
+
+          <th className="px-4 py-3 font-semibold">Phụ trách</th>
+          
+          <th className="px-4 py-3 font-semibold">
+            <button type="button" onClick={() => onSort?.('createdAt')} className="inline-flex items-center gap-1 hover:text-foreground">
+              Ngày tạo
+              {(!sortConfig || sortConfig.key !== 'createdAt') && <ArrowUpDown size={12} className="opacity-40" />}
+              {sortConfig?.key === 'createdAt' && sortConfig.direction === 'asc' && <ArrowUp size={12} />}
+              {sortConfig?.key === 'createdAt' && sortConfig.direction === 'desc' && <ArrowDown size={12} />}
+            </button>
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-border text-[13px]">
+        {rows.map((row) => {
+          const isSelected = selected.has(row.id);
+          const isActive = activeId === row.id;
+          
+          return (
+            <tr
+              key={row.id}
+              onClick={() => router.push(`/khach-hang/${row.id}`)}
+              className={`group cursor-pointer transition-colors hover:bg-muted/40 ${
+                isActive ? 'bg-muted/60' : isSelected ? 'bg-primary/5' : ''
+              }`}
+            >
+              {/* Checkbox */}
+              <td className={`px-4 ${rowPadding} text-center`} onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  className="cursor-pointer"
+                  checked={isSelected}
+                  onChange={() => onToggle(row.id)}
+                />
+              </td>
+
+              {/* MÃ KHÁCH HÀNG */}
+              <td className={`px-2 ${rowPadding}`}>
+                <span className="font-mono text-xs font-semibold text-primary" title={row.code || ''}>
+                  {row.code || row.shortCode || '—'}
+                </span>
+              </td>
+
+              {/* TÊN VÀ CÔNG TY (Tăng font size) */}
+              <td className={`px-4 ${rowPadding}`}>
+                <div className="flex items-center gap-3">
+                  <span className="avatar-initials inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+                    {initials(row.name)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-semibold text-foreground">{row.name}</p>
+                    {row.company && row.company !== row.name && (
+                      <p className="truncate text-[13px] text-muted-foreground mt-0.5">{row.company}</p>
+                    )}
+                  </div>
+                </div>
+              </td>
+
+              {/* LIÊN HỆ (Tăng font size) */}
+              <td className={`px-4 ${rowPadding}`}>
+                <div className="flex flex-col gap-0.5 text-[13px] text-muted-foreground">
+                  {row.phone && <span>{row.phone}</span>}
+                  {row.email && <span className="truncate max-w-[200px]" title={row.email}>{row.email}</span>}
+                  {!row.phone && !row.email && <span>—</span>}
+                </div>
+              </td>
+
+              {/* NGUỒN */}
+              <td className={`px-4 ${rowPadding}`}>
+                {row.sourceName ? (
+                  <span className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-[12px] font-medium text-slate-700">
+                    {row.sourceName}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </td>
+
+              {/* TRẠNG THÁI */}
+              <td className={`px-4 ${rowPadding}`}>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-semibold ${statusClass[row.status] || 'bg-slate-100 text-slate-600'}`}>
+                  {STATUS[row.status] || row.status}
+                </span>
+              </td>
+
+              {/* CƠ HỘI */}
+              <td className={`px-4 ${rowPadding} text-center`}>
+                {row.oppCount > 0 ? (
+                  <span className="inline-flex items-center justify-center rounded-md bg-amber-100 px-2 py-1 text-[13px] font-bold text-amber-800">
+                    {row.oppCount}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </td>
+
+              {/* PHỤ TRÁCH (Tăng font size) */}
+              <td className={`px-4 ${rowPadding} text-[13px] font-medium`}>
+                {row.assigneeName || <span className="text-muted-foreground">—</span>}
+              </td>
+
+              {/* NGÀY TẠO (Tăng font size) */}
+              <td className={`px-4 ${rowPadding} text-[13px] text-muted-foreground`}>
+                {row.createdAt.slice(0, 10)}
+              </td>
+            </tr>
+          );
+        })}
+        {rows.length === 0 && (
+          <tr>
+            <td colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
+              Không có khách hàng nào khớp bộ lọc
+            </td>
+          </tr>
         )}
-      </button>
-    </th>
+      </tbody>
+    </table>
   );
 }

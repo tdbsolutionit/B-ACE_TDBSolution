@@ -141,7 +141,6 @@ function ListPane() {
         const formattedRows = data.map((row: any) => {
           const getVal = (keys: string[]) => {
             for (const key of keys) {
-              // Tìm key không phân biệt hoa thường và khoảng trắng
               const matchedKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
               if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) {
                 const val = String(row[matchedKey]).trim();
@@ -150,12 +149,18 @@ function ListPane() {
             }
             return '';
           };
-
           const name = getVal(['Tên khách hàng', 'Tên KH', 'Tên']);
-          if (!name) return null; 
+          if (!name || name === 'N/A') return null;
+          let code = getVal(['Mã', 'Mã khách hàng', 'Mã KH', 'code']);
+          let shortCode = getVal(['Mã số ( Code)', 'Mã số', 'shortCode']);
+          if (shortCode && shortCode.startsWith('KH')) {
+            shortCode = shortCode.replace('KH', '').replace(/^0+/, '');
+          }
 
           return {
             name: name,
+            code: code || undefined,             // Gửi Mã KH
+            shortCode: shortCode || undefined,   // Gửi Mã số
             company: getVal(['Thông tin khách hàng', 'Công ty']) || name,
             taxCode: getVal(['MST', 'Mã số thuế']),
             address: getVal(['Địa chỉ']),
@@ -207,7 +212,8 @@ function ListPane() {
       if (tab === 'has_opp' && row.oppCount === 0) return false;
       if (status && row.status !== status) return false;
       if (source && row.sourceName !== source) return false;
-      const blob = `${row.name} ${row.company || ''} ${row.phone || ''} ${row.email || ''}`.toLowerCase();
+      const blob = `${row.name} ${row.company || ''} ${row.phone || ''} ${row.email || ''} ${row.code || ''} ${row.shortCode || ''}`.toLowerCase();
+      
       return blob.includes(q.toLowerCase());
     });
   }, [rows, tab, q, status, source]);
@@ -367,7 +373,7 @@ function ListPane() {
             className="h-8 pl-8 text-xs"
             value={q}
             onChange={(event) => setQ(event.target.value)}
-            placeholder="Tìm theo tên, SĐT, email..."
+            placeholder="Tìm theo tên, mã KH, SĐT, email..."
           />
         </div>
         <button

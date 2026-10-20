@@ -404,3 +404,7 @@ button, a, input, select, textarea { font-family: inherit; }
 .animate-bounce-slow {
   animation: bounce-slow 1.5s ease-in-out infinite;
 }
+
+html {
+  font-size: 17px; 
+}

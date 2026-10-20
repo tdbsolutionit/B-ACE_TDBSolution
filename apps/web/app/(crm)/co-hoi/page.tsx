@@ -7,6 +7,7 @@ import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
 import { compactMoney } from '@/lib/utils';
 import { KanbanBoard } from '@/components/kanban/kanban-board';
 import { toast } from '@/components/ui/toast';
+import { Search, Plus } from 'lucide-react'; // Đổi icon cho đồng bộ
 
 export default function OpportunitiesPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function OpportunitiesPage() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const [selectedStageId, setSelectedStageId] = useState<string>('');
+  const [q, setQ] = useState('');
 
   function load() {
     return api<ProjectRow[]>('/opportunities').then(setRows);
@@ -54,7 +56,7 @@ export default function OpportunitiesPage() {
         expectedCloseDate: String(data.get('closeDate') || ''),
       }),
     });
-    router.push(`/du-an/${created.id}`); // Chuyển hướng sang trang chi tiết dự án/cơ hội
+    router.push(`/du-an/${created.id}`);
   }
 
   // Tính tổng giá trị các deal chưa chốt (đang mở)
@@ -62,40 +64,62 @@ export default function OpportunitiesPage() {
     .filter(r => r.status === 'open')
     .reduce((sum, r) => sum + (Number(r.value) || 0), 0);
 
+  const filteredRows = rows.filter(r =>
+    r.name.toLowerCase().includes(q.toLowerCase()) ||
+    (r.customer && r.customer.toLowerCase().includes(q.toLowerCase()))
+  );
+
   return (
     <>
-      <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
+      {/* HEADER: Căn chỉnh lại toàn bộ khu vực tiêu đề, tìm kiếm và nút thêm mới */}
+      <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+        {/* Bên trái: Tiêu đề và Tổng Pipeline */}
         <div>
-          <h1 className="font-display text-[28px] font-bold">Cơ hội bán hàng</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <h1 className="font-display text-2xl font-bold">Cơ hội bán hàng</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Theo dõi tiến độ các thương vụ và dự báo doanh thu.
           </p>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* Thống kê nhanh */}
-          <div className="hidden md:flex flex-col items-end mr-4">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Tổng Pipeline (Đang mở)</span>
-            <span className="text-lg font-bold text-primary">{compactMoney(totalPipelineValue)}</span>
-          </div>
           
+          {/* Khối hiển thị tổng Pipeline gọn gàng */}
+          <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Tổng Pipeline (Đang mở):
+            </span>
+            <span className="text-base font-bold text-primary">
+              {compactMoney(totalPipelineValue)}
+            </span>
+          </div>
+        </div>
+
+        {/* Bên phải: Tìm kiếm và Nút Tạo */}
+        <div className="flex items-center gap-3">
+          <div className="relative w-[260px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+            <input
+              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="Tìm tên cơ hội, khách hàng..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
           <button
             type="button"
             onClick={() => {
               setSelectedStageId(stages[0]?.id || '');
               setOpen(true);
             }}
-            className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            + Tạo cơ hội
+            <Plus size={16} /> Tạo cơ hội
           </button>
         </div>
       </div>
-      
+
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
-      {/* Chỉ hiển thị Kanban */}
+      {/* Kanban Board */}
       <KanbanBoard
-        rows={rows}
+        rows={filteredRows}
         stages={stages}
         onMove={handleMove}
         onCreate={(stageId) => {
@@ -104,7 +128,7 @@ export default function OpportunitiesPage() {
         }}
       />
 
-      {/* Modal Thêm Cơ Hội (Giữ nguyên logic của bạn) */}
+      {/* Modal Thêm Cơ Hội (Giữ nguyên) */}
       {open && (
         <>
           <div className="modal-backdrop" onClick={() => setOpen(false)} />

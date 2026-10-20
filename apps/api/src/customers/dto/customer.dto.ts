@@ -51,7 +51,6 @@ export class CustomerPatchDto {
   @IsOptional() @IsString() notes?: string;
 }
 
-// CẬP NHẬT IMPORT ROW ĐỂ NHẬN CÁC CỘT TỪ FILE EXCEL
 export class ImportRow {
   @IsString()
   name!: string;
@@ -61,7 +60,8 @@ export class ImportRow {
   @IsOptional() @IsString() company?: string;
   @IsOptional() @IsString() taxCode?: string;
   
-  // Thêm các trường mới để fix lỗi 400
+  @IsOptional() @IsString() code?: string;
+  @IsOptional() @IsString() shortCode?: string;
   @IsOptional() @IsString() address?: string;
   @IsOptional() @IsString() industry?: string;
   @IsOptional() @IsString() website?: string;
