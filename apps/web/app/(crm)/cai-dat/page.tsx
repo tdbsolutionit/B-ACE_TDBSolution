@@ -7,8 +7,7 @@ import { PipelineSection } from '@/components/settings/PipelineSection';
 import { TeamsManagement } from '@/components/settings/TeamsManagement';
 import { RolesManagement } from '@/components/settings/RolesManagement';
 import { SecuritySection } from '@/components/settings/SecuritySection';
-import { Building2, UploadCloud } from 'lucide-react';
-
+import { UploadCloud } from 'lucide-react';
 
 type SectionKey =
     | 'company'
@@ -318,7 +317,6 @@ function CompanySection({
                 description="Hiển thị ở góc trên cùng của file PDF Báo giá. (PNG, JPG tối đa 2MB)"
             >
                 <div className="flex items-center gap-4">
-                    {/* Khung hiển thị ảnh */}
                     {form.logoUrl ? (
                         <div className="relative rounded-lg border bg-white p-2">
                             <img src={form.logoUrl} alt="Logo" className="h-16 object-contain" />
@@ -331,7 +329,6 @@ function CompanySection({
                         </div>
                     )}
 
-                    {/* Nút chọn file */}
                     <div>
                         <input
                             type="file"
@@ -352,6 +349,7 @@ function CompanySection({
                     </div>
                 </div>
             </Card>
+
             <Card
                 title="Nội dung Báo giá / Đề xuất"
                 description="Tùy chỉnh các điều khoản và chữ ký in trên file PDF."
@@ -362,46 +360,50 @@ function CompanySection({
                             <input id={id} className={inputCls} value={form.directorName} onChange={(e) => onChange('directorName', e.target.value)} placeholder="VD: Nguyễn Văn A" />
                         )}
                     </Field>
+                    
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label="Điều khoản thanh toán" error={errors.quoteTerms}>
+                            {(id) => (
+                                <textarea
+                                    id={id}
+                                    className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78]"
+                                    rows={4}
+                                    value={form.quoteTerms}
+                                    onChange={(e) => onChange('quoteTerms', e.target.value)}
+                                    placeholder="VD:&#10;- Thanh toán 50% khi ký hợp đồng.&#10;- Thanh toán 50% khi nghiệm thu."
+                                />
+                            )}
+                        </Field>
 
-                    <Field label="Điều khoản thanh toán" error={errors.quoteTerms}>
-                        {(id) => (
-                            <textarea
-                                id={id}
-                                className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78]"
-                                rows={4}
-                                value={form.quoteTerms}
-                                onChange={(e) => onChange('quoteTerms', e.target.value)}
-                                placeholder="VD:&#10;- Thanh toán 50% khi ký hợp đồng.&#10;- Thanh toán 50% khi nghiệm thu."
-                            />
-                        )}
-                    </Field>
+                        <Field label="Ghi chú thêm (Chân trang)" error={errors.quoteNotes}>
+                            {(id) => (
+                                <textarea
+                                    id={id}
+                                    className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78]"
+                                    rows={4}
+                                    value={form.quoteNotes}
+                                    onChange={(e) => onChange('quoteNotes', e.target.value)}
+                                    placeholder="VD: Báo giá có hiệu lực trong vòng 15 ngày."
+                                />
+                            )}
+                        </Field>
+                    </div>
 
-                    <Field label="Ghi chú thêm (Chân trang)" error={errors.quoteNotes}>
-                        {(id) => (
-                            <textarea
-                                id={id}
-                                className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78]"
-                                rows={3}
-                                value={form.quoteNotes}
-                                onChange={(e) => onChange('quoteNotes', e.target.value)}
-                                placeholder="VD: Báo giá có hiệu lực trong vòng 15 ngày."
-                            />
-                        )}
-                    </Field>
+                    <div className="sm:w-1/2 sm:pr-2">
+                        <Field label="Đơn vị tính mặc định" error={errors.quoteUnit}>
+                            {(id) => (
+                                <input
+                                    id={id}
+                                    className={inputCls}
+                                    value={form.quoteUnit}
+                                    onChange={(e) => onChange('quoteUnit', e.target.value)}
+                                    placeholder="VD: Gói, Bộ, Cái, Tháng..."
+                                />
+                            )}
+                        </Field>
+                    </div>
                 </div>
             </Card>
-
-            <Field label="Đơn vị tính mặc định" error={errors.quoteUnit}>
-                {(id) => (
-                    <input
-                        id={id}
-                        className={inputCls}
-                        value={form.quoteUnit}
-                        onChange={(e) => onChange('quoteUnit', e.target.value)}
-                        placeholder="VD: Gói, Bộ, Cái, Tháng..."
-                    />
-                )}
-            </Field>
         </div>
     );
 }
@@ -475,7 +477,6 @@ export default function SettingsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Giới hạn ảnh dưới 2MB
         if (file.size > 2 * 1024 * 1024) {
             setStatus({ type: 'error', title: 'Lỗi', details: ['Kích thước ảnh không được vượt quá 2MB'] });
             return;
@@ -491,20 +492,16 @@ export default function SettingsPage() {
                 body: formData,
             });
 
-            // Kiểm tra xem API có trả về dữ liệu không
             if (!res || !res.fileUrl) {
                 throw new Error('API không trả về đường dẫn file');
             }
 
-            // Loại bỏ đuôi /api nếu có trong biến môi trường để ghép chuẩn xác
             let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.103.8:3001';
             if (apiUrl.endsWith('/api')) {
                 apiUrl = apiUrl.replace('/api', '');
             }
 
             const finalUrl = `${apiUrl}${res.fileUrl}`;
-            console.log('Đường dẫn ảnh:', finalUrl); // In ra để kiểm tra
-
             updateCompany('logoUrl', finalUrl);
             setStatus({ type: 'success', title: 'Đã tải logo lên thành công' });
         } catch (error) {
@@ -521,6 +518,7 @@ export default function SettingsPage() {
         setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
     };
 
+    // SỬA LẠI HOÀN TOÀN HÀM NÀY: Lưu thông tin công ty thay vì lưu quyền
     async function handleSave() {
         setSaving(true);
         setStatus(null);
@@ -532,12 +530,15 @@ export default function SettingsPage() {
                 body: JSON.stringify(toPayload(company)),
             });
             setCompany(toForm(saved));
-            setStatus({ type: 'success', title: 'Đã lưu thay đổi' });
+            setStatus({ type: 'success', title: 'Đã lưu thay đổi thông tin công ty' });
+            
+            // Phát sự kiện để cập nhật lại Logo trên thanh Sidebar
+            window.dispatchEvent(new Event('tenant:updated'));
+
         } catch (error) {
             const { title, details, fields } = parseApiError(error);
             setFieldErrors(fields);
             setStatus({ type: 'error', title, details });
-            window.dispatchEvent(new Event('tenant:updated'));
         } finally {
             setSaving(false);
         }
@@ -579,14 +580,17 @@ export default function SettingsPage() {
                         Quản lý thông tin công ty, người dùng và quy tắc hoạt động của CRM.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="h-11 whitespace-nowrap rounded-lg bg-[#0B6E78] px-5 text-sm font-semibold text-white hover:bg-[#095a63] disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78] focus-visible:ring-offset-2"
-                >
-                    {saving ? 'Đang lưu…' : 'Lưu thay đổi'}
-                </button>
+                {/* Nút Lưu này chỉ dùng cho tab Thông tin công ty */}
+                {active === 'company' && (
+                    <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="h-11 whitespace-nowrap rounded-lg bg-[#0B6E78] px-5 text-sm font-semibold text-white hover:bg-[#095a63] disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78] focus-visible:ring-offset-2"
+                    >
+                        {saving ? 'Đang lưu…' : 'Lưu thay đổi'}
+                    </button>
+                )}
             </header>
 
             {status && <StatusBanner status={status} onClose={() => setStatus(null)} />}
