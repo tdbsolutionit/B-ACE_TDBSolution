@@ -6,6 +6,7 @@ module.exports = {
       script: 'dist/main.js',
       instances: 1,
       exec_mode: 'fork',
+      env_file: 'C:\\apps\\bace\\apps\\api\\.env',
       env: {
         NODE_ENV: 'production',
       },

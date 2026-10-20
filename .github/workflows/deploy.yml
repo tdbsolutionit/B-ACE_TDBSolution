@@ -26,7 +26,7 @@ jobs:
 
       - name: Clean Workspace and Pull Latest Code
         shell: powershell
-        working-directory: C:\apps\bace-crm
+        working-directory: C:\apps\bace 
         run: |
           $env:Path = "C:\Program Files\Git\cmd;C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           git reset --hard HEAD
@@ -61,14 +61,14 @@ jobs:
 
       - name: Install dependencies
         shell: powershell
-        working-directory: C:\apps\bace-crm
+        working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm ci
 
       - name: Run DB migrations, Prisma Generate and Seed
         shell: powershell
-        working-directory: C:\apps\bace-crm\apps\api
+        working-directory: C:\apps\bace\apps\api
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
@@ -84,46 +84,37 @@ jobs:
 
       - name: Build shared
         shell: powershell
-        working-directory: C:\apps\bace-crm
+        working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/shared
 
       - name: Build API
         shell: powershell
-        working-directory: C:\apps\bace-crm
+        working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/api
 
       - name: Build Web
         shell: powershell
-        working-directory: C:\apps\bace-crm
+        working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/web
 
       - name: Start PM2 and Verify Status
         shell: powershell
-        working-directory: C:\apps\bace-crm
+        working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           
-          # 1. Khởi động app
           pm2 start ecosystem.config.js
-          
-          # 2. Lưu danh sách app hiện tại
           pm2 save
-          
-          # 3. Cấu hình để PM2 tự khởi động cùng Windows
-          pm2 startup
           
           Start-Sleep -Seconds 5
           
-          # Lấy dữ liệu dạng chuỗi (string)
           $statusRaw = pm2 jlist
-          
-          # Dùng Regex để đếm số lần xuất hiện của "status":"online"
           $onlineCount = ([regex]::Matches($statusRaw, '"status":"online"')).Count
           $errorCount = ([regex]::Matches($statusRaw, '"status":"errored"')).Count
           
