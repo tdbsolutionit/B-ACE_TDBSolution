@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
 
       - name: Kill PM2 to release file locks
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        shell: powershell
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           pm2 kill
@@ -25,8 +25,8 @@ jobs:
         continue-on-error: true
 
       - name: Clean Workspace and Pull Latest Code
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
-        working-directory: C:\apps\bace 
+        shell: powershell
+        working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\Git\cmd;C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           git reset --hard HEAD
@@ -35,80 +35,77 @@ jobs:
           git checkout main
           git pull origin main
           
-          if (-not (Test-Path "C:\apps\bace-crm\ecosystem.config.js")) {
+          if (-not (Test-Path "C:\apps\bace\ecosystem.config.js")) {
             Write-Error "LỖI: File ecosystem.config.js bị thiếu! Hãy commit file này lên Git."
             exit 1
           }
-      - name: Create .env files
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
-        working-directory: C:\apps\bace-crm
-        run: |
-          $envApi = @"
-          DATABASE_URL="${{ secrets.DATABASE_URL }}"
-          JWT_SECRET="${{ secrets.JWT_SECRET }}"
-          JWT_EXPIRES="8h"
-          API_PORT=3001
-          WEB_ORIGIN="http://192.168.103.8:3000"
-          NODE_ENV="production"
-          "@
-          Set-Content -Path "apps\api\.env" -Value $envApi
 
-          # Tạo .env cho Web
-          $envWeb = @"
-          NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}"
-          "@
-          Set-Content -Path "apps\web\.env.production" -Value $envWeb
+      - name: Create .env files (Without BOM)
+        shell: powershell
+        working-directory: C:\apps\bace
+        run: |
+          # Sử dụng WriteAllLines để tránh lỗi BOM và thụt lề của YAML
+          $linesApi = @(
+            "DATABASE_URL=${{ secrets.DATABASE_URL }}",
+            "JWT_SECRET=${{ secrets.JWT_SECRET }}",
+            "JWT_EXPIRES=8h",
+            "API_PORT=3001",
+            "WEB_ORIGIN=http://192.168.103.8:3000",
+            "NODE_ENV=production"
+          )
+          [System.IO.File]::WriteAllLines("C:\apps\bace\apps\api\.env", $linesApi, (New-Object System.Text.UTF8Encoding $False))
+
+          $linesWeb = @(
+            "NEXT_PUBLIC_API_URL=http://192.168.103.8:3001"
+          )
+          [System.IO.File]::WriteAllLines("C:\apps\bace\apps\web\.env.production", $linesWeb, (New-Object System.Text.UTF8Encoding $False))
 
       - name: Install dependencies
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        shell: powershell
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm ci
 
-      - name: Run DB migrations, Prisma Generate and Seed
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      - name: Run DB migrations, Prisma Generate
+        shell: powershell
         working-directory: C:\apps\bace\apps\api
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          
           npx prisma db push --accept-data-loss
           npx prisma generate
-          
-          $currentEnv = $env:NODE_ENV
-          $env:NODE_ENV = "development"
-          npx prisma db seed
-          $env:NODE_ENV = $currentEnv
 
       - name: Build shared
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        shell: powershell
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/shared
 
       - name: Build API
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        shell: powershell
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/api
 
       - name: Build Web
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        shell: powershell
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/web
 
       - name: Start PM2 and Verify Status
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        shell: powershell
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          
+
+          pm2 delete all
+
           pm2 start ecosystem.config.js
           pm2 save
           
@@ -133,7 +130,7 @@ jobs:
           Write-Host "PM2 đang chạy $onlineCount ứng dụng."
 
       - name: Health check with retry
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        shell: powershell
         run: |
           $maxRetries = 6
           $retryCount = 0

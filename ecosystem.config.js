@@ -1,3 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, 'apps', 'api', '.env') });
+
 module.exports = {
   apps: [
     {
@@ -6,9 +9,13 @@ module.exports = {
       script: 'dist/main.js',
       instances: 1,
       exec_mode: 'fork',
-      env_file: 'C:\\apps\\bace\\apps\\api\\.env',
       env: {
         NODE_ENV: 'production',
+        DATABASE_URL: process.env.DATABASE_URL,
+        JWT_SECRET: process.env.JWT_SECRET,
+        JWT_EXPIRES: process.env.JWT_EXPIRES,
+        API_PORT: process.env.API_PORT,
+        WEB_ORIGIN: process.env.WEB_ORIGIN,
       },
       error_file: './logs/api-error.log',
       out_file: './logs/api-out.log',
@@ -25,6 +32,7 @@ module.exports = {
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
+        NEXT_PUBLIC_API_URL: 'http://192.168.103.8:3001',
       },
       error_file: './logs/web-error.log',
       out_file: './logs/web-out.log',
