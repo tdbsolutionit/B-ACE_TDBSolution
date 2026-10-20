@@ -18,7 +18,8 @@ export class TenantsService {
   }
 
   async updateProfile(user: AuthUser, dto: UpdateTenantDto) {
-    if (user.role !== 'admin') {
+    const isAdmin = user.role?.toLowerCase() === 'admin';
+    if (!isAdmin) {
       throw new ForbiddenException('Chỉ quản trị viên mới có quyền cập nhật thông tin công ty');
     }
 
