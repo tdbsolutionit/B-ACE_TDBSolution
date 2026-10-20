@@ -70,14 +70,6 @@ export type CustomerRow = {
   contactEmail?: string | null;
 };
 
-export const sampleCustomers: CustomerRow[] = [
-  { id: 'c1', name: 'Công ty TNHH An Phát', company: 'An Phat Co., Ltd', phone: '0901111222', email: 'phat@example.com', address: 'Quận 1, TP.HCM', type: 'business', status: 'active', sourceName: 'Zalo', assigneeName: 'Nguyễn Minh Anh', oppCount: 2, openOppCount: 1, createdAt: '2026-10-02', taxCode: '0312345678', industry: 'Thương mại', contactName: 'Phạm An', contactPhone: '0901111222', contactEmail: 'pic@anphat.vn' },
-  { id: 'c2', name: 'Công ty CP Đại Việt', company: 'Dai Viet JSC', phone: '0902222333', email: 'viet@example.com', address: 'Quận 3, TP.HCM', type: 'business', status: 'active', sourceName: 'Website', assigneeName: 'Trần Thị Lan', oppCount: 1, openOppCount: 1, createdAt: '2026-09-18', taxCode: '0309988776', industry: 'Công nghệ', contactName: 'Lê Việt', contactPhone: '0902222333' },
-  { id: 'c3', name: 'Công ty TNHH Minh Long', company: 'Minh Long Co., Ltd', phone: '0903333444', email: 'long@example.com', type: 'business', status: 'lead', sourceName: 'Facebook', assigneeName: 'Lê Văn Hùng', oppCount: 1, openOppCount: 1, createdAt: '2026-10-08', taxCode: '0311122233', industry: 'F&B', contactName: 'Minh Long' },
-  { id: 'c4', name: 'Công ty TNHH Hoàng Gia', company: 'Hoang Gia Co., Ltd', phone: '0904444555', email: 'gia@example.com', type: 'business', status: 'active', sourceName: 'Giới thiệu', assigneeName: 'Nguyễn Minh Anh', oppCount: 1, openOppCount: 1, createdAt: '2026-08-21', taxCode: '0314455667', industry: 'Bất động sản', contactName: 'Hoàng Gia' },
-  { id: 'c5', name: 'Nguyễn Văn Khoa', company: null, phone: '0905555666', email: 'khoa@example.com', type: 'individual', status: 'lead', sourceName: 'Email', assigneeName: 'Trần Thị Lan', oppCount: 0, openOppCount: 0, createdAt: '2026-10-11' },
-];
-
 export const stages = ['Lead mới', 'Đã liên hệ', 'Đang tư vấn', 'Báo giá', 'Đàm phán', 'Thắng'];
 
 export type ProjectRow = {
@@ -94,14 +86,6 @@ export type ProjectRow = {
   isLead: boolean;
   owner: string;
 };
-
-export const sampleProjects: ProjectRow[] = [
-  { id: 'o1', name: 'Gói quảng cáo SME', customerId: 'c1', customer: 'Công ty TNHH An Phát', stage: 'Báo giá', stageColor: '#C9A961', value: 185000000, probability: 60, closeDate: '2026-10-30', status: 'open', isLead: false, owner: 'Nguyễn Minh Anh' },
-  { id: 'o2', name: 'Website thương mại', customerId: 'c2', customer: 'Công ty CP Đại Việt', stage: 'Đang tư vấn', stageColor: '#16a34a', value: 240000000, probability: 40, closeDate: '2026-11-15', status: 'open', isLead: false, owner: 'Trần Thị Lan' },
-  { id: 'o3', name: 'CRM nội bộ', customerId: 'c4', customer: 'Công ty TNHH Hoàng Gia', stage: 'Đàm phán', stageColor: '#d97706', value: 420000000, probability: 75, closeDate: '2026-11-02', status: 'open', isLead: false, owner: 'Nguyễn Minh Anh' },
-  { id: 'o4', name: 'Landing chiến dịch', customerId: 'c3', customer: 'Công ty TNHH Minh Long', stage: 'Lead mới', stageColor: '#64748b', value: 45000000, probability: 0, closeDate: '2026-10-28', status: 'open', isLead: true, owner: 'Lê Văn Hùng' },
-  { id: 'o6', name: 'Triển khai POS', customerId: 'c1', customer: 'Công ty TNHH An Phát', stage: 'Thắng', stageColor: '#16a34a', value: 310000000, probability: 100, closeDate: '2026-09-12', status: 'won', isLead: false, owner: 'Nguyễn Minh Anh' },
-];
 
 export type DocCard = {
   id: string;

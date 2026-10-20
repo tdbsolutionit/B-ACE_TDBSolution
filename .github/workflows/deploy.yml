@@ -16,7 +16,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Kill PM2 to release file locks
+      - name: Stop PM2 Apps to release file locks
+        shell: powershell
+        run: |
+          $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
+          pm2 delete all
+          Start-Sleep -Seconds 2
+        continue-on-error: true
         shell: powershell
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
