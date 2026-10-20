@@ -211,23 +211,24 @@ export class OpportunitiesService {
             if (!isNaN(parsedDate.getTime())) closeDate = parsedDate;
           }
 
-          // SỬ DỤNG STATUS TỪ FILE (nếu có), nếu không thì fallback theo stage
           const finalStatus = row.status || (stage.isWon ? 'won' : stage.isLost ? 'lost' : 'open');
 
           const created = await tx.opportunity.create({
             data: {
               tenantId: user.tenantId,
+              code: row.code || null, 
               name: String(row.name).trim(),
               customerId: customer.id,
               stageId: stage.id,
               value: Number(row.value || 0),
-              probability: Number(row.probability || 0),
+              probability: Number(row.probability || 30),
               expectedCloseDate: closeDate,
-              status: finalStatus, // <-- Đã dùng status từ file
+              status: row.status || (stage.isWon ? 'won' : stage.isLost ? 'lost' : 'open'),
               assignedTo: user.sub,
               createdBy: user.sub,
             },
           });
+
 
           await logActivity(tx, user, {
             type: 'note',

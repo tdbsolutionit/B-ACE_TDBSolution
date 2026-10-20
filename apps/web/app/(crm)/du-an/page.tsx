@@ -53,64 +53,63 @@ export default function ProjectsPage() {
     exportToExcel('danh-sach-du-an', formattedRows, PROJECT_EXPORT_COLS);
   }
 
-  // --- XỬ LÝ IMPORT (TÁCH BIỆT CSV VÀ EXCEL ĐỂ TRÁNH LỖI) ---
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
     const reader = new FileReader();
 
     reader.onload = async (event) => {
       try {
-        const buffer = event.target?.result as ArrayBuffer;
         let formattedRows: any[] = [];
+        const bstr = event.target?.result;
 
-        // NẾU LÀ FILE CSV -> DÙNG PARSER TỰ VIẾT (KHÔNG DÙNG XLSX)
-        if (file.name.toLowerCase().endsWith('.csv')) {
-          const decoder = new TextDecoder('utf-8');
-          const text = decoder.decode(buffer);
-          formattedRows = parseProjectCsv(text); 
-        } 
-        // NẾU LÀ FILE EXCEL -> DÙNG XLSX
-        else {
-          const workbook = XLSX.read(buffer, { type: 'array' });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const data: any[] = XLSX.utils.sheet_to_json(worksheet);
-
-          formattedRows = data.map((row: any) => {
+        if (isExcel) {
+          const workbook = XLSX.read(bstr, { type: 'binary' });
+          const data: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+          
+          formattedRows = data.map(row => {
             const getVal = (keys: string[]) => {
               for (const key of keys) {
                 const matchedKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
-                if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) {
-                  const val = String(row[matchedKey]).trim();
-                  if (val !== 'N/A') return val;
-                }
+                if (matchedKey && row[matchedKey] !== undefined) return String(row[matchedKey]).trim();
               }
               return '';
             };
 
-            const name = getVal(['Tên dự án', 'Tên DA', 'name']);
+            let name = getVal(['Tên dự án', 'Ten du an', 'name']);
+            let code = getVal(['Mã dự án', 'Ma du an', 'code']);
+
+            // Nếu Tên dự án bắt đầu bằng mã dự án (dạng 20240221-...), tự động tách ra
+            if (!code && /^\d{8}-\d{4}/.test(name)) {
+              const match = name.match(/^(\d{8}-\d{4}_[^_]+_[^_]+_)/); // Tách phần đầu làm mã
+              if (match) {
+                code = match[1].replace(/_$/, ''); // Xóa dấu _ ở cuối
+                name = name.replace(match[0], '').trim(); // Phần còn lại làm tên
+              }
+            }
+
             if (!name) return null;
 
-            const statusStr = getVal(['Trạng thái', 'status']);
-            let status = 'open';
-            if (statusStr.includes('Hoàn thành') || statusStr.includes('Thắng') || statusStr.toLowerCase() === 'won') status = 'won';
-            else if (statusStr.includes('Tạm dừng') || statusStr.includes('Thua') || statusStr.toLowerCase() === 'lost') status = 'lost';
-
             return {
+              code: code || null, // Gửi mã dự án lên backend
               name: name,
               customerName: getVal(['Khách hàng', 'Khach hang', 'customer']),
               stageName: getVal(['Giai đoạn', 'Giai doan', 'stage']),
               value: Number(getVal(['Giá trị (VND)', 'Giá trị', 'value']).replace(/[^0-9]/g, '') || 0),
-              probability: status === 'won' ? 100 : status === 'lost' ? 0 : 30,
+              probability: getVal(['Xác suất (%)', 'Xác suất']) ? Number(getVal(['Xác suất (%)', 'Xác suất']).replace(/[^0-9]/g, '') || 0) : 30,
               closeDate: getVal(['Ngày dự kiến chốt', 'Ngày chốt', 'closeDate']),
-              status: status,
+              status: getVal(['Trạng thái']).includes('Hoàn thành') ? 'won' : getVal(['Trạng thái']).includes('Tạm dừng') ? 'lost' : 'open',
             };
           }).filter(Boolean);
+        } else {
+          const text = bstr as string;
+          formattedRows = parseProjectCsv(text);
         }
 
-        if (!formattedRows || !formattedRows.length) {
-          toast.error('Không tìm thấy dữ liệu dự án hợp lệ trong file.');
+        if (!formattedRows.length) {
+          toast.error('File trống hoặc không đúng định dạng. Vui lòng kiểm tra lại cột Tên dự án.');
           return;
         }
 
@@ -119,26 +118,28 @@ export default function ProjectsPage() {
           body: JSON.stringify({ rows: formattedRows })
         });
 
-        await load();
+        await load(); 
         
         if (res.created > 0) {
           toast.success(`Đã import thành công ${res.created} dự án!`);
         }
         
         if (res.skipped.length > 0) {
-          console.log('Danh sách lỗi:', res.skipped);
-          toast.error(`Có ${res.skipped.length} dòng bị bỏ qua (Không tìm thấy Khách hàng).`);
+          console.log('Danh sách dòng lỗi:', res.skipped);
+          // Hiển thị rõ lý do lỗi ra màn hình
+          const firstError = res.skipped[0]?.reason || 'Không rõ lý do';
+          toast.error(`Bỏ qua ${res.skipped.length} dòng. Lý do: ${firstError}`);
         }
         
       } catch (err: any) {
-        toast.error(formatErrorMessage ? formatErrorMessage(err) : err.message || 'Lỗi khi đọc file');
+        toast.error(err.message || 'Lỗi khi đọc file');
       }
     };
 
-    // Đọc dưới dạng ArrayBuffer
-    reader.readAsArrayBuffer(file);
+    if (isExcel) reader.readAsBinaryString(file);
+    else reader.readAsText(file, 'UTF-8');
     
-    e.target.value = ''; // Reset input
+    e.target.value = ''; 
   };
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
