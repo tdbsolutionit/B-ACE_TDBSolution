@@ -57,6 +57,10 @@ export class QuoteLineDto {
   @IsString()
   moduleName!: string;
 
+  @IsOptional()
+  @IsString()
+  unit?: string; 
+
   @Type(() => Number)
   @IsNumber()
   @Min(0)

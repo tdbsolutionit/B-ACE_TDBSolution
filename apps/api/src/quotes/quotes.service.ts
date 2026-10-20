@@ -184,6 +184,7 @@ export class QuotesService {
             quoteId: quote.id,
             moduleCode: `L${index + 1}`,
             moduleName: item.moduleName.trim() || `Hạng mục ${index + 1}`,
+            unit: item.unit || 'Gói',
             quantity,
             unitPrice,
             total: quantity * unitPrice,

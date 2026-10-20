@@ -94,21 +94,34 @@ export function useAuth() {
   return value;
 }
 
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const raw = typeof window === 'undefined' ? null : localStorage.getItem(KEY);
   const session = raw ? (JSON.parse(raw) as Session) : null;
+  
   if (!session?.accessToken) throw new Error('Chưa đăng nhập');
+  
   const base = getApiBase();
+  const isFormData = options.body instanceof FormData;
+  const headers = new Headers(options.headers || {});
+  if (!isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  headers.set('Authorization', `Bearer ${session.accessToken}`);
   const res = await fetch(`${base}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.accessToken}`,
-      ...(init?.headers || {}),
-    },
+    ...options,
+    headers,
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json() as Promise<T>;
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || `Lỗi HTTP: ${res.status}`);
+  }
+
+  if (res.status === 204) {
+    return null as T;
+  }
+  const text = await res.text();
+  return text ? (JSON.parse(text) as T) : (null as T);
 }
 
 function authHeader() {

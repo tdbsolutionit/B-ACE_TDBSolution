@@ -77,12 +77,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [ring, setRing] = useState(false);
   const [overdue, setOverdue] = useState<TaskRow[]>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  
+  // --- THÊM STATE LƯU LOGO CÔNG TY ---
+  const [tenantLogo, setTenantLogo] = useState<string | null>(null);
+
   const [celebration, setCelebration] = useState<{
     dealName: string;
     value?: number;
     owner?: string;
     at: string;
   } | null>(null);
+
+  // Lấy logo khi app khởi chạy
+  useEffect(() => {
+    if (!session) return;
+    
+    const loadLogo = () => {
+      api<{ logoUrl: string | null }>('/tenants/me')
+        .then((res) => setTenantLogo(res.logoUrl))
+        .catch(() => setTenantLogo(null));
+    };
+
+    loadLogo();
+
+    // Lắng nghe sự kiện nếu logo được đổi ở trang Cài đặt
+    window.addEventListener('tenant:updated', loadLogo);
+    return () => window.removeEventListener('tenant:updated', loadLogo);
+  }, [session]);
 
   // Tự động collapse khi màn hình nhỏ
   useEffect(() => {
@@ -218,7 +239,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const user = session.user;
-  // Quản lý người dùng đã chuyển vào Cài đặt -> không còn mục riêng trên sidebar
   const items = NAV;
   const dateLabel = new Intl.DateTimeFormat('vi-VN', {
     weekday: 'long',
@@ -238,13 +258,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
       <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
         <aside className="app-sidebar">
-          <Link href="/" className="brand">
-            <span className="brand-symbol"><Layers3 size={22} /></span>
-            <span className="brand-name text-lg font-bold">
-              B-ACE<span className="font-normal text-muted-foreground"> SME</span>
-            </span>
+          <Link href="/" className="brand py-2 flex w-full justify-center bg-transparent hover:bg-transparent">
+            {tenantLogo ? (
+              <img 
+                src={tenantLogo} 
+                alt="Logo" 
+                className="h-12 w-auto max-w-[220px] object-contain bg-transparent mix-blend-multiply" 
+              />
+            ) : (
+              <>
+                <span className="brand-symbol bg-transparent"><Layers3 size={22} /></span>
+                <span className="brand-name text-lg font-bold">
+                  B-ACE<span className="font-normal text-muted-foreground"> SME</span>
+                </span>
+              </>
+            )}
           </Link>
-          <div className="workspace-label">{collapsed ? 'SME' : 'KHÔNG GIAN LÀM VIỆC'}</div>
+
+          {/* <div className="workspace-label">{collapsed ? 'SME' : 'KHÔNG GIAN LÀM VIỆC'}</div> */}
           <nav className="space-y-1.5 px-3">
             {items.map((item) => {
               const active = item.href === '/'
@@ -313,7 +344,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
         <div className="app-main">
           <header className="app-header">
-            {/* Trái: breadcrumb */}
             <nav
               aria-label="Breadcrumb"
               className="hidden min-w-0 shrink-0 items-center gap-1.5 text-xs text-muted-foreground lg:flex"
@@ -323,7 +353,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="truncate font-semibold text-foreground">{label}</span>
             </nav>
 
-            {/* Giữa: tìm kiếm */}
             <div className="flex min-w-0 flex-1 justify-center px-2">
               <button
                 type="button"
@@ -332,7 +361,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <Search size={17} />
                 <span className="flex-1 truncate text-left text-sm text-muted-foreground">
-                  Tìm khách hàng, cơ hội, công việc...
+                  Tìm khách hàng, dự án, công việc...
                 </span>
                 <span className="search-key"><Command size={10} /> K</span>
               </button>
@@ -471,7 +500,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="modal-backdrop" onClick={() => setHelp(false)} />
             <div className="modal-card">
               <h2 className="text-lg font-semibold">Trợ giúp & hỗ trợ</h2>
-              <p className="mt-1 text-sm text-muted-foreground">B-ACE · Không gian làm việc của đội ngũ kinh doanh</p>
+              <p className="mt-1 text-sm text-muted-foreground">Không gian làm việc của đội ngũ kinh doanh</p>
               <p className="mt-4 text-sm leading-7">
                 Quản lý khách hàng, theo dõi cơ hội và công việc của bạn tại một nơi.
                 Dữ liệu được lưu trong cơ sở dữ liệu của công ty.

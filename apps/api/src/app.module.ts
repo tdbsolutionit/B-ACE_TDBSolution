@@ -20,6 +20,7 @@ import { SettingsModule } from './settings/settings.module';
 import { RolesModule } from './roles/roles.module';
 import { TeamsModule } from './teams/teams.module';
 import { StagesModule } from './stages/stages.module';
+import { TenantsModule } from './tenants/tenants.module';
 
 @Module({
   imports: [
@@ -45,6 +46,8 @@ import { StagesModule } from './stages/stages.module';
     RolesModule,
     TeamsModule,
     StagesModule,
+    FilesModule,
+    TenantsModule,
   ],
   controllers: [HealthController],
   providers: [

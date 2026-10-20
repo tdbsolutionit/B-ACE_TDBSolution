@@ -14,11 +14,24 @@ model Tenant {
   taxCode       String?       @map("tax_code")
   email         String?
   phone         String?
+  website       String?       
+  address       String?       
+  logoUrl       String?       @map("logo_url") 
+  bankName      String?       @map("bank_name") 
+  bankAccount   String?       @map("bank_account") 
+  bankOwner     String?       @map("bank_owner") 
+
+  directorName  String?       @map("director_name") 
+  quoteTerms    String?       @map("quote_terms")
+  quoteNotes    String?       @map("quote_notes")
+  quoteUnit     String?       @default("Gói") @map("quote_unit")
+  
   timezone      String        @default("Asia/Ho_Chi_Minh")
   currency      String        @default("VND")
   language      String        @default("vi")
   dateFormat    String        @default("DD/MM/YYYY") @map("date_format")
   createdAt     DateTime      @default(now()) @map("created_at")
+  
   users         User[]
   customers     Customer[]
   leadSources   LeadSource[]
@@ -93,8 +106,8 @@ model Stage {
 model Customer {
   id            String         @id @default(uuid())
   tenantId      String         @map("tenant_id")
-  code          String? // Mã KH (ví dụ: KH00001)
-  shortCode     String?        @map("short_code") // Mã số (ví dụ: 01)
+  code          String?
+  shortCode     String?        @map("short_code") 
   name          String
   company       String?
   phone         String?
@@ -116,6 +129,7 @@ model Customer {
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   opportunities Opportunity[]
   quotes        Quote[]
+  projectFiles  ProjectFile[] 
 
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
@@ -194,7 +208,6 @@ model Quote {
   id            String        @id @default(uuid())
   tenantId      String        @map("tenant_id")
   
-  // 1. Cho phép Null (thêm dấu ?)
   opportunityId String?       @map("opportunity_id") 
   customerId    String?       @map("customer_id")    
   
@@ -222,10 +235,8 @@ model Quote {
   prospectEmail String?       @map("prospect_email") 
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
   opportunity   Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: Cascade) 
   customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: Cascade)    
-  
   items         QuoteItem[]
 
   @@unique([tenantId, quoteNumber])
@@ -253,7 +264,8 @@ model QuoteItem {
 model ProjectFile {
   id            String      @id @default(uuid())
   tenantId      String      @map("tenant_id")
-  opportunityId String      @map("opportunity_id")
+  opportunityId String?     @map("opportunity_id")
+  customerId    String?     @map("customer_id")    
   name          String
   mimeType      String      @map("mime_type")
   size          Int
@@ -261,9 +273,11 @@ model ProjectFile {
   createdBy     String?     @map("created_by")
   createdAt     DateTime    @default(now()) @map("created_at")
   tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade) 
+  customer      Customer?   @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, opportunityId])
+  @@index([tenantId, customerId])
   @@map("project_files")
 }
 

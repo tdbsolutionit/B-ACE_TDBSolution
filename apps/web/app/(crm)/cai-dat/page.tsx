@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState, useRef } from 'react';
 import { api } from '@/lib/auth';
 import { UsersManagement } from '@/components/users/UsersManagement';
 import { PipelineSection } from '@/components/settings/PipelineSection';
 import { TeamsManagement } from '@/components/settings/TeamsManagement';
 import { RolesManagement } from '@/components/settings/RolesManagement';
 import { SecuritySection } from '@/components/settings/SecuritySection';
+import { Building2, UploadCloud } from 'lucide-react';
+
 
 type SectionKey =
     | 'company'
@@ -36,6 +38,16 @@ type CompanyForm = {
     taxCode: string;
     email: string;
     phone: string;
+    website: string;
+    address: string;
+    logoUrl: string;
+    bankName: string;
+    bankAccount: string;
+    bankOwner: string;
+    directorName: string;
+    quoteTerms: string;
+    quoteNotes: string;
+    quoteUnit: string;
     timezone: string;
     currency: string;
     language: string;
@@ -47,6 +59,16 @@ const INITIAL_COMPANY: CompanyForm = {
     taxCode: '',
     email: '',
     phone: '',
+    website: '',
+    address: '',
+    logoUrl: '',
+    bankName: '',
+    bankAccount: '',
+    bankOwner: '',
+    directorName: '',
+    quoteTerms: '',
+    quoteNotes: '',
+    quoteUnit: 'Gói',
     timezone: 'Asia/Ho_Chi_Minh',
     currency: 'VND',
     language: 'vi',
@@ -65,13 +87,22 @@ const FIELD_LABELS: Record<keyof CompanyForm, string> = {
     taxCode: 'Mã số thuế',
     email: 'Email liên hệ',
     phone: 'Số điện thoại',
+    website: 'Website',
+    address: 'Địa chỉ',
+    logoUrl: 'Logo',
+    bankName: 'Tên ngân hàng',
+    bankAccount: 'Số tài khoản',
+    bankOwner: 'Chủ tài khoản',
+    directorName: 'Tên giám đốc',
+    quoteTerms: 'Điều khoản thanh toán',
+    quoteNotes: 'Ghi chú',
+    quoteUnit: 'Đơn vị tính mặc định',
     timezone: 'Múi giờ',
     currency: 'Tiền tệ',
     language: 'Ngôn ngữ',
     dateFormat: 'Định dạng ngày',
 };
 
-// API có thể trả null cho trường chưa nhập -> đổi về chuỗi rỗng
 function toForm(data: Partial<Record<keyof CompanyForm, string | null>>): CompanyForm {
     return {
         ...INITIAL_COMPANY,
@@ -79,7 +110,6 @@ function toForm(data: Partial<Record<keyof CompanyForm, string | null>>): Compan
     };
 }
 
-// Chuỗi rỗng -> undefined để backend bỏ qua trường tùy chọn
 function toPayload(form: CompanyForm) {
     return Object.fromEntries(
         Object.entries(form).map(([k, v]) => [k, v.trim() || undefined]),
@@ -120,7 +150,7 @@ function parseApiError(error: unknown): { title: string; details: string[]; fiel
     for (const raw of raws) {
         const { field, text } = translateValidation(raw);
         if (field) {
-            if (fields[field]) continue; // mỗi trường chỉ hiện 1 lỗi
+            if (fields[field]) continue;
             fields[field] = text;
         }
         details.push(text);
@@ -161,9 +191,7 @@ function Card({
     children: React.ReactNode;
 }) {
     return (
-        <section
-            className={`rounded-xl border bg-white p-6 ${danger ? 'border-red-200' : 'border-slate-200'}`}
-        >
+        <section className={`rounded-xl border bg-white p-6 ${danger ? 'border-red-200' : 'border-slate-200'}`}>
             <h2 className="text-[17px] font-semibold text-slate-900">{title}</h2>
             <p className="mb-5 mt-1 text-[13px] text-slate-500">{description}</p>
             {children}
@@ -171,15 +199,7 @@ function Card({
     );
 }
 
-function Field({
-    label,
-    error,
-    children,
-}: {
-    label: string;
-    error?: string;
-    children: (id: string) => React.ReactNode;
-}) {
+function Field({ label, error, children }: { label: string; error?: string; children: (id: string) => React.ReactNode; }) {
     const id = useId();
     return (
         <div>
@@ -196,15 +216,7 @@ function Field({
     );
 }
 
-function Switch({
-    checked,
-    onChange,
-    label,
-}: {
-    checked: boolean;
-    onChange: (next: boolean) => void;
-    label: string;
-}) {
+function Switch({ checked, onChange, label }: { checked: boolean; onChange: (next: boolean) => void; label: string; }) {
     return (
         <button
             type="button"
@@ -212,13 +224,9 @@ function Switch({
             aria-checked={checked}
             aria-label={label}
             onClick={() => onChange(!checked)}
-            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78] focus-visible:ring-offset-2 ${checked ? 'bg-[#0B6E78]' : 'bg-slate-300'
-                }`}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78] focus-visible:ring-offset-2 ${checked ? 'bg-[#0B6E78]' : 'bg-slate-300'}`}
         >
-            <span
-                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : ''
-                    }`}
-            />
+            <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
         </button>
     );
 }
@@ -229,158 +237,186 @@ function CompanySection({
     form,
     errors,
     onChange,
+    onLogoUpload,
+    uploadingLogo,
+    fileInputRef,
 }: {
     form: CompanyForm;
     errors: FieldErrors;
     onChange: <K extends keyof CompanyForm>(key: K, value: CompanyForm[K]) => void;
+    onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    uploadingLogo: boolean;
+    fileInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
     return (
-        <Card
-            title="Thông tin công ty"
-            description="Hiển thị trên báo giá, email và hóa đơn gửi khách hàng."
-        >
-            <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Tên công ty" error={errors.name}>
-                    {(id) => (
+        <div className="space-y-6">
+            <Card
+                title="Thông tin cơ bản"
+                description="Thông tin này sẽ hiển thị trên các file Báo giá, Đề xuất xuất ra PDF."
+            >
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Tên công ty *" error={errors.name}>
+                        {(id) => (
+                            <input id={id} className={inputCls} value={form.name} onChange={(e) => onChange('name', e.target.value)} placeholder="VD: Công ty TNHH ABC" />
+                        )}
+                    </Field>
+                    <Field label="Mã số thuế" error={errors.taxCode}>
+                        {(id) => (
+                            <input id={id} className={inputCls} value={form.taxCode} onChange={(e) => onChange('taxCode', e.target.value)} placeholder="VD: 0318137951" />
+                        )}
+                    </Field>
+
+                    <Field label="Email liên hệ" error={errors.email}>
+                        {(id) => (
+                            <input id={id} type="email" className={inputCls} value={form.email} onChange={(e) => onChange('email', e.target.value)} placeholder="email@congty.vn" />
+                        )}
+                    </Field>
+                    <Field label="Số điện thoại" error={errors.phone}>
+                        {(id) => (
+                            <input id={id} type="tel" className={inputCls} value={form.phone} onChange={(e) => onChange('phone', e.target.value)} placeholder="0909 xxx xxx" />
+                        )}
+                    </Field>
+
+                    <Field label="Website" error={errors.website}>
+                        {(id) => (
+                            <input id={id} className={inputCls} value={form.website} onChange={(e) => onChange('website', e.target.value)} placeholder="www.congty.vn" />
+                        )}
+                    </Field>
+                    <Field label="Địa chỉ" error={errors.address}>
+                        {(id) => (
+                            <input id={id} className={inputCls} value={form.address} onChange={(e) => onChange('address', e.target.value)} placeholder="Số 1, Đường ABC, Quận X, TP.HCM" />
+                        )}
+                    </Field>
+                </div>
+            </Card>
+
+            <Card
+                title="Thông tin thanh toán (In trên Báo giá)"
+                description="Thông tin tài khoản ngân hàng của công ty bạn để khách hàng chuyển khoản."
+            >
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Tên ngân hàng" error={errors.bankName}>
+                        {(id) => (
+                            <input id={id} className={inputCls} value={form.bankName} onChange={(e) => onChange('bankName', e.target.value)} placeholder="VD: Ngân Hàng TMCP và PT VN CN Gia Định (BIDV)" />
+                        )}
+                    </Field>
+                    <Field label="Số tài khoản" error={errors.bankAccount}>
+                        {(id) => (
+                            <input id={id} className={inputCls} value={form.bankAccount} onChange={(e) => onChange('bankAccount', e.target.value)} placeholder="VD: 8601216868" />
+                        )}
+                    </Field>
+                    <Field label="Chủ tài khoản" error={errors.bankOwner}>
+                        {(id) => (
+                            <input id={id} className={inputCls} value={form.bankOwner} onChange={(e) => onChange('bankOwner', e.target.value)} placeholder="VD: CÔNG TY TNHH ..." />
+                        )}
+                    </Field>
+                </div>
+            </Card>
+
+            <Card
+                title="Logo công ty"
+                description="Hiển thị ở góc trên cùng của file PDF Báo giá. (PNG, JPG tối đa 2MB)"
+            >
+                <div className="flex items-center gap-4">
+                    {/* Khung hiển thị ảnh */}
+                    {form.logoUrl ? (
+                        <div className="relative rounded-lg border bg-white p-2">
+                            <img src={form.logoUrl} alt="Logo" className="h-16 object-contain" />
+                            <button type="button" onClick={() => onChange('logoUrl', '')} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200">✕</button>
+                        </div>
+                    ) : (
+                        <div className="flex h-20 w-48 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500">
+                            <UploadCloud size={20} className="mb-1" />
+                            <span className="text-xs font-medium">Chưa có logo</span>
+                        </div>
+                    )}
+
+                    {/* Nút chọn file */}
+                    <div>
                         <input
-                            id={id}
-                            className={inputCls}
-                            value={form.name}
-                            aria-invalid={!!errors.name}
-                            aria-describedby={errors.name ? `${id}-error` : undefined}
-                            onChange={(e) => onChange('name', e.target.value)}
-                            placeholder="Tên công ty"
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            accept="image/png, image/jpeg, image/svg+xml"
+                            onChange={onLogoUpload}
                         />
-                    )}
-                </Field>
-                <Field label="Mã số thuế" error={errors.taxCode}>
-                    {(id) => (
-                        <input
-                            id={id}
-                            className={inputCls}
-                            value={form.taxCode}
-                            aria-invalid={!!errors.taxCode}
-                            aria-describedby={errors.taxCode ? `${id}-error` : undefined}
-                            onChange={(e) => onChange('taxCode', e.target.value)}
-                            placeholder="Mã số thuế"
-                        />
-                    )}
-                </Field>
-                <Field label="Email liên hệ" error={errors.email}>
-                    {(id) => (
-                        <input
-                            id={id}
-                            type="email"
-                            className={inputCls}
-                            value={form.email}
-                            aria-invalid={!!errors.email}
-                            aria-describedby={errors.email ? `${id}-error` : undefined}
-                            onChange={(e) => onChange('email', e.target.value)}
-                            placeholder="email@congty.vn"
-                        />
-                    )}
-                </Field>
-                <Field label="Số điện thoại" error={errors.phone}>
-                    {(id) => (
-                        <input
-                            id={id}
-                            type="tel"
-                            className={inputCls}
-                            value={form.phone}
-                            aria-invalid={!!errors.phone}
-                            aria-describedby={errors.phone ? `${id}-error` : undefined}
-                            onChange={(e) => onChange('phone', e.target.value)}
-                            placeholder="Số điện thoại"
-                        />
-                    )}
-                </Field>
-                <Field label="Múi giờ" error={errors.timezone}>
-                    {(id) => (
-                        <select
-                            id={id}
-                            className={inputCls}
-                            value={form.timezone}
-                            aria-invalid={!!errors.timezone}
-                            onChange={(e) => onChange('timezone', e.target.value)}
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingLogo}
+                            className="text-sm font-semibold text-[#0B6E78] hover:underline disabled:opacity-50"
                         >
-                            <option value="Asia/Ho_Chi_Minh">(GMT+7) Hồ Chí Minh</option>
-                            <option value="Asia/Bangkok">(GMT+7) Bangkok</option>
-                            <option value="Asia/Singapore">(GMT+8) Singapore</option>
-                        </select>
-                    )}
-                </Field>
-                <Field label="Tiền tệ mặc định" error={errors.currency}>
-                    {(id) => (
-                        <select
-                            id={id}
-                            className={inputCls}
-                            value={form.currency}
-                            aria-invalid={!!errors.currency}
-                            onChange={(e) => onChange('currency', e.target.value)}
-                        >
-                            <option value="VND">VND – Việt Nam Đồng</option>
-                            <option value="USD">USD – Đô la Mỹ</option>
-                        </select>
-                    )}
-                </Field>
-                <Field label="Ngôn ngữ giao diện" error={errors.language}>
-                    {(id) => (
-                        <select
-                            id={id}
-                            className={inputCls}
-                            value={form.language}
-                            aria-invalid={!!errors.language}
-                            onChange={(e) => onChange('language', e.target.value)}
-                        >
-                            <option value="vi">Tiếng Việt</option>
-                            <option value="en">English</option>
-                        </select>
-                    )}
-                </Field>
-                <Field label="Định dạng ngày" error={errors.dateFormat}>
-                    {(id) => (
-                        <select
-                            id={id}
-                            className={inputCls}
-                            value={form.dateFormat}
-                            aria-invalid={!!errors.dateFormat}
-                            onChange={(e) => onChange('dateFormat', e.target.value)}
-                        >
-                            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                        </select>
-                    )}
-                </Field>
-            </div>
-        </Card>
+                            {uploadingLogo ? 'Đang tải lên...' : 'Chọn file từ máy tính'}
+                        </button>
+                        <p className="text-xs text-slate-500 mt-1">Hoặc kéo thả ảnh vào đây</p>
+                    </div>
+                </div>
+            </Card>
+            <Card
+                title="Nội dung Báo giá / Đề xuất"
+                description="Tùy chỉnh các điều khoản và chữ ký in trên file PDF."
+            >
+                <div className="grid gap-4">
+                    <Field label="Tên người ký (Giám đốc)" error={errors.directorName}>
+                        {(id) => (
+                            <input id={id} className={inputCls} value={form.directorName} onChange={(e) => onChange('directorName', e.target.value)} placeholder="VD: Nguyễn Văn A" />
+                        )}
+                    </Field>
+
+                    <Field label="Điều khoản thanh toán" error={errors.quoteTerms}>
+                        {(id) => (
+                            <textarea
+                                id={id}
+                                className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78]"
+                                rows={4}
+                                value={form.quoteTerms}
+                                onChange={(e) => onChange('quoteTerms', e.target.value)}
+                                placeholder="VD:&#10;- Thanh toán 50% khi ký hợp đồng.&#10;- Thanh toán 50% khi nghiệm thu."
+                            />
+                        )}
+                    </Field>
+
+                    <Field label="Ghi chú thêm (Chân trang)" error={errors.quoteNotes}>
+                        {(id) => (
+                            <textarea
+                                id={id}
+                                className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78]"
+                                rows={3}
+                                value={form.quoteNotes}
+                                onChange={(e) => onChange('quoteNotes', e.target.value)}
+                                placeholder="VD: Báo giá có hiệu lực trong vòng 15 ngày."
+                            />
+                        )}
+                    </Field>
+                </div>
+            </Card>
+
+            <Field label="Đơn vị tính mặc định" error={errors.quoteUnit}>
+                {(id) => (
+                    <input
+                        id={id}
+                        className={inputCls}
+                        value={form.quoteUnit}
+                        onChange={(e) => onChange('quoteUnit', e.target.value)}
+                        placeholder="VD: Gói, Bộ, Cái, Tháng..."
+                    />
+                )}
+            </Field>
+        </div>
     );
 }
 
-function NotificationSection({
-    values,
-    onToggle,
-}: {
-    values: Record<NotificationKey, boolean>;
-    onToggle: (key: NotificationKey, next: boolean) => void;
-}) {
+function NotificationSection({ values, onToggle }: { values: Record<NotificationKey, boolean>; onToggle: (key: NotificationKey, next: boolean) => void; }) {
     return (
         <Card title="Thông báo" description="Chọn sự kiện bạn muốn nhận thông báo.">
             <ul>
                 {NOTIFICATIONS.map((n) => (
-                    <li
-                        key={n.key}
-                        className="flex items-center justify-between gap-4 border-t border-slate-100 py-3.5"
-                    >
+                    <li key={n.key} className="flex items-center justify-between gap-4 border-t border-slate-100 py-3.5">
                         <div>
                             <p className="text-sm font-semibold text-slate-900">{n.title}</p>
                             <p className="mt-0.5 text-[13px] text-slate-500">{n.desc}</p>
                         </div>
-                        <Switch
-                            checked={values[n.key]}
-                            onChange={(next) => onToggle(n.key, next)}
-                            label={n.title}
-                        />
+                        <Switch checked={values[n.key]} onChange={(next) => onToggle(n.key, next)} label={n.title} />
                     </li>
                 ))}
             </ul>
@@ -401,10 +437,7 @@ function StatusBanner({ status, onClose }: { status: NonNullable<Status>; onClos
     return (
         <div
             role={isError ? 'alert' : 'status'}
-            className={`mb-6 flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${isError
-                    ? 'border-red-200 bg-red-50 text-red-800'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                }`}
+            className={`mb-6 flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${isError ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}
         >
             <div>
                 <p className="font-semibold">{status.title}</p>
@@ -416,13 +449,7 @@ function StatusBanner({ status, onClose }: { status: NonNullable<Status>; onClos
                     </ul>
                 )}
             </div>
-            <button
-                type="button"
-                onClick={onClose}
-                className="shrink-0 font-semibold underline underline-offset-2"
-            >
-                Đóng
-            </button>
+            <button type="button" onClick={onClose} className="shrink-0 font-semibold underline underline-offset-2">Đóng</button>
         </div>
     );
 }
@@ -441,6 +468,53 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<Status>(null);
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Giới hạn ảnh dưới 2MB
+        if (file.size > 2 * 1024 * 1024) {
+            setStatus({ type: 'error', title: 'Lỗi', details: ['Kích thước ảnh không được vượt quá 2MB'] });
+            return;
+        }
+
+        setUploadingLogo(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await api<{ fileUrl: string }>('/files/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            // Kiểm tra xem API có trả về dữ liệu không
+            if (!res || !res.fileUrl) {
+                throw new Error('API không trả về đường dẫn file');
+            }
+
+            // Loại bỏ đuôi /api nếu có trong biến môi trường để ghép chuẩn xác
+            let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.103.8:3001';
+            if (apiUrl.endsWith('/api')) {
+                apiUrl = apiUrl.replace('/api', '');
+            }
+
+            const finalUrl = `${apiUrl}${res.fileUrl}`;
+            console.log('Đường dẫn ảnh:', finalUrl); // In ra để kiểm tra
+
+            updateCompany('logoUrl', finalUrl);
+            setStatus({ type: 'success', title: 'Đã tải logo lên thành công' });
+        } catch (error) {
+            const { title, details } = parseApiError(error);
+            setStatus({ type: 'error', title: title || 'Lỗi tải logo', details });
+        } finally {
+            setUploadingLogo(false);
+            e.target.value = '';
+        }
+    };
 
     const updateCompany = <K extends keyof CompanyForm>(key: K, value: CompanyForm[K]) => {
         setCompany((prev) => ({ ...prev, [key]: value }));
@@ -453,7 +527,7 @@ export default function SettingsPage() {
         setFieldErrors({});
 
         try {
-            const saved = await api<CompanyForm>('/settings', {
+            const saved = await api<CompanyForm>('/tenants/me', {
                 method: 'PATCH',
                 body: JSON.stringify(toPayload(company)),
             });
@@ -463,6 +537,7 @@ export default function SettingsPage() {
             const { title, details, fields } = parseApiError(error);
             setFieldErrors(fields);
             setStatus({ type: 'error', title, details });
+            window.dispatchEvent(new Event('tenant:updated'));
         } finally {
             setSaving(false);
         }
@@ -473,7 +548,7 @@ export default function SettingsPage() {
 
         async function loadCompanySettings() {
             try {
-                const data = await api<CompanyForm>('/settings');
+                const data = await api<CompanyForm>('/tenants/me');
                 if (!cancelled) setCompany(toForm(data));
             } catch {
                 if (!cancelled) {
@@ -527,10 +602,7 @@ export default function SettingsPage() {
                             type="button"
                             onClick={() => setActive(s.key)}
                             aria-current={active === s.key ? 'page' : undefined}
-                            className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${active === s.key
-                                    ? 'bg-white font-semibold text-[#0B6E78] shadow-sm'
-                                    : 'text-slate-700 hover:bg-slate-200/60'
-                                }`}
+                            className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${active === s.key ? 'bg-white font-semibold text-[#0B6E78] shadow-sm' : 'text-slate-700 hover:bg-slate-200/60'}`}
                         >
                             {s.label}
                         </button>
@@ -540,37 +612,34 @@ export default function SettingsPage() {
                 <div className="min-w-0 flex-1 space-y-6">
                     {active === 'company' && (
                         <>
-                            <CompanySection form={company} errors={fieldErrors} onChange={updateCompany} />
-                            <Card
-                                title="Vùng nguy hiểm"
-                                description="Các thao tác dưới đây không thể hoàn tác."
-                                danger
-                            >
-                                <button
-                                    type="button"
-                                    className="h-11 rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
-                                >
+                            <CompanySection
+                                form={company}
+                                errors={fieldErrors}
+                                onChange={updateCompany}
+                                onLogoUpload={handleLogoUpload}
+                                uploadingLogo={uploadingLogo}
+                                fileInputRef={fileInputRef}
+                            />
+                            <Card title="Vùng nguy hiểm" description="Các thao tác dưới đây không thể hoàn tác." danger>
+                                <button type="button" className="h-11 rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2">
                                     Xóa toàn bộ dữ liệu CRM
                                 </button>
                             </Card>
                         </>
                     )}
                     {active === 'notifications' && (
-                        <NotificationSection
-                            values={notify}
-                            onToggle={(key, next) => setNotify((prev) => ({ ...prev, [key]: next }))}
-                        />
+                        <NotificationSection values={notify} onToggle={(key, next) => setNotify((prev) => ({ ...prev, [key]: next }))} />
                     )}
                     {active === 'users' && <UsersManagement />}
                     {active === 'pipeline' && <PipelineSection />}
                     {active === 'teams' && <TeamsManagement />}
                     {active === 'roles' && <RolesManagement />}
                     {active === 'security' && <SecuritySection />}
-                    {active !== 'company' && active !== 'notifications' && active !== 'users' 
-                        && active !== 'pipeline' && active !== 'teams' && active !== 'roles' 
+                    {active !== 'company' && active !== 'notifications' && active !== 'users'
+                        && active !== 'pipeline' && active !== 'teams' && active !== 'roles'
                         && active !== 'security' && (
-                        <ComingSoon label={activeLabel} />
-                    )}
+                            <ComingSoon label={activeLabel} />
+                        )}
                 </div>
             </div>
         </div>

@@ -8,14 +8,11 @@ export const Roles = (...roles: Array<'admin' | 'manager' | 'sales'>) =>
   SetMetadata(ROLES_KEY, roles);
 
 export type AuthUser = {
-  // ─── Field cũ (GIỮ NGUYÊN, không xóa) ───
   sub: string;
   tenantId: string;
   role: 'admin' | 'manager' | 'sales';
   email: string;
   name: string;
-
-  // ─── Field mới (thêm vào, optional) ───
   roleId?: string;
   roleName?: string;
   teamId?: string | null;
