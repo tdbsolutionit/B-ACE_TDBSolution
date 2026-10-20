@@ -23,12 +23,6 @@ jobs:
           pm2 delete all
           Start-Sleep -Seconds 2
         continue-on-error: true
-        shell: powershell
-        run: |
-          $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          pm2 kill
-          Start-Sleep -Seconds 2
-        continue-on-error: true
 
       - name: Clean Workspace and Pull Latest Code
         shell: powershell
@@ -50,7 +44,6 @@ jobs:
         shell: powershell
         working-directory: C:\apps\bace
         run: |
-          # Sử dụng WriteAllLines để tránh lỗi BOM và thụt lề của YAML
           $linesApi = @(
             "DATABASE_URL=${{ secrets.DATABASE_URL }}",
             "JWT_SECRET=${{ secrets.JWT_SECRET }}",
@@ -73,7 +66,7 @@ jobs:
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm ci
 
-      - name: Run DB migrations, Prisma Generate
+      - name: Run DB migrations and Prisma Generate
         shell: powershell
         working-directory: C:\apps\bace\apps\api
         env:
@@ -109,9 +102,7 @@ jobs:
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-
-          pm2 delete all
-
+          
           pm2 start ecosystem.config.js
           pm2 save
           
