@@ -35,6 +35,12 @@ function ListPane() {
   const [importNote, setImportNote] = useState('');
   const [users, setUsers] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState({
+    name: '', company: '', phone: '', email: '', address: '',
+    type: 'business' as 'individual' | 'business',
+    status: 'active' as 'lead' | 'active' | 'inactive',
+    sourceName: 'Website', taxCode: '', industry: '',
+  });
 
   const { on } = useRealtime();
 
@@ -49,6 +55,35 @@ function ListPane() {
       .then(setUsers)
       .catch(() => { });
   }, []);
+
+  async function addCustomer() {
+    if (!form.name.trim()) {
+      setError('Nhập tên khách hàng');
+      return;
+    }
+    try {
+      const created = await api<CustomerRow>('/customers', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone,
+          email: form.email,
+          address: form.address,
+          type: form.type === 'business' ? 'business' : 'personal',
+          status: form.status,
+          sourceName: form.sourceName,
+          taxCode: form.taxCode,
+          industry: form.industry,
+        }),
+      });
+      setRows((current) => [created, ...current]);
+      setOpen(false);
+      setError('');
+      toast.success(`Đã thêm ${created.name}`);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'Không lưu được khách hàng');
+    }
+  }
 
   // Realtime
   useEffect(() => {
@@ -376,9 +411,50 @@ function ListPane() {
           <div className="modal-backdrop" onClick={() => setOpen(false)} />
           <div className="modal-card max-w-2xl">
             <h2 className="text-lg font-semibold">Thêm khách hàng</h2>
-            <div className="mt-5">
-               <p className="text-sm text-muted-foreground">Vui lòng sử dụng chức năng Import hoặc chuyển sang trang chi tiết để thêm mới.</p>
-               <button onClick={() => setOpen(false)} className="mt-4 h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Đóng</button>
+            <p className="mt-1 text-sm text-muted-foreground">Chọn loại khách hàng và điền thông tin</p>
+            <div className="mt-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setForm({ ...form, type: 'individual' })} className={`rounded-lg border-2 p-3 text-center ${form.type === 'individual' ? 'border-primary bg-primary/5' : 'border-input'}`}>
+                  <p className="text-sm font-semibold">Cá nhân</p>
+                </button>
+                <button type="button" onClick={() => setForm({ ...form, type: 'business' })} className={`rounded-lg border-2 p-3 text-center ${form.type === 'business' ? 'border-primary bg-primary/5' : 'border-input'}`}>
+                  <p className="text-sm font-semibold">Doanh nghiệp</p>
+                </button>
+              </div>
+
+              <Input placeholder={form.type === 'business' ? 'Tên doanh nghiệp *' : 'Tên khách hàng *'} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+              
+              {form.type === 'business' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <Input placeholder="Mã số thuế" value={form.taxCode} onChange={(event) => setForm({ ...form, taxCode: event.target.value })} />
+                  <Input placeholder="Lĩnh vực" value={form.industry} onChange={(event) => setForm({ ...form, industry: event.target.value })} />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input placeholder="Số điện thoại" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+                <Input placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+              </div>
+              
+              <Input placeholder="Địa chỉ" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <select className="crm-select w-full" value={form.sourceName} onChange={(event) => setForm({ ...form, sourceName: event.target.value })}>
+                  {['Website', 'Zalo', 'Facebook', 'Email', 'Giới thiệu', 'Danh sách công ty'].map((item) => <option key={item}>{item}</option>)}
+                </select>
+                <select className="crm-select w-full" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as 'lead' | 'active' | 'inactive' })}>
+                  <option value="lead">Lead</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="inactive">Ngừng hoạt động</option>
+                </select>
+              </div>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setOpen(false)}>Hủy</Button>
+                <Button onClick={addCustomer}>Lưu</Button>
+              </div>
             </div>
           </div>
         </>
