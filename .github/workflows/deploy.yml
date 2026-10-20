@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
 
       - name: Kill PM2 to release file locks
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           pm2 kill
@@ -25,7 +25,7 @@ jobs:
         continue-on-error: true
 
       - name: Clean Workspace and Pull Latest Code
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         working-directory: C:\apps\bace 
         run: |
           $env:Path = "C:\Program Files\Git\cmd;C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
@@ -40,7 +40,7 @@ jobs:
             exit 1
           }
       - name: Create .env files
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         working-directory: C:\apps\bace-crm
         run: |
           $envApi = @"
@@ -60,14 +60,14 @@ jobs:
           Set-Content -Path "apps\web\.env.production" -Value $envWeb
 
       - name: Install dependencies
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm ci
 
       - name: Run DB migrations, Prisma Generate and Seed
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         working-directory: C:\apps\bace\apps\api
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -83,28 +83,28 @@ jobs:
           $env:NODE_ENV = $currentEnv
 
       - name: Build shared
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/shared
 
       - name: Build API
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/api
 
       - name: Build Web
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
           npm run build -w @bace/web
 
       - name: Start PM2 and Verify Status
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
@@ -133,7 +133,7 @@ jobs:
           Write-Host "PM2 đang chạy $onlineCount ứng dụng."
 
       - name: Health check with retry
-        shell: powershell
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
         run: |
           $maxRetries = 6
           $retryCount = 0
