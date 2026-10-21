@@ -1,14 +1,15 @@
 'use client';
 
+import { Pagination } from '@/components/ui/pagination';
 import { Loading } from '@/components/loading';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, Suspense } from 'react';
-import * as XLSX from 'xlsx'; // <-- Thêm thư viện XLSX
+import * as XLSX from 'xlsx';
 import {
   Download, FileUp, LayoutGrid, Plus, Rows, Search,
 } from 'lucide-react';
 import { api } from '@/lib/auth';
-import { type CustomerRow } from '@/lib/crm';
+import { type CustomerRow, type PaginatedResponse } from '@/lib/crm';
 import { exportToExcel } from '@/lib/utils';
 import { useRealtime } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { BulkActionBar } from '@/components/bulk-action-bar';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { toast } from '@/components/ui/toast';
 import { usePermission } from '@/lib/use-permission';
+
 
 function ListPane() {
   const perm = usePermission();
@@ -41,20 +43,30 @@ function ListPane() {
     status: 'active' as 'lead' | 'active' | 'inactive',
     sourceName: 'Website', taxCode: '', industry: '',
   });
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{
+    total: number;
+    totalPages: number;
+    stats?: { lead: number; active: number; hasOpp: number };
+  }>({ total: 0, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
+  const limit = 20;
 
   const { on } = useRealtime();
 
-  // Load dữ liệu ban đầu
   useEffect(() => {
-    api<CustomerRow[]>('/customers')
-      .then(setRows)
-      .catch((err: Error) => setError(err.message || 'Không tải được danh sách'))
+    setPage(1);
+  }, [tab, q]);
+  
+useEffect(() => {
+    setLoading(true);
+    api<PaginatedResponse<CustomerRow>>(`/customers?page=${page}&limit=${limit}&q=${q}&tab=${tab}`)
+      .then((res) => {
+        setRows(res.data || []); 
+        setMeta(res.meta || { total: 0, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
+      })
+      .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-
-    api<Array<{ id: string; name: string; role?: string }>>('/users')
-      .then(setUsers)
-      .catch(() => { });
-  }, []);
+  }, [page, q, limit, tab]);
 
   async function addCustomer() {
     if (!form.name.trim()) {
@@ -299,10 +311,10 @@ function ListPane() {
   }
 
   const tabs = [
-    ['all', 'Tất cả', rows.length],
-    ['lead', 'Lead', stats.lead],
-    ['has_opp', 'Có cơ hội', rows.filter((row) => row.oppCount > 0).length],
-    ['customer', 'Khách hàng', stats.active],
+    ['all', 'Tất cả', meta.total],
+    ['lead', 'Lead', meta.stats?.lead || 0],
+    ['has_opp', 'Có cơ hội', meta.stats?.hasOpp || 0],
+    ['customer', 'Khách hàng', meta.stats?.active || 0],
   ] as const;
 
   const activeId = pathname.startsWith('/khach-hang/') ? pathname.split('/')[2] : undefined;
@@ -312,7 +324,7 @@ function ListPane() {
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
         <div className="min-w-0">
           <h1 className="font-display text-lg font-bold">Khách hàng</h1>
-          <p className="text-[11px] text-muted-foreground">{filtered.length} / {rows.length} khách hàng</p>
+          <p className="text-[11px] text-muted-foreground">{filtered.length} / {meta.total} khách hàng</p>
         </div>
         <div className="flex shrink-0 gap-1.5">
           <Button variant="outline" className="h-8 px-2.5 text-xs" title="Xuất danh sách" onClick={() => exportCustomers(filtered)}>
@@ -398,6 +410,14 @@ function ListPane() {
           isAllSelected={bulk.isAllSelected}
           isPartial={bulk.isPartial}
           activeId={activeId}
+        />
+      </div>
+
+      <div className="border-t border-border bg-card px-4">
+        <Pagination 
+          currentPage={page} 
+          totalPages={meta.totalPages} 
+          onPageChange={(newPage) => setPage(newPage)} 
         />
       </div>
 

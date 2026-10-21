@@ -12,8 +12,19 @@ export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Get()
-  list(@CurrentUser() user: AuthUser, @Query('q') q?: string, @Query('status') status?: string, @Query('tab') tab?: string) {
-    return this.customersService.list(user, q, status, tab);
+  list(
+    @CurrentUser() user: AuthUser, 
+    @Query('q') q?: string, 
+    @Query('status') status?: string, 
+    @Query('tab') tab?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.customersService.list(
+      user, q, status, tab, 
+      page ? parseInt(page) : 1, 
+      limit ? parseInt(limit) : 20
+    );
   }
 
   @Get('duplicates')

@@ -258,12 +258,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
       <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
         <aside className="app-sidebar">
-          <Link href="/" className="brand py-2 flex w-full justify-center bg-transparent hover:bg-transparent">
+          <Link href="/" className="brand py-4 mb-2 flex w-full justify-center bg-transparent hover:bg-transparent">
             {tenantLogo ? (
               <img 
                 src={tenantLogo} 
                 alt="Logo" 
-                className="h-12 w-auto max-w-[220px] object-contain bg-transparent mix-blend-multiply" 
+                className="h-10 w-auto max-w-[160px] object-contain"  
               />
             ) : (
               <>
@@ -284,9 +284,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 
               const Icon = item.icon;
               return (
-                <Link key={item.href} href={item.href} title={item.label} className={active ? 'nav-item nav-active' : 'nav-item'}>
-                  <Icon size={19} />
-                  <span className="flex-1">{item.label}</span>
+                <Link 
+                  key={item.href} 
+                  href={item.href} 
+                  title={item.label} 
+                  className={`${active ? 'nav-item nav-active' : 'nav-item'} ${collapsed ? 'justify-center px-0' : ''}`}
+                >
+                  <Icon size={19} className="shrink-0" />
+                  {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
                 </Link>
               );
             })}
@@ -296,9 +301,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <CircleHelp size={18} />
               {!collapsed && <span>Trợ giúp & hỗ trợ</span>}
             </button>
-            <button type="button" onClick={() => setCollapsed((value) => !value)} className="mt-1 inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-accent">
-              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-              {!collapsed && <span>Thu gọn thanh bên</span>}
+            <button 
+              type="button" 
+              onClick={() => setCollapsed((value) => !value)} 
+              className="mt-1 inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-accent whitespace-nowrap"
+            >
+              {collapsed ? <PanelLeftOpen size={18} className="shrink-0" /> : <PanelLeftClose size={18} className="shrink-0" />}
+              {!collapsed && <span className="truncate">Thu gọn</span>}
             </button>
             <div className="sidebar-meta relative mt-4 flex items-center gap-3 border-t border-border pt-5">
               <button type="button" onClick={() => setMenu((value) => !value)} className="flex w-full items-center gap-2 rounded-md px-1 py-1 hover:bg-accent">
@@ -311,7 +320,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <span className="mt-0.5 block text-[10px] text-muted-foreground">{roleLabel(user.role)}</span>
                   </span>
                 )}
-                {!collapsed && <ChevronsUpDown size={14} className="text-muted-foreground" />}
+                {!collapsed && <ChevronsUpDown size={14} className="text-muted-foreground shrink-0" />}
               </button>
               {menu && (
                 <div className="absolute bottom-full left-0 z-50 mb-2 w-48 rounded-xl border border-border bg-card py-1 shadow-lg">

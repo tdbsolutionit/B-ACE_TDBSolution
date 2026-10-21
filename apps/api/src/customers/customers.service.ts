@@ -4,6 +4,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { AuthUser, owned, scope } from '../common/auth';
 import { logActivity } from '../common/activity';
 import { CustomerDto, CustomerPatchDto, ImportDto, ImportRow, BulkAssignDto, BulkStatusDto, BulkDeleteDto } from './dto/customer.dto';
+import { CustomerStatus } from '@prisma/client';
 
 @Injectable()
 export class CustomersService {
@@ -12,39 +13,69 @@ export class CustomersService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  async list(user: AuthUser, q?: string, status?: string, tab?: string) {
+  async list(user: AuthUser, q?: string, status?: string, tab?: string, page: number = 1, limit: number = 20) {
     return this.prisma.withTenant(user.tenantId, async (tx) => {
-      const where = owned(user, {
-        ...(status ? { status } : {}),
+      const conditions: any[] = [];
+      if (status) conditions.push({ status: status as CustomerStatus }); 
+      if (q) {
+        conditions.push({
+          OR: [
+            { name: { contains: q, mode: 'insensitive' as const } },
+            { company: { contains: q, mode: 'insensitive' as const } },
+            { email: { contains: q, mode: 'insensitive' as const } },
+            { phone: { contains: q, mode: 'insensitive' as const } },
+            { taxCode: { contains: q, mode: 'insensitive' as const } },
+            { code: { contains: q, mode: 'insensitive' as const } },
+            { shortCode: { contains: q, mode: 'insensitive' as const } },
+          ],
+        });
+      }
+
+      const baseWhere = owned(user, {
+        ...(conditions.length > 0 ? { AND: conditions } : {}),
+      });
+
+      const tabWhere = {
         ...(tab === 'lead' ? { status: 'lead' } : {}),
         ...(tab === 'customer' ? { status: 'active' } : {}),
-        ...(q
-          ? {
-              OR: [
-                { name: { contains: q, mode: 'insensitive' as const } },
-                { company: { contains: q, mode: 'insensitive' as const } },
-                { email: { contains: q, mode: 'insensitive' as const } },
-                { phone: { contains: q, mode: 'insensitive' as const } },
-                { taxCode: { contains: q, mode: 'insensitive' as const } },
-                { code: { contains: q, mode: 'insensitive' as const } },
-                { shortCode: { contains: q, mode: 'insensitive' as const } },
-              ],
-            }
-          : {}),
-      });
-      const rows = await tx.customer.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        include: { opportunities: { select: { id: true, status: true, stage: { select: { name: true } } } } },
-      });
+        ...(tab === 'has_opp' ? { opportunities: { some: {} } } : {}),
+      };
+
+      // 2. Lấy dữ liệu và đếm số lượng
+      const [rows, totalCount, leadCount, activeCount, hasOppCount] = await Promise.all([
+        tx.customer.findMany({
+          where: { ...baseWhere, ...tabWhere },
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: { opportunities: { select: { id: true, status: true, stage: { select: { name: true } } } } },
+        }),
+        tx.customer.count({ where: baseWhere }),
+        tx.customer.count({ where: { ...baseWhere, status: 'lead' } }),
+        tx.customer.count({ where: { ...baseWhere, status: 'active' } }),
+        tx.customer.count({ where: { ...baseWhere, opportunities: { some: {} } } }),
+      ]);
+
       const users = await tx.user.findMany({
         where: scope(user.tenantId),
         select: { id: true, name: true },
       });
       const names = new Map(users.map((item) => [item.id, item.name]));
-      return rows
-        .map((row) => this.present(row, names))
-        .filter((row) => (tab === 'has_opp' ? row.oppCount > 0 : true));
+
+      return {
+        data: rows.map((row) => this.present(row, names)),
+        meta: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit) || 1, // Đảm bảo ít nhất 1 trang
+          stats: {
+            lead: leadCount,
+            active: activeCount,
+            hasOpp: hasOppCount,
+          }
+        }
+      };
     });
   }
 

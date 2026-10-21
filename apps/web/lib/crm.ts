@@ -75,3 +75,18 @@ export type ProjectFileRow = {
   size: number;
   createdAt: string;
 };
+
+export type PaginatedResponse<T> = {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    stats?: {
+      lead?: number;
+      active?: number;
+      hasOpp?: number;
+    };
+  };
+};
