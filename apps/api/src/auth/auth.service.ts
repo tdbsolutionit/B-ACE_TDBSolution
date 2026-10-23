@@ -1,0 +1,178 @@
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcryptjs';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuthUser } from '../common/auth';
+import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { Response } from 'express';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+  ) {}
+
+  async login(dto: LoginDto, res: Response) {
+    const users = await this.prisma.user.findMany({
+      where: { email: dto.email.toLowerCase(), status: 'active' },
+      take: 2,
+      include: {
+        roleRef: {
+          include: {
+            permissions: {
+              include: { permission: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (users.length !== 1) throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
+    
+    const user = users[0];
+    const ok = await bcrypt.compare(dto.password, user.passwordHash);
+    
+    if (!ok) throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
+
+    if (!user.roleId || !user.roleRef) {
+      throw new UnauthorizedException('Tài khoản chưa được gán vai trò. Liên hệ quản trị viên.');
+    }
+
+    return this.generateTokensAndSetCookie(user, res);
+  }
+
+  async refreshTokens(userId: string, refreshToken: string, res: Response) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roleRef: {
+          include: {
+            permissions: {
+              include: { permission: true },
+            },
+          },
+        },
+      },
+    });
+
+    // Nếu không có user hoặc user chưa từng login (không có hash trong DB)
+    if (!user || !user.hashedRefreshToken || !user.roleId || !user.roleRef) {
+      throw new UnauthorizedException('Truy cập bị từ chối');
+    }
+
+    // So sánh Refresh Token client gửi lên với hash trong DB
+    const refreshTokenMatches = await bcrypt.compare(refreshToken, user.hashedRefreshToken);
+    if (!refreshTokenMatches) {
+      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã bị thu hồi');
+    }
+
+    // Token Rotation: Cấp lại cặp token mới
+    return this.generateTokensAndSetCookie(user, res);
+  }
+
+  async logout(userId: string, res: Response) {
+    // Xóa hash trong DB để thu hồi token
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { hashedRefreshToken: null },
+    });
+    
+    // Xóa cookie ở trình duyệt
+    res.clearCookie('refreshToken');
+    return { success: true, message: 'Đăng xuất thành công' };
+  }
+
+  // Hàm dùng chung để tạo token và set cookie
+  private async generateTokensAndSetCookie(user: any, res: Response) {
+    const permissions = user.roleRef.permissions.map((rp: any) => rp.permission.code);
+
+    const payload: AuthUser = {
+      sub: user.id,
+      tenantId: user.tenantId,
+      role: user.role,
+      email: user.email,
+      name: user.name,
+      roleId: user.roleId,
+      roleName: user.roleRef.name,
+      teamId: user.teamId,
+      permissions,
+    };
+
+    // 1. Tạo Access Token (15 phút)
+    const accessToken = await this.jwt.signAsync(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '15m',
+    });
+
+    // 2. Tạo Refresh Token (7 ngày)
+    const refreshToken = await this.jwt.signAsync(
+      { sub: user.id },
+      { secret: process.env.JWT_REFRESH_SECRET, expiresIn: '7d' }
+    );
+
+    // 3. Hash Refresh Token và lưu vào Database
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { hashedRefreshToken },
+    });
+
+    // 4. Gắn Refresh Token vào HttpOnly Cookie (Chống XSS)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+    });
+
+    return { accessToken, user: payload };
+  }
+
+  async changePassword(user: AuthUser, dto: ChangePasswordDto) {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const dbUser = await tx.user.findUnique({ where: { id: user.sub } });
+      if (!dbUser) throw new UnauthorizedException('Người dùng không tồn tại');
+
+      const ok = await bcrypt.compare(dto.currentPassword, dbUser.passwordHash);
+      if (!ok) throw new BadRequestException('Mật khẩu hiện tại không đúng');
+
+      if (dto.currentPassword === dto.newPassword) {
+        throw new BadRequestException('Mật khẩu mới phải khác mật khẩu cũ');
+      }
+
+      const newHash = await bcrypt.hash(dto.newPassword, 10);
+      
+      // Cập nhật pass mới VÀ xóa luôn Refresh Token cũ (bắt đăng nhập lại trên các thiết bị khác)
+      await tx.user.update({
+        where: { id: user.sub },
+        data: { 
+          passwordHash: newHash,
+          hashedRefreshToken: null 
+        },
+      });
+
+      return { success: true, message: 'Đổi mật khẩu thành công' };
+    });
+  }
+
+  async getMe(user: AuthUser) {
+    return this.prisma.withTenant(user.tenantId, (tx) =>
+      tx.user.findFirst({
+        where: { id: user.sub, tenantId: user.tenantId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          status: true,
+          role: true,
+          roleRef: { select: { id: true, name: true } },
+          team: { select: { id: true, name: true } },
+        },
+      }),
+    );
+  }
+}

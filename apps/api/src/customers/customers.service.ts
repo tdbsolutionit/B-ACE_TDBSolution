@@ -35,13 +35,14 @@ export class CustomersService {
         ...(conditions.length > 0 ? { AND: conditions } : {}),
       });
 
+      
       const tabWhere = {
-        ...(tab === 'lead' ? { status: 'lead' } : {}),
-        ...(tab === 'customer' ? { status: 'active' } : {}),
+        ...(tab === 'lead' ? { status: CustomerStatus.lead } : {}),
+        ...(tab === 'customer' ? { status: CustomerStatus.active } : {}),
         ...(tab === 'has_opp' ? { opportunities: { some: {} } } : {}),
       };
 
-      // 2. Lấy dữ liệu và đếm số lượng
+
       const [rows, totalCount, leadCount, activeCount, hasOppCount] = await Promise.all([
         tx.customer.findMany({
           where: { ...baseWhere, ...tabWhere },
