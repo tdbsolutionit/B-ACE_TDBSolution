@@ -46,9 +46,11 @@ function ListPane() {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<{
     total: number;
+    page: number;
+    limit: number;
     totalPages: number;
-    stats?: { lead: number; active: number; hasOpp: number };
-  }>({ total: 0, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
+    stats?: { lead?: number; active?: number; hasOpp?: number };
+  }>({ total: 0, page: 1, limit: 20, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
   const limit = 20;
 
   const { on } = useRealtime();
