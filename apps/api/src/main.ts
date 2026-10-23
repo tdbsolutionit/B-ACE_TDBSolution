@@ -12,8 +12,13 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
-  // Nhớ bật CORS để nhận cookie từ Frontend
-  app.enableCors({ origin: 'http://localhost:3000', credentials: true });
+  const webOrigin = process.env.WEB_ORIGIN || 'http://localhost:3000';
+  app.enableCors({
+    origin: webOrigin.split(','),
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization',
+  });
   
   await app.listen(3001);
 }
