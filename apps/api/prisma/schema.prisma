@@ -55,6 +55,7 @@ model User {
   name         String
   email        String
   passwordHash String        @map("password_hash")
+  hashedRefreshToken String? @map("hashed_refresh_token")
   role         UserRole      @default(sales)
   phone        String?
   status       UserStatus    @default(active)
