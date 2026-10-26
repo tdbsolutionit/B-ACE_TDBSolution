@@ -21,6 +21,7 @@ import { RolesModule } from './roles/roles.module';
 import { TeamsModule } from './teams/teams.module';
 import { StagesModule } from './stages/stages.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -48,10 +49,17 @@ import { TenantsModule } from './tenants/tenants.module';
     StagesModule,
     FilesModule,
     TenantsModule,
+    ThrottlerModule.forRoot([{
+      ttl: 60000, 
+      limit: 10,
+    }]),
   ],
   controllers: [HealthController],
   providers: [
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { 
+      provide: APP_GUARD, 
+      useClass: JwtAuthGuard 
+    },
   ],
 })
 export class AppModule {}

@@ -70,6 +70,7 @@ model User {
   teamId       String?       @map("team_id")
   roleRef      Role?         @relation("UserRoleRef", fields: [roleId], references: [id], onDelete: SetNull)
   team         Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  tokenVersion Int           @default(0) @map("token_version")
 
   @@unique([tenantId, email])
   @@index([tenantId, status])

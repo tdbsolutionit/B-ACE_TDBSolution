@@ -17,7 +17,6 @@ export class RolesController {
     return this.rolesService.list(user);
   }
 
-  // SỬ DỤNG PHƯƠNG THỨC PUT
   @Put(':id/permissions')
   updatePermissions(
     @CurrentUser() user: AuthUser,

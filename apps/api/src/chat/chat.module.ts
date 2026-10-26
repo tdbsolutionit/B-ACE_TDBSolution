@@ -278,7 +278,9 @@ export class ChatController {
     @Body() dto: EditMessageDto,
   ) {
     const updated = await this.prisma.withTenant(user.tenantId, async (tx) => {
-      const msg = await tx.message.findUnique({ where: { id } });
+      const msg = await tx.message.findFirst({
+        where: { id, tenantId: user.tenantId },  
+      });
       if (!msg) throw new NotFoundException('Tin nhắn không tồn tại');
       if (msg.senderId !== user.sub) throw new ForbiddenException('Chỉ sửa tin của mình');
 
@@ -311,7 +313,9 @@ export class ChatController {
   @Delete('messages/:id')
   async remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
-      const msg = await tx.message.findUnique({ where: { id } });
+      const msg = await tx.message.findFirst({
+        where: { id, tenantId: user.tenantId },
+      });
       if (!msg) throw new NotFoundException('Tin nhắn không tồn tại');
       if (msg.senderId !== user.sub && user.role !== 'admin') {
         throw new ForbiddenException('Không có quyền xóa');
@@ -342,7 +346,9 @@ export class ChatController {
     @Body() dto: ReactDto,
   ) {
     const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
-      const msg = await tx.message.findUnique({ where: { id } });
+      const msg = await tx.message.findFirst({
+        where: { id, tenantId: user.tenantId },  
+      });
       if (!msg) throw new NotFoundException('Tin nhắn không tồn tại');
 
       // Toggle reaction

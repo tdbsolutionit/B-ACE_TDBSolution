@@ -74,7 +74,7 @@ async function main() {
   const stageConsult = allStages.find(s => s.name.includes('Đang tư vấn')) || allStages.find(s => s.name.includes('Đã liên hệ')) || allStages[0];
 
   // 3. Đọc CSV
-  const csvPath = resolve(__dirname, 'data/khach-hang-va-du-an.csv');
+  const csvPath = resolve(__dirname, 'datacustomers-va-du-an.csv');
   const content = readFileSync(csvPath, 'utf8');
   const lines = content.split('\n');
 

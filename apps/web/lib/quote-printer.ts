@@ -1,5 +1,5 @@
 import { api } from '@/lib/auth';
-import { docSoTien, vnd } from '@/lib/utils';
+import { convertNumberToVietnameseWords, vnd } from '@/lib/utils';
 
 type LineData = { moduleName: string; quantity: number; unitPrice: number; unit?: string; };
 type QuoteData = {
@@ -94,7 +94,7 @@ export async function printQuote(
 
   const vat = Math.round(subtotal * 0.08);
   const grandTotal = subtotal + vat;
-  const inWords = docSoTien(grandTotal);
+  const inWords = convertNumberToVietnameseWords(grandTotal);
 
   const customerName = quote.customer?.contactName || quote.customer?.name || '';
   const customerCompany = quote.customer?.company || quote.customer?.name || '';
