@@ -117,10 +117,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ─── SSE Connection ──────────────────────────────────────────
-
-  // ─── SSE Connection ──────────────────────────────────────────
   useEffect(() => {
-    // Session hiện tại có dạng { user: SessionUser }
     if (!session?.user) {
       esRef.current?.close();
       esRef.current = null;
@@ -128,7 +125,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const url = `${getApiBase()}/realtime/stream`;
+    // KHÔNG CẦN TOKEN. Trình duyệt tự gửi HTTPOnly Cookie kèm theo.
+    const baseUrl = getApiBase();
+    const url = `${baseUrl}/realtime/stream`;
+
+    // withCredentials: true BẮT BUỘC để trình duyệt gửi kèm Cookie
     const es = new EventSource(url, { withCredentials: true });
     esRef.current = es;
 
@@ -143,9 +144,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     for (const type of ALL_EVENTS) {
       const handler = (event: Event) => {
         try {
-          const data = JSON.parse(
-            (event as MessageEvent).data,
-          ) as RealtimeEvent;
+          const data = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
 
           if (TOAST_MAP[type]?.(data.payload)) {
             pushToast(type, data.payload, toastEnabledRef.current);
@@ -165,16 +164,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       for (const [type, handler] of handlers) {
         es.removeEventListener(type, handler);
       }
-
       es.close();
-
       if (esRef.current === es) {
         esRef.current = null;
       }
-
       setConnected(false);
     };
-  }, [session?.user]);
+  }, [session]);
 
 
   const on = useCallback((type: string, listener: Listener) => {

@@ -1,4 +1,3 @@
-
 import {
   Controller,
   Get,
@@ -29,87 +28,40 @@ export class RealtimeController {
   @Public()
   @Get('stream')
   async stream(@Req() req: Request, @Res() res: Response) {
-    // Xác thực bằng HttpOnly Cookie, không nhận token qua URL.
-    const token = req.cookies?.accessToken;
+    const token = req.cookies['accessToken'];
 
-    if (typeof token !== 'string' || !token) {
-      res.status(401).json({ message: 'Chưa đăng nhập' });
-      return;
+    if (!token) {
+      throw new UnauthorizedException('Thiếu cookie xác thực');
     }
-
-    let payload: RealtimeTokenPayload;
 
     try {
-      payload = this.jwt.verify<RealtimeTokenPayload>(token, {
-        secret: process.env.JWT_SECRET,
+      const payload = this.jwt.verify<RealtimeTokenPayload>(token);
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { tokenVersion: true },
       });
 
-      if (
-        !payload.sub ||
-        !payload.tenantId ||
-        typeof payload.tokenVersion !== 'number'
-      ) {
-        throw new UnauthorizedException('Token không hợp lệ');
+      if (!user || user.tokenVersion !== payload.tokenVersion) {
+        throw new UnauthorizedException('Phiên đăng nhập đã hết hạn hoặc bị thu hồi');
       }
-    } catch {
-      res.status(401).json({ message: 'Token không hợp lệ hoặc hết hạn' });
-      return;
-    }
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders(); 
+      this.realtime.addConnection(payload.tenantId, payload.sub, res);
 
-    // Kiểm tra tài khoản và phiên đăng nhập vẫn còn hiệu lực.
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: payload.sub,
-        tenantId: payload.tenantId,
-        status: 'active',
-      },
-      select: {
-        id: true,
-        tokenVersion: true,
-      },
-    });
-
-    if (!user || user.tokenVersion !== payload.tokenVersion) {
-      res.status(401).json({
-        message: 'Phiên đăng nhập đã hết hạn hoặc bị thu hồi',
+      req.on('close', () => {
+        this.realtime.removeConnection(payload.tenantId, payload.sub, res);
+        res.end();
       });
-      return;
-    }
 
-    const userId = payload.sub;
-    const tenantId = payload.tenantId;
-
-    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders?.();
-
-    const ping = setInterval(() => {
-      if (!res.writableEnded) {
-        res.write(': ping\n\n');
-      }
-    }, 25000);
-
-    res.write(
-      `event: hello\ndata: ${JSON.stringify({ userId })}\n\n`,
-    );
-
-    const sub = this.realtime.asObservable().subscribe((event) => {
-      if (event.userId && event.userId !== userId) return;
-      if (event.tenantId && event.tenantId !== tenantId) return;
-      if (res.writableEnded || res.destroyed) return;
-
-      res.write(`event: ${event.type}\n`);
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
-    });
-
-    req.on('close', () => {
-      clearInterval(ping);
-      sub.unsubscribe();
-      if (!res.writableEnded) {
+    } catch (error) {
+      if (!res.headersSent) {
+        throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
+      } else {
         res.end();
       }
-    });
+    }
   }
 }
