@@ -45,6 +45,7 @@ jobs:
           $linesApi = @(
             "DATABASE_URL=${{ secrets.DATABASE_URL }}",
             "JWT_SECRET=${{ secrets.JWT_SECRET }}",
+            "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}",
             "JWT_EXPIRES=8h",
             "API_PORT=3001",
             "WEB_ORIGIN=http://192.168.103.8:3000",
