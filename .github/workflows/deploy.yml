@@ -1,9 +1,7 @@
 name: Deploy to Production
-
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
   deploy:
@@ -24,7 +22,7 @@ jobs:
           Start-Sleep -Seconds 2
         continue-on-error: true
 
-      - name: Clean Workspace and Pull Latest Code
+      - name: Clean Workspace and Checkout Release Tag
         shell: powershell
         working-directory: C:\apps\bace
         run: |
@@ -32,8 +30,8 @@ jobs:
           git reset --hard HEAD
           git clean -fd
           git fetch --all --tags
-          git checkout main
-          git pull origin main
+
+          git checkout tags/${{ github.ref_name }} -f
           
           if (-not (Test-Path "C:\apps\bace\ecosystem.config.js")) {
             Write-Error "LỖI: File ecosystem.config.js bị thiếu! Hãy commit file này lên Git."
@@ -64,6 +62,7 @@ jobs:
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
+          # Sử dụng npm ci để đảm bảo cài đúng version trong package-lock.json
           npm ci
 
       - name: Run DB migrations and Prisma Generate
@@ -73,7 +72,12 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          npx prisma db push --accept-data-loss
+          
+          # KHUYẾN NGHỊ: Nếu có dùng Prisma Migrate, hãy dùng lệnh dưới đây thay vì db push
+          # npx prisma migrate deploy
+          
+          # Nếu bạn vẫn muốn dùng db push, hãy bỏ cờ --accept-data-loss để CI/CD chặn lại nếu có rủi ro
+          npx prisma db push
           npx prisma generate
 
       - name: Build shared
@@ -137,9 +141,12 @@ jobs:
             try {
               $retryCount++
               Write-Host "Checking connection (Attempt $retryCount/$maxRetries)..."
-              $response = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
-              if ($response.StatusCode -eq 200) {
-                  Write-Host "Health check OK"
+              # Check cả Frontend và Backend để chắc chắn 2 app đều sống
+              $webResponse = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+              $apiResponse = Invoke-WebRequest -Uri "http://localhost:3001" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+              
+              if ($webResponse.StatusCode -eq 200 -and $apiResponse.StatusCode -eq 200) {
+                  Write-Host "Health check OK (Web + API)"
                   $success = $true
               }
             } catch {
