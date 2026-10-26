@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import ExcelJS from 'exceljs';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -26,164 +27,105 @@ export function roleLabel(role: string) {
   return 'Sales';
 }
 
-export function exportToCsv(
+// --- EXPORT TO EXCEL ---
+export async function exportToExcel(
   filename: string,
   rows: Record<string, any>[],
   columns: Array<{ key: string; label: string }>,
 ) {
   if (!rows || rows.length === 0) return;
 
-  const escapeCell = (val: any) => {
-    if (val === null || val === undefined) return '""';
-    const str = String(val).replace(/"/g, '""');
-    return `"${str}"`;
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Sheet 1');
+
+  worksheet.columns = columns.map((col) => ({
+    header: col.label,
+    key: col.key,
+    width: 20,
+  }));
+
+  worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  worksheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFC9A961' },
   };
+  worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' };
 
-  const headerRow = columns.map((col) => escapeCell(col.label)).join(',');
-  const dataRows = rows.map((row) =>
-    columns.map((col) => escapeCell(row[col.key])).join(','),
-  );
+  rows.forEach((row) => {
+    worksheet.addRow(row);
+  });
 
-  // sep=, tells Excel explicitly to split by comma instead of putting in 1 column
-  const csvContent = '\uFEFFsep=,\r\n' + [headerRow, ...dataRows].join('\r\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}.csv`);
+  link.href = url;
+  link.download = `${filename}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  window.URL.revokeObjectURL(url);
 }
 
-/**
- * Xuất dữ liệu sang định dạng Excel (.xls) chuẩn bảng tính,
- * đảm bảo 100% mở bằng Excel các cột được phân tách rõ ràng, có viền và màu tiêu đề.
- */
-export function exportToExcel(
-  filename: string,
-  rows: Record<string, any>[],
-  columns: Array<{ key: string; label: string }>,
-) {
-  if (!rows || rows.length === 0) return;
-
-  const thHtml = columns
-    .map(
-      (c) =>
-        `<th style="background-color:#C9A961;color:#ffffff;font-weight:bold;padding:10px;border:1px solid #b3934b;text-align:left;">${c.label}</th>`,
-    )
-    .join('');
-
-  const trHtml = rows
-    .map((row) => {
-      const td = columns
-        .map((c) => {
-          const val = row[c.key] ?? '';
-          return `<td style="padding:8px 10px;border:1px solid #e2e8f0;font-size:13px;">${String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`;
-        })
-        .join('');
-      return `<tr>${td}</tr>`;
-    })
-    .join('');
-
-  const template = `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-    <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-      <!--[if gte mso 9]>
-      <xml>
-        <x:ExcelWorkbook>
-          <x:ExcelWorksheets>
-            <x:ExcelWorksheet>
-              <x:Name>Khách hàng</x:Name>
-              <x:WorksheetOptions>
-                <x:DisplayGridlines/>
-              </x:WorksheetOptions>
-            </x:ExcelWorksheet>
-          </x:ExcelWorksheets>
-        </x:ExcelWorkbook>
-      </xml>
-      <![endif]-->
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
-        table { border-collapse: collapse; width: 100%; }
-      </style>
-    </head>
-    <body>
-      <table>
-        <thead><tr>${thHtml}</tr></thead>
-        <tbody>${trHtml}</tbody>
-      </table>
-    </body>
-    </html>
-  `;
-
-  const blob = new Blob(['\uFEFF' + template], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}.xls`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-/** Đọc số tiền thành chữ Tiếng Việt */
-export function docSoTien(amount: number): string {
+export function convertNumberToVietnameseWords(amount: number): string {
   if (!amount || isNaN(amount) || amount === 0) return 'Không đồng';
-  const ChuSo = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
-  const Tien = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ'];
+  
+  const DIGITS = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+  const SCALES = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ'];
 
-  function docBlock3(so: number, daydu: boolean): string {
-    let chuoi = '';
-    const tram = Math.floor(so / 100);
-    const chuc = Math.floor((so % 100) / 10);
-    const donvi = so % 10;
-    if (daydu || tram > 0) {
-      chuoi += ' ' + ChuSo[tram] + ' trăm';
-      chuoi += docChuc(chuc, donvi);
+  function readThreeDigits(num: number, isFull: boolean): string {
+    let text = '';
+    const hundreds = Math.floor(num / 100);
+    const tens = Math.floor((num % 100) / 10);
+    const units = num % 10;
+    
+    if (isFull || hundreds > 0) {
+      text += ' ' + DIGITS[hundreds] + ' trăm';
+      text += readTwoDigits(tens, units);
     } else {
-      chuoi += docChuc(chuc, donvi);
+      text += readTwoDigits(tens, units);
     }
-    return chuoi;
+    return text;
   }
 
-  function docChuc(chuc: number, donvi: number): string {
-    let chuoi = '';
-    if (chuc > 1) {
-      chuoi += ' ' + ChuSo[chuc] + ' mươi';
-      if (donvi === 1) chuoi += ' mốt';
-    } else if (chuc === 1) {
-      chuoi += ' mười';
-      if (donvi === 1) chuoi += ' một';
-    } else if (donvi > 0) {
-      chuoi += ' lẻ';
+  function readTwoDigits(tens: number, units: number): string {
+    let text = '';
+    if (tens > 1) {
+      text += ' ' + DIGITS[tens] + ' mươi';
+      if (units === 1) text += ' mốt';
+    } else if (tens === 1) {
+      text += ' mười';
+      if (units === 1) text += ' một';
+    } else if (units > 0) {
+      text += ' lẻ';
     }
-    if (donvi === 5 && chuc >= 1) {
-      chuoi += ' lăm';
-    } else if (donvi > 1 || (donvi === 1 && chuc === 0)) {
-      chuoi += ' ' + ChuSo[donvi];
+    
+    if (units === 5 && tens >= 1) {
+      text += ' lăm';
+    } else if (units > 1 || (units === 1 && tens === 0)) {
+      text += ' ' + DIGITS[units];
     }
-    return chuoi;
+    return text;
   }
 
-  let so = Math.round(Math.abs(amount));
-  let i = 0;
-  let ketqua = '';
-  while (so > 0) {
-    const block = so % 1000;
+  let remainingNumber = Math.round(Math.abs(amount));
+  let scaleIndex = 0;
+  let result = '';
+  
+  while (remainingNumber > 0) {
+    const block = remainingNumber % 1000;
     if (block > 0) {
-      const chuoiBlock = docBlock3(block, so > 999);
-      ketqua = chuoiBlock + ' ' + Tien[i] + ' ' + ketqua;
+      const blockText = readThreeDigits(block, remainingNumber > 999);
+      result = blockText + ' ' + SCALES[scaleIndex] + ' ' + result;
     }
-    so = Math.floor(so / 1000);
-    i++;
+    remainingNumber = Math.floor(remainingNumber / 1000);
+    scaleIndex++;
   }
-  ketqua = ketqua.trim().replace(/\s+/g, ' ');
-  if (!ketqua) return 'Không đồng';
-  const capitalized = ketqua.charAt(0).toUpperCase() + ketqua.slice(1);
-  return `${capitalized} đồng chẵn`;
+  
+  result = result.trim().replace(/\s+/g, ' ');
+  if (!result) return 'Không đồng';
+  
+  const capitalizedResult = result.charAt(0).toUpperCase() + result.slice(1);
+  return `${capitalizedResult} đồng chẵn`;
 }
-

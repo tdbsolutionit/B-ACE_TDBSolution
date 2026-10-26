@@ -72,64 +72,125 @@ export class AuthService {
     return this.generateTokensAndSetCookie(user, res);
   }
 
-  async logout(userId: string, res: Response) {
-    // Xóa hash trong DB để thu hồi token
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { hashedRefreshToken: null },
-    });
-    
-    // Xóa cookie ở trình duyệt
-    res.clearCookie('refreshToken');
-    return { success: true, message: 'Đăng xuất thành công' };
-  }
+
+async logout(userId: string, res: Response) {
+  await this.prisma.user.update({
+    where: { id: userId },
+    data: { hashedRefreshToken: null },
+  });
+
+  const secure = process.env.NODE_ENV === 'production';
+
+  res.clearCookie('accessToken', {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    path: '/',
+  });
+
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    path: '/api/auth',
+  });
+
+  return {
+    success: true,
+    message: 'Đăng xuất thành công',
+  };
+}
+
 
   // Hàm dùng chung để tạo token và set cookie
-  private async generateTokensAndSetCookie(user: any, res: Response) {
-    const permissions = user.roleRef.permissions.map((rp: any) => rp.permission.code);
 
-    const payload: AuthUser = {
-      sub: user.id,
-      tenantId: user.tenantId,
-      role: user.role,
-      email: user.email,
-      name: user.name,
-      roleId: user.roleId,
-      roleName: user.roleRef.name,
-      teamId: user.teamId,
-      permissions,
-    };
-
-    // 1. Tạo Access Token (15 phút)
-    const accessToken = await this.jwt.signAsync(payload, {
-      secret: process.env.JWT_SECRET,
-      expiresIn: '15m',
-    });
-
-    // 2. Tạo Refresh Token (7 ngày)
-    const refreshToken = await this.jwt.signAsync(
-      { sub: user.id },
-      { secret: process.env.JWT_REFRESH_SECRET, expiresIn: '7d' }
+private async generateTokensAndSetCookie(
+  user: {
+    id: string;
+    tenantId: string;
+    role: AuthUser['role'];
+    email: string;
+    name: string;
+    roleId: string | null;
+    teamId: string | null;
+    tokenVersion: number;
+    roleRef: {
+      name: string;
+      permissions: Array<{
+        permission: { code: string };
+      }>;
+    } | null;
+  },
+  res: Response,
+) {
+  if (!user.roleId || !user.roleRef) {
+    throw new UnauthorizedException(
+      'Tài khoản chưa được gán vai trò hợp lệ',
     );
-
-    // 3. Hash Refresh Token và lưu vào Database
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { hashedRefreshToken },
-    });
-
-    // 4. Gắn Refresh Token vào HttpOnly Cookie (Chống XSS)
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
-    });
-
-    return { accessToken, user: payload };
   }
+  if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+    throw new Error('Thiếu cấu hình JWT_SECRET hoặc JWT_REFRESH_SECRET');
+  }
+
+  const permissions = user.roleRef.permissions.map(
+    (item) => item.permission.code,
+  );
+
+  const payload: AuthUser = {
+    sub: user.id,
+    tenantId: user.tenantId,
+    role: user.role,
+    email: user.email,
+    name: user.name,
+    roleId: user.roleId,
+    roleName: user.roleRef.name,
+    teamId: user.teamId,
+    permissions,
+    tokenVersion: user.tokenVersion,
+  };
+
+  const accessToken = await this.jwt.signAsync(payload, {
+    secret: process.env.JWT_SECRET,
+    expiresIn: '15m',
+  });
+
+  const refreshToken = await this.jwt.signAsync(
+    { sub: user.id },
+    {
+      secret: process.env.JWT_REFRESH_SECRET,
+      expiresIn: '7d',
+    },
+  );
+
+  const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+
+  await this.prisma.user.update({
+    where: { id: user.id },
+    data: { hashedRefreshToken },
+  });
+
+  const secure = process.env.NODE_ENV === 'production';
+
+  res.cookie('accessToken', accessToken, {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 15 * 60 * 1000,
+  });
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    path: '/api/auth',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  // Không trả accessToken hoặc refreshToken cho JavaScript.
+  return { user: payload };
+}
+
 
   async changePassword(user: AuthUser, dto: ChangePasswordDto) {
     return this.prisma.withTenant(user.tenantId, async (tx) => {
@@ -175,4 +236,36 @@ export class AuthService {
       }),
     );
   }
+
+
+async refreshFromCookie(
+  refreshToken: string,
+  res: Response,
+) {
+  if (!process.env.JWT_REFRESH_SECRET) {
+    throw new Error('Thiếu cấu hình JWT_REFRESH_SECRET');
+  }
+
+  let payload: { sub: string };
+
+  try {
+    payload = await this.jwt.verifyAsync<{ sub: string }>(
+      refreshToken,
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+      },
+    );
+  } catch {
+    throw new UnauthorizedException(
+      'Refresh token không hợp lệ hoặc đã hết hạn',
+    );
+  }
+
+  if (!payload.sub) {
+    throw new UnauthorizedException('Refresh token không hợp lệ');
+  }
+
+  return this.refreshTokens(payload.sub, refreshToken, res);
+}
+
 }

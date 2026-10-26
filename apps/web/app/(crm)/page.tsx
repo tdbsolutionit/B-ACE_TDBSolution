@@ -79,7 +79,7 @@ export default function DashboardPage() {
           <h1 className="font-display text-[28px] font-bold">Tổng quan</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">{hello}, {first} 👋 Đây là tình hình kinh doanh của bạn hôm nay.</p>
         </div>
-        <Link href="/bao-cao" className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
+        <Link href="/reports" className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
           <CalendarDays size={16} /> Xem báo cáo
         </Link>
       </div>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
               <h2 className="font-display text-[15px] font-semibold">Công việc</h2>
               <p className="mt-1 text-xs text-muted-foreground">{done}/{tasks.length} công việc đã hoàn thành</p>
             </div>
-            <Link href="/cong-viec" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Xem tất cả <ArrowRight size={12} /></Link>
+            <Link href="/tasks" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Xem tất cả <ArrowRight size={12} /></Link>
           </div>
           {tasks.map((task) => (
             <div key={task.id} className="task-row">

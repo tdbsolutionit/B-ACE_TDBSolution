@@ -159,7 +159,7 @@ export function HotDealsWidget({ max = 8 }: Props) {
           </div>
         </div>
         <Link
-          href="/du-an"
+          href="/projects"
           className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
         >
           Pipeline <ArrowRight size={11} />
@@ -231,7 +231,7 @@ export function HotDealsWidget({ max = 8 }: Props) {
         {display.map(({ deal, risk }) => (
           <li key={deal.id}>
             <Link
-              href={`/du-an/${deal.id}`}
+              href={`/projects/${deal.id}`}
               className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/50 ${
                 risk?.level === 'urgent' ? 'bg-red-50/40' : ''
               }`}

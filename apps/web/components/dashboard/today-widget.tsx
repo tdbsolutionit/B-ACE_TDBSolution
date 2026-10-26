@@ -48,7 +48,7 @@ export function TodayWidget({ tasks, onToggle }: Props) {
           </div>
         </div>
         <Link
-          href="/cong-viec"
+          href="/tasks"
           className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
         >
           Xem tất cả <ArrowRight size={11} />

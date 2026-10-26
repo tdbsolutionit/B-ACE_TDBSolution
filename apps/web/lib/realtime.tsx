@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '@/components/ui/toast';
 import { getApiBase, useAuth } from '@/lib/auth';
 
@@ -40,7 +40,6 @@ const TOAST_MAP: Record<string, (p: any) => string | null> = {
   'customer:created': (p) => `👤 Khách hàng mới: ${p.name}`,
   'customer:assigned': (p) => `👥 Đã gán ${p.count} khách cho ${p.assigneeName}`,
   'quote:accepted': (p) => `🎉 Báo giá "${p.quoteNumber}" đã được chốt thành công!`,
-  // Chat events — chỉ listen, KHÔNG toast (để UI tự handle)
   'message:created': () => null,
   'message:updated': () => null,
   'message:deleted': () => null,
@@ -49,26 +48,18 @@ const TOAST_MAP: Record<string, (p: any) => string | null> = {
   'room:read': () => null,
 };
 
-// Tất cả events cần đăng ký SSE listener
 const ALL_EVENTS = Object.keys(TOAST_MAP);
 
-// ─── Đọc setting từ localStorage ───────────────────────────────
 function readToastSetting(): boolean {
   if (typeof window === 'undefined') return true;
   return window.localStorage.getItem(TOAST_KEY) !== 'false';
 }
 
-// ─── Buffer để gộp toast khi nhiều event cùng lúc ──────────────
-type ToastBuffer = {
-  count: number;
-  lastPayload: any;
-  timer: number | null;
-};
+type ToastBuffer = { count: number; lastPayload: any; timer: number | null; };
 const toastBuffers = new Map<string, ToastBuffer>();
 
 function pushToast(type: string, payload: any, enabled: boolean) {
   if (!enabled) return;
-
   const existing = toastBuffers.get(type);
   if (existing && existing.timer) {
     existing.count += 1;
@@ -79,24 +70,17 @@ function pushToast(type: string, payload: any, enabled: boolean) {
   const buffer: ToastBuffer = { count: 1, lastPayload: payload, timer: null };
   toastBuffers.set(type, buffer);
 
-  // Đợi 500ms để gộp các event cùng loại
   buffer.timer = window.setTimeout(() => {
     const b = toastBuffers.get(type);
     if (!b) return;
-
     const msg = TOAST_MAP[type]?.(b.lastPayload);
-    if (!msg) {
-      toastBuffers.delete(type);
-      return;
-    }
-
+    if (!msg) { toastBuffers.delete(type); return; }
     if (b.count > 1) {
       const prefix = msg.split(':')[0];
       toast.info(`${prefix}: ${b.count} mục mới`, { duration: 4000 });
     } else {
       toast.info(msg, { duration: 4000 });
     }
-
     toastBuffers.delete(type);
   }, 500);
 }
@@ -109,14 +93,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const esRef = useRef<EventSource | null>(null);
   const toastEnabledRef = useRef(true);
 
-  // Đọc setting lần đầu
   useEffect(() => {
     const value = readToastSetting();
     setToastEnabledState(value);
     toastEnabledRef.current = value;
   }, []);
 
-  // Lắng nghe thay đổi setting từ tab khác
   useEffect(() => {
     function onStorage(e: StorageEvent) {
       if (e.key !== TOAST_KEY) return;
@@ -135,48 +117,65 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ─── SSE Connection ──────────────────────────────────────────
+
+  // ─── SSE Connection ──────────────────────────────────────────
   useEffect(() => {
-    if (!session) {
+    // Session hiện tại có dạng { user: SessionUser }
+    if (!session?.user) {
       esRef.current?.close();
       esRef.current = null;
       setConnected(false);
       return;
     }
 
-    const token = session.accessToken;
-    const url = `${getApiBase()}/realtime/stream?token=${encodeURIComponent(token)}`;
-
-    const es = new EventSource(url);
+    const url = `${getApiBase()}/realtime/stream`;
+    const es = new EventSource(url, { withCredentials: true });
     esRef.current = es;
 
     es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
+
+    es.onerror = () => {
+      setConnected(false);
+    };
+
+    const handlers = new Map<string, (event: Event) => void>();
 
     for (const type of ALL_EVENTS) {
-      es.addEventListener(type, (e) => {
+      const handler = (event: Event) => {
         try {
-          const data = JSON.parse((e as MessageEvent).data) as RealtimeEvent;
+          const data = JSON.parse(
+            (event as MessageEvent).data,
+          ) as RealtimeEvent;
 
-          // Toast (chỉ với events có trong TOAST_MAP trả string, không phải null)
-          const toastFn = TOAST_MAP[type];
-          const msg = toastFn ? toastFn(data.payload) : null;
-          if (msg) {
+          if (TOAST_MAP[type]?.(data.payload)) {
             pushToast(type, data.payload, toastEnabledRef.current);
           }
 
-          // Custom listeners LUÔN chạy
-          const set = listenersRef.current.get(type);
-          set?.forEach((fn) => fn(data));
-        } catch { }
-      });
+          listenersRef.current.get(type)?.forEach((fn) => fn(data));
+        } catch (error) {
+          console.error(`Không thể xử lý realtime event "${type}"`, error);
+        }
+      };
+
+      handlers.set(type, handler);
+      es.addEventListener(type, handler);
     }
 
     return () => {
+      for (const [type, handler] of handlers) {
+        es.removeEventListener(type, handler);
+      }
+
       es.close();
-      esRef.current = null;
+
+      if (esRef.current === es) {
+        esRef.current = null;
+      }
+
       setConnected(false);
     };
-  }, [session]);
+  }, [session?.user]);
+
 
   const on = useCallback((type: string, listener: Listener) => {
     if (!listenersRef.current.has(type)) {
@@ -187,11 +186,15 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       listenersRef.current.get(type)?.delete(listener);
     };
   }, []);
+  const contextValue = useMemo(() => ({
+    connected,
+    toastEnabled,
+    setToastEnabled,
+    on
+  }), [connected, toastEnabled, setToastEnabled, on]);
 
   return (
-    <RealtimeContext.Provider
-      value={{ connected, toastEnabled, setToastEnabled, on }}
-    >
+    <RealtimeContext.Provider value={contextValue}>
       {children}
     </RealtimeContext.Provider>
   );

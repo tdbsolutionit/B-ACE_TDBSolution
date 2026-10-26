@@ -1,6 +1,18 @@
-import { Body, Controller, Get, Patch, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Request, Response } from 'express';
 import { Public, AuthUser } from '../common/auth';
 import { CurrentUser } from '../common/current-user.decorator';
 import { AuthService } from './auth.service';
@@ -8,12 +20,14 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
 @ApiTags('auth')
+@ApiBearerAuth()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -23,26 +37,27 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
+  @HttpCode(HttpStatus.OK)
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies['refreshToken'];
-    if (!refreshToken) throw new UnauthorizedException('Không tìm thấy Refresh Token');
+    const refreshToken = req.cookies?.refreshToken;
 
-    try {
-      // Xác thực Refresh token để lấy userId
-      const payload = await this.authService['jwt'].verifyAsync(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET,
-      });
-      
-      return this.authService.refreshTokens(payload.sub, refreshToken, res);
-    } catch (e) {
-      throw new UnauthorizedException('Refresh Token hết hạn hoặc không hợp lệ');
+    if (
+      typeof refreshToken !== 'string' ||
+      refreshToken.length === 0
+    ) {
+      throw new UnauthorizedException(
+        'Không tìm thấy Refresh Token',
+      );
     }
+
+    return this.authService.refreshFromCookie(refreshToken, res);
   }
 
   @Post('logout')
+  @HttpCode(HttpStatus.OK)
   async logout(
     @CurrentUser() user: AuthUser,
     @Res({ passthrough: true }) res: Response,
