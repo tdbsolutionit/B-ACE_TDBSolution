@@ -7,6 +7,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const nextConfig = {
   outputFileTracingRoot: root,
   transpilePackages: ['@bace/shared'],
+  serverExternalPackages: ["exceljs", "archiver", "glob"],
   reactStrictMode: true,
 };
 
