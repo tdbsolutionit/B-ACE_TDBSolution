@@ -53,7 +53,7 @@ jobs:
           [System.IO.File]::WriteAllLines("C:\apps\bace\apps\api\.env", $linesApi, (New-Object System.Text.UTF8Encoding $False))
 
           $linesWeb = @(
-            "NEXT_PUBLIC_API_URL=http://192.168.103.8:3001"
+            "NEXT_PUBLIC_API_URL=http://192.168.103.8:3001/api"
           )
           [System.IO.File]::WriteAllLines("C:\apps\bace\apps\web\.env.production", $linesWeb, (New-Object System.Text.UTF8Encoding $False))
 
