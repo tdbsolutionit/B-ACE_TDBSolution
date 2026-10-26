@@ -133,25 +133,45 @@ jobs:
       - name: Health check with retry
         shell: powershell
         run: |
-          $maxRetries = 6
+          $maxRetries = 10 # Tăng thời gian chờ lên 50 giây đề phòng Next.js khởi động chậm
           $retryCount = 0
           $success = $false
           
           while ($retryCount -lt $maxRetries -and -not $success) {
+            $retryCount++
+            Write-Host "Checking connection (Attempt $retryCount/$maxRetries)..."
+            
+            $webOk = $false
+            $apiOk = $false
+
+            # 1. Check Frontend (Next.js)
             try {
-              $retryCount++
-              Write-Host "Checking connection (Attempt $retryCount/$maxRetries)..."
-              # Check cả Frontend và Backend để chắc chắn 2 app đều sống
               $webResponse = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
-              $apiResponse = Invoke-WebRequest -Uri "http://localhost:3001" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
-              
-              if ($webResponse.StatusCode -eq 200 -and $apiResponse.StatusCode -eq 200) {
-                  Write-Host "Health check OK (Web + API)"
-                  $success = $true
-              }
+              if ($webResponse.StatusCode -eq 200) { $webOk = $true }
             } catch {
-              Write-Host "Not ready, waiting 5s..."
-              Start-Sleep -Seconds 5
+              Write-Host "  -> Web error: $($_.Exception.Message)" # In ra lỗi thật
+            }
+
+            # 2. Check API (NestJS)
+            try {
+              $apiResponse = Invoke-WebRequest -Uri "http://localhost:3001" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+              if ($apiResponse.StatusCode -eq 200) { $apiOk = $true }
+            } catch {
+              # Xử lý bẫy 404 của NestJS: 404 nghĩa là app đang chạy nhưng không có route gốc
+              if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 404) {
+                $apiOk = $true
+                Write-Host "  -> API returned 404 (App is running)"
+              } else {
+                Write-Host "  -> API error: $($_.Exception.Message)" # In ra lỗi thật
+              }
+            }
+            
+            if ($webOk -and $apiOk) {
+                Write-Host "Health check OK (Web + API)"
+                $success = $true
+            } else {
+                Write-Host "Not ready, waiting 5s..."
+                Start-Sleep -Seconds 5
             }
           }
           
