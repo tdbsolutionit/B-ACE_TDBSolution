@@ -37,7 +37,7 @@ export class SearchController {
         }),
       ]);
       return {
-        customers: customers.map((row) => ({ id: row.id, name: row.name, phone: row.phone, href: `customers/${row.id}` })),
+        customers: customers.map((row) => ({ id: row.id, name: row.name, phone: row.phone, href: `/customers/${row.id}` })),
         opportunities: opportunities.map((row) => ({ id: row.id, name: row.name, customer: row.customer?.name?? 'Khách vãng lai', href: `/projects/${row.id}` })),
         quotes: quotes.map((row) => ({ id: row.id, name: `${row.quoteNumber} · ${row.title}`, customer: row.customer?.name ?? 'Khách vãng lai', href: `/quotes/${row.id}` })),
       };

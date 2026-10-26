@@ -138,7 +138,7 @@ export function CommandPalette() {
                 <Item
                   key={c.id}
                   value={`kh ${c.name} ${c.company || ''} ${c.phone || ''}`}
-                  onSelect={() => go(`customers/${c.id}`)}
+                  onSelect={() => go(`/customers/${c.id}`)}
                   icon={
                     <span className="avatar-initials inline-flex size-7 items-center justify-center rounded-full text-[10px] font-semibold">
                       {initials(c.name)}

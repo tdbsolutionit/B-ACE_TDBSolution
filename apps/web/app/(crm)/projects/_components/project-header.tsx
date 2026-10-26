@@ -18,7 +18,7 @@ export function ProjectHeader({ project, stages, onEdit, onChooseStage }: Projec
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <Link href="customers" className="hover:text-foreground">Khách hàng</Link>
         <ChevronRight size={12} />
-        <Link href={`customers/${project.customerId}`} className="hover:text-foreground">{project.customer}</Link>
+        <Link href={`/customers/${project.customerId}`} className="hover:text-foreground">{project.customer}</Link>
         <ChevronRight size={12} />
         <span className="font-medium text-foreground">{project.name}</span>
       </div>
@@ -48,7 +48,7 @@ export function ProjectHeader({ project, stages, onEdit, onChooseStage }: Projec
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={onEdit} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">Sửa</button>
-            <Link href={`customers/${project.customerId}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs hover:bg-accent"><User size={14} /> Khách hàng</Link>
+            <Link href={`/customers/${project.customerId}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs hover:bg-accent"><User size={14} /> Khách hàng</Link>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">

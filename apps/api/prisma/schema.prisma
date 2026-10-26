@@ -253,6 +253,7 @@ model QuoteItem {
   quoteId    String @map("quote_id")
   moduleCode String @map("module_code")
   moduleName String @map("module_name")
+  unit String @default("")
   quantity   Int    @default(1)
   unitPrice  BigInt @default(0) @map("unit_price")
   total      BigInt @default(0)

@@ -117,7 +117,7 @@ export function CustomerTable({
           return (
             <tr
               key={row.id}
-              onClick={() => router.push(`customers/${row.id}`)}
+              onClick={() => router.push(`/customers/${row.id}`)}
               className={`group cursor-pointer transition-colors hover:bg-muted/40 ${
                 isActive ? 'bg-muted/60' : isSelected ? 'bg-primary/5' : ''
               }`}

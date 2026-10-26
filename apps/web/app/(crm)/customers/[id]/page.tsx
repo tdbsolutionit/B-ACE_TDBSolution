@@ -1,8 +1,7 @@
 'use client';
-
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Building2, CheckCircle, ExternalLink, FolderKanban, History, Mail, MapPin,
   Pencil, Phone, Plus, StickyNote, TrendingUp, User, Wallet, X
@@ -43,6 +42,7 @@ export default function CustomerDetailPage() {
   const [projectProbability, setProjectProbability] = useState(20);
   const [projectCloseDate, setProjectCloseDate] = useState('');
   const [projectDesc, setProjectDesc] = useState('');
+  const router = useRouter();
 
   async function load() {
     const row = await api<Detail>(`/customers/${params.id}`);
@@ -162,12 +162,13 @@ export default function CustomerDetailPage() {
     <div className="w-full px-5 py-4">
       {/* HEADER: back + actions */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="customers"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground xl:hidden"
-        >
-          <ArrowLeft size={14} /> Danh sách
-        </Link>
+        <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground xl:hidden"
+          >
+            <ArrowLeft size={14} /> Danh sách
+        </button>
 
         <div className="ml-auto flex gap-2">
           {!isBusiness && perm.has('customer:update') && (
@@ -180,14 +181,15 @@ export default function CustomerDetailPage() {
             </button>
           )}
           {!isFullMode && (
-            <button
-              type="button"
-              onClick={() => window.open(`customers/${customer.id}?full=1`, '_blank')}
+            <Link
+              href={`/customers/${customer.id}?full=1`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent whitespace-nowrap"
               title="Mở chi tiết trong tab mới"
             >
               <ExternalLink size={14} /> <span className="hidden sm:inline">Mở rộng</span>
-            </button>
+            </Link>
           )}
           {perm.has('customer:update') && (
             <button
@@ -199,13 +201,14 @@ export default function CustomerDetailPage() {
             </button>
           )}
 
-          <Link
-            href="customers"
+          <button
+            type="button"
+            onClick={() => router.back()}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
             title="Đóng chi tiết"
           >
             <X size={16} />
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -341,7 +344,7 @@ export default function CustomerDetailPage() {
                         <tr
                           key={project.id}
                           className="cursor-pointer hover:bg-muted/40 transition-colors"
-                          onClick={() => { window.location.href = `/projects/${project.id}`; }}
+                          onClick={() => { router.push(`/projects/${project.id}`); }}
                         >
                           <td className="whitespace-nowrap font-mono text-xs font-semibold text-primary">{pCode || '—'}</td>
                           <td>

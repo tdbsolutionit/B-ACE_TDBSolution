@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CustomerListPane } from '@/app/(crm)/customers/_components/customer-list-pane';
 
 const STORAGE_KEY = 'bace.split.leftPct';
-const DEFAULT_PCT = 70;      // ← đổi ở đây nếu muốn hẹp/rộng hơn
+const DEFAULT_PCT = 70;
 const MIN_PCT = 25;
 const MAX_PCT = 65;
 
@@ -13,8 +13,12 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  
   const isFullMode = searchParams.get('full') === '1';
-  const hasDetail = /^\customers\/[^/]+/.test(pathname);
+  
+  // SỬA LỖI REGEX TẠI ĐÂY: Thêm dấu / chuẩn xác
+  const hasDetail = /^\/customers\/[^/]+/.test(pathname);
+  
   const [isNarrow, setIsNarrow] = useState(false);
   const [leftPct, setLeftPct] = useState(DEFAULT_PCT);
   const [dragging, setDragging] = useState(false);
@@ -29,22 +33,20 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-  // Load saved pct
-    // ESC để đóng preview (quay về danh sách)
+
+  // ESC để đóng preview (quay về danh sách)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
       const target = e.target as HTMLElement;
-      // Không đóng nếu đang gõ trong input/textarea/modal
       if (
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable
       ) return;
-      // Không đóng nếu đang mở modal (có class modal-backdrop ở DOM)
       if (document.querySelector('.modal-backdrop')) return;
 
-      if (hasDetail) router.push('customers');
+      if (hasDetail) router.push('/customers');
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -84,6 +86,17 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     };
   }, [dragging, onMouseMove, onMouseUp]);
 
+  // SỬA LỖI LOGIC RENDER TẠI ĐÂY: Ưu tiên check isFullMode trước
+  if (isFullMode) {
+    return (
+      <div className="h-full w-full">
+        <div className="subtle-scrollbar h-full overflow-auto">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   // Chưa chọn khách → list full width
   if (!hasDetail) {
     return (
@@ -94,7 +107,7 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
   }
 
   // Màn hình hẹp → chỉ detail
-  if (isNarrow || isFullMode) {
+  if (isNarrow) {
     return (
       <div className="h-full w-full">
         <div className="subtle-scrollbar h-full overflow-auto">
@@ -123,9 +136,7 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
           dragging ? 'bg-primary/60' : 'bg-border hover:bg-primary/40'
         }`}
       >
-        {/* Vùng bắt chuột rộng hơn để dễ kéo */}
         <div className="absolute inset-y-0 -left-1 -right-1" />
-        {/* Visual handle nhỏ ở giữa */}
         <div className={`absolute left-1/2 top-1/2 h-8 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors ${
           dragging ? 'bg-primary' : 'bg-border/0 group-hover:bg-primary/60'
         }`} />
