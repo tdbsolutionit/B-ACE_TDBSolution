@@ -14,6 +14,27 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
+  /** Hàm dùng chung để xác định cấu hình Cookie bảo mật dựa trên môi trường */
+  private getCookieOptions(path: string): import('express').CookieOptions {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isSecureEnv = process.env.COOKIE_SECURE === 'true';
+    
+    // Secure: true nếu là môi trường HTTPS, false nếu chạy HTTP (LAN/Dev)
+    const secure = process.env.COOKIE_SECURE !== undefined 
+      ? isSecureEnv 
+      : isProduction;
+
+    // SameSite: Nếu Secure=true, dùng 'none' để hỗ trợ cross-domain. Nếu HTTP, dùng 'lax'.
+    const sameSite: 'lax' | 'none' = secure ? 'none' : 'lax';
+
+    return {
+      httpOnly: true,
+      secure,
+      sameSite,
+      path,
+    };
+  }
+
   /** Xử lý đăng nhập và cấp Token */
   async login(dto: LoginDto, res: Response) {
     const users = await this.prisma.user.findMany({
@@ -78,21 +99,11 @@ export class AuthService {
       data: { hashedRefreshToken: null },
     });
 
-    const secure = process.env.NODE_ENV === 'production';
+    const accessOptions = this.getCookieOptions('/');
+    const refreshOptions = this.getCookieOptions('/api/auth');
 
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      path: '/',
-    });
-
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      path: '/api/auth',
-    });
+    res.clearCookie('accessToken', accessOptions);
+    res.clearCookie('refreshToken', refreshOptions);
 
     return {
       success: true,
@@ -149,10 +160,7 @@ export class AuthService {
 
     const refreshToken = await this.jwt.signAsync(
       { sub: user.id },
-      {
-        secret: process.env.JWT_REFRESH_SECRET,
-        expiresIn: '7d',
-      },
+      { secret: process.env.JWT_REFRESH_SECRET, expiresIn: '7d' },
     );
 
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
@@ -162,21 +170,17 @@ export class AuthService {
       data: { hashedRefreshToken },
     });
 
-    const secure = process.env.NODE_ENV === 'production';
+    const accessOptions = this.getCookieOptions('/');
+    const refreshOptions = this.getCookieOptions('/api/auth');
 
+    // Gắn thời gian sống (maxAge) cho Cookie
     res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      path: '/',
+      ...accessOptions,
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      path: '/api/auth',
+      ...refreshOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -200,10 +204,7 @@ export class AuthService {
       
       await tx.user.update({
         where: { id: user.sub },
-        data: { 
-          passwordHash: newHash,
-          hashedRefreshToken: null 
-        },
+        data: { passwordHash: newHash, hashedRefreshToken: null },
       });
 
       return { success: true, message: 'Đổi mật khẩu thành công' };
@@ -216,12 +217,7 @@ export class AuthService {
       tx.user.findFirst({
         where: { id: user.sub, tenantId: user.tenantId },
         select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          status: true,
-          role: true,
+          id: true, name: true, email: true, phone: true, status: true, role: true,
           roleRef: { select: { id: true, name: true } },
           team: { select: { id: true, name: true } },
         },
@@ -245,10 +241,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
 
-    if (!payload.sub) {
-      throw new UnauthorizedException('Refresh token không hợp lệ');
-    }
-
+    if (!payload.sub) throw new UnauthorizedException('Refresh token không hợp lệ');
     return this.refreshTokens(payload.sub, refreshToken, res);
   }
 }
