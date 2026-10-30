@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -12,8 +11,9 @@ import {
 import { handleApiError } from '@/lib/error-handler';
 
 export type SessionUser = {
-  sub: string;
-  tenantId: string;
+  sub?: string;
+  id?: string;
+  tenantId?: string;
   role: 'admin' | 'manager' | 'sales';
   email: string;
   name: string;
@@ -49,8 +49,7 @@ function isSession(value: unknown): value is Session {
   const user = candidate.user as Record<string, unknown>;
 
   return (
-    typeof user.sub === 'string' &&
-    typeof user.tenantId === 'string' &&
+    (typeof user.sub === 'string' || typeof user.id === 'string') &&
     typeof user.email === 'string' &&
     typeof user.role === 'string'
   );
@@ -118,9 +117,9 @@ export function getApiBase(): string {
 
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
-    const isPrivateIp = 
-      hostname.startsWith('192.168.') || 
-      hostname.startsWith('10.') || 
+    const isPrivateIp =
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
       /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname);
 
     if (hostname === 'localhost' || hostname === '127.0.0.1' || isPrivateIp) {
@@ -129,12 +128,12 @@ export function getApiBase(): string {
 
     if (protocol === 'https:') {
       throw new Error(
-        'Thiếu NEXT_PUBLIC_API_URL. Không thể gọi API qua HTTP từ website HTTPS.',
+        'Thiếu NEXT_PUBLIC_API_URL. Không thể gọi API qua HTTP từ website HTTPS.'
       );
     }
 
     throw new Error(
-      'Chưa cấu hình NEXT_PUBLIC_API_URL cho môi trường triển khai.',
+      'Chưa cấu hình NEXT_PUBLIC_API_URL cho môi trường triển khai.'
     );
   }
 
@@ -197,13 +196,14 @@ export function AuthProvider({
           throw new Error(
             res.status === 401
               ? 'Email hoặc mật khẩu không đúng'
-              : 'Không thể đăng nhập. Vui lòng thử lại.',
+              : 'Không thể đăng nhập. Vui lòng thử lại.'
           );
         }
 
         next = await res.json();
 
         if (!isSession(next)) {
+          console.error("Login Response:", next);
           throw new Error('Phản hồi đăng nhập không đúng định dạng');
         }
 
@@ -214,7 +214,7 @@ export function AuthProvider({
         throw error;
       }
     },
-    [],
+    []
   );
 
   const logout = useCallback(() => {
@@ -229,7 +229,7 @@ export function AuthProvider({
       login,
       logout,
     }),
-    [ready, session, login, logout],
+    [ready, session, login, logout]
   );
 
   return (
@@ -249,20 +249,13 @@ export function useAuth() {
   return value;
 }
 
-function authHeader() {
-  return {
-    base: getApiBase(),
-  };
-}
-
 async function requestApi(
   path: string,
   options: RequestInit = {},
-  skipErrorToast = false,
+  skipErrorToast = false
 ): Promise<Response> {
   const isFormData =
-    typeof FormData !== 'undefined' &&
-    options.body instanceof FormData;
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
 
   const headers = new Headers(options.headers || {});
 
@@ -290,7 +283,7 @@ async function requestApi(
 
   if (!response.ok) {
     const error = new Error(
-      `Yêu cầu API thất bại (HTTP ${response.status})`,
+      `Yêu cầu API thất bại (HTTP ${response.status})`
     );
 
     if (!skipErrorToast) handleApiError(error);
@@ -304,7 +297,7 @@ async function requestApi(
 export async function api<T>(
   path: string,
   options: RequestInit = {},
-  skipErrorToast = false,
+  skipErrorToast = false
 ): Promise<T> {
   const response = await requestApi(path, options, skipErrorToast);
 
@@ -325,7 +318,7 @@ export async function api<T>(
 
 export async function apiForm<T>(
   path: string,
-  body: FormData,
+  body: FormData
 ): Promise<T> {
   const response = await requestApi(path, {
     method: 'POST',

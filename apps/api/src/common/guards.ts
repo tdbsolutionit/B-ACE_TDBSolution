@@ -1,4 +1,3 @@
-
 import {
   CanActivate,
   ExecutionContext,
@@ -22,6 +21,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly prisma: PrismaService,
   ) {}
 
+  /** Kiểm tra tính hợp lệ của Token (từ Cookie) và quyền truy cập của User */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [
       context.getHandler(),
@@ -32,25 +32,18 @@ export class JwtAuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
 
-    // Ưu tiên HttpOnly cookie; vẫn hỗ trợ Bearer token
-    // để tương thích với các client cũ trong giai đoạn chuyển đổi.
     const header = String(request.headers.authorization || '');
-    const bearerToken = header.startsWith('Bearer ')
-      ? header.slice(7)
-      : '';
-
-    const token =
-      request.cookies?.accessToken || bearerToken;
+    const bearerToken = header.startsWith('Bearer ') ? header.slice(7) : '';
+    const token = request.cookies?.accessToken || bearerToken;
 
     if (!token) {
       throw new UnauthorizedException('Chưa đăng nhập');
     }
 
     try {
-      const payload =
-        this.jwt.verify<AccessTokenPayload>(token, {
-          secret: process.env.JWT_SECRET,
-        });
+      const payload = this.jwt.verify<AccessTokenPayload>(token, {
+        secret: process.env.JWT_SECRET,
+      });
 
       if (
         !payload.sub ||
@@ -60,7 +53,6 @@ export class JwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('Token không hợp lệ');
       }
 
-      // Kiểm tra tài khoản và phiên bản token hiện tại trong database.
       const user = await this.prisma.user.findFirst({
         where: {
           id: payload.sub,
@@ -73,10 +65,7 @@ export class JwtAuthGuard implements CanActivate {
         },
       });
 
-      if (
-        !user ||
-        user.tokenVersion !== payload.tokenVersion
-      ) {
+      if (!user || user.tokenVersion !== payload.tokenVersion) {
         throw new UnauthorizedException(
           'Phiên đăng nhập đã hết hạn hoặc bị thu hồi',
         );
@@ -84,12 +73,10 @@ export class JwtAuthGuard implements CanActivate {
 
       request.user = payload;
 
-      const roles = this.reflector.getAllAndOverride<
-        AuthUser['role'][]
-      >(ROLES_KEY, [
-        context.getHandler(),
-        context.getClass(),
-      ]);
+      const roles = this.reflector.getAllAndOverride<AuthUser['role'][]>(
+        ROLES_KEY,
+        [context.getHandler(), context.getClass()],
+      );
 
       if (roles?.length && !roles.includes(payload.role)) {
         return false;
@@ -100,7 +87,6 @@ export class JwtAuthGuard implements CanActivate {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
     }
   }
