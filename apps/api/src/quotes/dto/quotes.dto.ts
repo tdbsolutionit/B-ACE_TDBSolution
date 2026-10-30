@@ -1,4 +1,6 @@
-import { IsIn, IsOptional, IsString, IsDateString, IsArray, IsNumber, ValidateNested } from 'class-validator';
+import { 
+  IsIn, IsOptional, IsString, IsDateString, IsArray, IsNumber, ValidateNested 
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QuoteDto {
