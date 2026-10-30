@@ -30,7 +30,22 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     load().catch((err) => console.error(err));
-    api<CustomerRow[]>('/customers').then(res => setCustomers(Array.isArray(res) ? res : [])).catch(() => setCustomers([]));
+    
+    api<{ data: CustomerRow[] } | CustomerRow[]>('/customers')
+      .then(res => {
+        if (Array.isArray(res)) {
+          setCustomers(res);
+        } else if (res && Array.isArray(res.data)) {
+          setCustomers(res.data);
+        } else {
+          setCustomers([]);
+        }
+      })
+      .catch((err) => {
+        console.error("Lỗi tải danh sách khách hàng:", err);
+        setCustomers([]);
+      });
+
     api<StageRow[]>('/opportunities/stages').then(res => setStages(Array.isArray(res) ? res : [])).catch(() => setStages([]));
     api<Array<{ id: string; name: string; role?: string }>>('/users').then(res => setUsers(Array.isArray(res) ? res : [])).catch(() => setUsers([]));
   }, []);
