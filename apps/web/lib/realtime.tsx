@@ -76,10 +76,7 @@ function pushToast(type: string, payload: any, enabled: boolean) {
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  
-  // LẤY ID CỦA USER (Dạng String) THAY VÌ CẢ OBJECT SESSION
   const userId = session?.user?.sub || session?.user?.id;
-
   const [connected, setConnected] = useState(false);
   const [toastEnabled, setToastEnabledState] = useState(true);
   const listenersRef = useRef<Map<string, Set<Listener>>>(new Map());
@@ -126,7 +123,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     es.onerror = () => {
       setConnected(false);
-      // BẮT BUỘC: Đóng kết nối khi lỗi (đặc biệt là 401) để chặn EventSource tự động retry vô hạn
       es.close();
     };
 
@@ -156,9 +152,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       if (esRef.current === es) {
         esRef.current = null;
       }
-      // ĐÃ XÓA setConnected(false) Ở ĐÂY ĐỂ TRÁNH RENDER LOOP
     };
-  }, [userId]); // Dependency giờ là một String (userId) nên cực kỳ ổn định
+  }, [userId]);
 
   const on = useCallback((type: string, listener: Listener) => {
     if (!listenersRef.current.has(type)) {

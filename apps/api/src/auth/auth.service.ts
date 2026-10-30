@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { Response, CookieOptions } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser } from '../common/auth';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -14,28 +14,18 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  /** Hàm dùng chung để xác định cấu hình Cookie bảo mật dựa trên môi trường */
-  private getCookieOptions(path: string): import('express').CookieOptions {
-    const isProduction = process.env.NODE_ENV === 'production';
-    const isSecureEnv = process.env.COOKIE_SECURE === 'true';
+  private getCookieOptions(path: string): CookieOptions {
+    const isHttps = process.env.WEB_ORIGIN?.startsWith('https://') || false;
+    const secure = process.env.COOKIE_SECURE === 'true' || isHttps;
     
-    // Secure: true nếu là môi trường HTTPS, false nếu chạy HTTP (LAN/Dev)
-    const secure = process.env.COOKIE_SECURE !== undefined 
-      ? isSecureEnv 
-      : isProduction;
-
-    // SameSite: Nếu Secure=true, dùng 'none' để hỗ trợ cross-domain. Nếu HTTP, dùng 'lax'.
-    const sameSite: 'lax' | 'none' = secure ? 'none' : 'lax';
-
     return {
       httpOnly: true,
-      secure,
-      sameSite,
+      secure: secure,
+      sameSite: secure ? 'none' : 'lax',
       path,
     };
   }
 
-  /** Xử lý đăng nhập và cấp Token */
   async login(dto: LoginDto, res: Response) {
     const users = await this.prisma.user.findMany({
       where: { email: dto.email.toLowerCase(), status: 'active' },
@@ -57,15 +47,11 @@ export class AuthService {
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     
     if (!ok) throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
-
-    if (!user.roleId || !user.roleRef) {
-      throw new UnauthorizedException('Tài khoản chưa được gán vai trò. Liên hệ quản trị viên.');
-    }
+    if (!user.roleId || !user.roleRef) throw new UnauthorizedException('Tài khoản chưa được gán vai trò. Liên hệ quản trị viên.');
 
     return this.generateTokensAndSetCookie(user, res);
   }
 
-  /** Cấp lại Token mới khi Refresh Token còn hạn */
   async refreshTokens(userId: string, refreshToken: string, res: Response) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -92,26 +78,18 @@ export class AuthService {
     return this.generateTokensAndSetCookie(user, res);
   }
 
-  /** Đăng xuất và xóa Cookie */
   async logout(userId: string, res: Response) {
     await this.prisma.user.update({
       where: { id: userId },
       data: { hashedRefreshToken: null },
     });
 
-    const accessOptions = this.getCookieOptions('/');
-    const refreshOptions = this.getCookieOptions('/api/auth');
+    res.clearCookie('accessToken', this.getCookieOptions('/'));
+    res.clearCookie('refreshToken', this.getCookieOptions('/api/auth'));
 
-    res.clearCookie('accessToken', accessOptions);
-    res.clearCookie('refreshToken', refreshOptions);
-
-    return {
-      success: true,
-      message: 'Đăng xuất thành công',
-    };
+    return { success: true, message: 'Đăng xuất thành công' };
   }
 
-  /** Tạo Token và gắn vào HttpOnly Cookie */
   private async generateTokensAndSetCookie(
     user: {
       id: string;
@@ -124,9 +102,7 @@ export class AuthService {
       tokenVersion: number;
       roleRef: {
         name: string;
-        permissions: Array<{
-          permission: { code: string };
-        }>;
+        permissions: Array<{ permission: { code: string } }>;
       } | null;
     },
     res: Response,
@@ -138,8 +114,6 @@ export class AuthService {
       throw new Error('Thiếu cấu hình JWT_SECRET hoặc JWT_REFRESH_SECRET');
     }
 
-    const permissions = user.roleRef.permissions.map((item) => item.permission.code);
-
     const payload: AuthUser = {
       sub: user.id,
       tenantId: user.tenantId,
@@ -149,7 +123,7 @@ export class AuthService {
       roleId: user.roleId,
       roleName: user.roleRef.name,
       teamId: user.teamId,
-      permissions,
+      permissions: user.roleRef.permissions.map((item) => item.permission.code),
       tokenVersion: user.tokenVersion,
     };
 
@@ -170,24 +144,19 @@ export class AuthService {
       data: { hashedRefreshToken },
     });
 
-    const accessOptions = this.getCookieOptions('/');
-    const refreshOptions = this.getCookieOptions('/api/auth');
-
-    // Gắn thời gian sống (maxAge) cho Cookie
     res.cookie('accessToken', accessToken, {
-      ...accessOptions,
+      ...this.getCookieOptions('/'),
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', refreshToken, {
-      ...refreshOptions,
+      ...this.getCookieOptions('/api/auth'),
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return { user: payload };
   }
 
-  /** Đổi mật khẩu và thu hồi toàn bộ Refresh Token cũ */
   async changePassword(user: AuthUser, dto: ChangePasswordDto) {
     return this.prisma.withTenant(user.tenantId, async (tx) => {
       const dbUser = await tx.user.findUnique({ where: { id: user.sub } });
@@ -195,10 +164,7 @@ export class AuthService {
 
       const ok = await bcrypt.compare(dto.currentPassword, dbUser.passwordHash);
       if (!ok) throw new BadRequestException('Mật khẩu hiện tại không đúng');
-
-      if (dto.currentPassword === dto.newPassword) {
-        throw new BadRequestException('Mật khẩu mới phải khác mật khẩu cũ');
-      }
+      if (dto.currentPassword === dto.newPassword) throw new BadRequestException('Mật khẩu mới phải khác mật khẩu cũ');
 
       const newHash = await bcrypt.hash(dto.newPassword, 10);
       
@@ -211,7 +177,6 @@ export class AuthService {
     });
   }
 
-  /** Lấy thông tin User hiện tại */
   async getMe(user: AuthUser) {
     return this.prisma.withTenant(user.tenantId, (tx) =>
       tx.user.findFirst({
@@ -225,7 +190,6 @@ export class AuthService {
     );
   }
 
-  /** Xác thực Refresh Token từ Cookie */
   async refreshFromCookie(refreshToken: string, res: Response) {
     if (!process.env.JWT_REFRESH_SECRET) {
       throw new Error('Thiếu cấu hình JWT_REFRESH_SECRET');
