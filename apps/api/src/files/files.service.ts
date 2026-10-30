@@ -17,9 +17,6 @@ import { fromFile } from 'file-type';
 
 const convertAsync = promisify(libre.convert);
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
-
-// Chỉ những định dạng được chủ động hỗ trợ xem trước.
-// Controller upload phải có allowlist tương ứng.
 const OFFICE_EXTENSIONS = new Set([
   '.doc',
   '.docx',

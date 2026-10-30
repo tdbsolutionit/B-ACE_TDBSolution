@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { priceQuote } from '@bace/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { AuthUser, owned, scope } from '../common/auth';
@@ -77,18 +76,6 @@ export class QuotesService {
   }
 
   async create(user: AuthUser, dto: QuoteDto) {
-    const priced = priceQuote({
-      workingDays: dto.workingDays,
-      freelancers: dto.freelancers,
-      freelanceRate: dto.freelanceRate,
-      vpsDomain: 1_000_000,
-      buffer: 20_000_000,
-      commissionRate: 10,
-      entertainmentRate: 10,
-      otherRate: 8,
-      profitMargin: dto.profitMargin ?? 50,
-    });
-    
     return this.prisma.withTenant(user.tenantId, async (tx) => {
       const opportunity = await tx.opportunity.findFirstOrThrow({
         where: owned(user, { id: dto.opportunityId }),
@@ -106,39 +93,17 @@ export class QuotesService {
           kind,
           title: dto.title,
           scenario: dto.scenario ?? 'mid',
-          workingDays: dto.workingDays,
-          freelancers: dto.freelancers,
-          freelanceRate: dto.freelanceRate,
-          personnelCost: priced.personnelCost,
-          otherCost: dto.otherCost ?? priced.otherCost,
-          totalCost: priced.totalCost + (dto.otherCost || 0),
-          profitMargin: dto.profitMargin ?? 50,
-          sellingPrice: priced.sellingPrice,
+          workingDays: 0,
+          freelancers: 0,
+          freelanceRate: 0,
+          personnelCost: 0,
+          otherCost: 0,
+          totalCost: 0,
+          profitMargin: 0,
+          sellingPrice: 0,
           validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
           notes: dto.notes,
           createdBy: user.sub,
-          items: {
-            create: [
-              {
-                tenantId: user.tenantId,
-                moduleCode: 'DEV',
-                moduleName: 'Triển khai',
-                quantity: 1,
-                unitPrice: priced.personnelCost,
-                total: priced.personnelCost,
-                sortOrder: 1,
-              },
-              {
-                tenantId: user.tenantId,
-                moduleCode: 'OPS',
-                moduleName: 'Vận hành & dự phòng',
-                quantity: 1,
-                unitPrice: priced.otherCost,
-                total: priced.otherCost,
-                sortOrder: 2,
-              },
-            ],
-          },
         },
         include: { customer: true, opportunity: true, items: true },
       });
@@ -174,7 +139,6 @@ export class QuotesService {
         }),
       });
       
-      const margin = dto.profitMargin ?? Number(quote.profitMargin);
       const clean = dto.items
         .map((item, index) => {
           const quantity = Math.max(0, item.quantity);
@@ -194,7 +158,6 @@ export class QuotesService {
         .filter((item) => item.moduleName);
         
       const totalCost = clean.reduce((sum, item) => sum + item.total, 0);
-      const sellingPrice = Math.round(totalCost * (1 + margin / 100));
       
       await tx.quoteItem.deleteMany({ where: { quoteId: quote.id, tenantId: user.tenantId } });
       await tx.quoteItem.createMany({ data: clean });
@@ -204,9 +167,9 @@ export class QuotesService {
         data: {
           personnelCost: totalCost,
           otherCost: 0,
-          totalCost,
-          profitMargin: margin,
-          sellingPrice,
+          totalCost: totalCost,
+          profitMargin: 0,
+          sellingPrice: totalCost,
           scenario: 'custom',
         },
         include: { items: { orderBy: { sortOrder: 'asc' } } },

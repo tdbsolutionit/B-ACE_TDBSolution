@@ -33,11 +33,17 @@ const PERMISSIONS = [
   { code: 'setting:update', module: 'SETTING', description: 'Sửa cài đặt' },
 ];
 
+const STAGES = [
+  { name: 'Tiếp cận', color: '#3b82f6', orderIndex: 1, isWon: false, isLost: false },
+  { name: 'Đàm phán', color: '#eab308', orderIndex: 2, isWon: false, isLost: false },
+  { name: 'Đề xuất', color: '#a855f7', orderIndex: 3, isWon: false, isLost: false },
+  { name: 'Thắng (Won)', color: '#22c55e', orderIndex: 4, isWon: true, isLost: false },
+  { name: 'Thua (Lost)', color: '#ef4444', orderIndex: 5, isWon: false, isLost: true },
+];
 
 async function main() {
   console.log('Bắt đầu seed dữ liệu...');
 
-  // 1. Tạo tenant mặc định
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'b-ace' },
     update: {},
@@ -47,7 +53,6 @@ async function main() {
     },
   });
 
-  // 2. Tạo permissions
   for (const p of PERMISSIONS) {
     await prisma.permission.upsert({
       where: { code: p.code },
@@ -56,7 +61,25 @@ async function main() {
     });
   }
 
-  // 3. Tạo role admin thuộc tenant
+  // TẠO STAGES BẰNG CÁCH CHECK TỒN TẠI TRƯỚC (Tránh lỗi unique constraint)
+  for (const s of STAGES) {
+    const existingStage = await prisma.stage.findFirst({
+      where: {
+        tenantId: tenant.id,
+        name: s.name,
+      },
+    });
+
+    if (!existingStage) {
+      await prisma.stage.create({
+        data: {
+          ...s,
+          tenantId: tenant.id,
+        },
+      });
+    }
+  }
+
   const role = await prisma.role.upsert({
     where: {
       tenantId_name: {
@@ -73,7 +96,6 @@ async function main() {
     },
   });
 
-  // 4. Gán tất cả permissions cho role admin
   for (const p of PERMISSIONS) {
     const permission = await prisma.permission.findUniqueOrThrow({
       where: { code: p.code },
@@ -94,7 +116,6 @@ async function main() {
     });
   }
 
-  // 5. Tạo tài khoản admin nếu chưa tồn tại
   const email = 'admin@b-ace.vn';
   const passwordHash = await bcrypt.hash('password', 10);
 
@@ -126,7 +147,7 @@ async function main() {
 main()
   .catch((e) => {
     console.error('Seed thất bại:', e);
-    process.exitCode = 1;
+    throw e;
   })
   .finally(async () => {
     await prisma.$disconnect();
