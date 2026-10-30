@@ -82,14 +82,31 @@ export class QuotesService {
       });
       const kind = dto.kind ?? 'quote';
       const prefix = kind === 'proposal' ? 'DX' : kind === 'po' ? 'PO' : 'BG';
-      const count = await tx.quote.count({ where: scope(user.tenantId, { kind }) });
+      
+      const lastQuote = await tx.quote.findFirst({
+        where: scope(user.tenantId, { kind }),
+        orderBy: { createdAt: 'desc' },
+        select: { quoteNumber: true }
+      });
+
+      let nextSeq = 1;
+      if (lastQuote && lastQuote.quoteNumber) {
+        const parts = lastQuote.quoteNumber.split('-');
+        const lastSeqStr = parts[parts.length - 1];
+        const lastSeq = parseInt(lastSeqStr, 10);
+        if (!isNaN(lastSeq)) {
+          nextSeq = lastSeq + 1;
+        }
+      }
+      
+      const quoteNumber = `${prefix}-${String(nextSeq).padStart(4, '0')}`;
       
       const quote = await tx.quote.create({
         data: {
           tenantId: user.tenantId,
           opportunityId: opportunity.id,
           customerId: opportunity.customerId,
-          quoteNumber: `${prefix}-${String(count + 1).padStart(4, '0')}`,
+          quoteNumber,
           kind,
           title: dto.title,
           scenario: dto.scenario ?? 'mid',

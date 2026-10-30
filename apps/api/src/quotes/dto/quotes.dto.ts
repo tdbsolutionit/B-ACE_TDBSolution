@@ -1,4 +1,5 @@
-import { IsIn, IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsDateString, IsArray, IsNumber, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class QuoteDto {
   @IsString()
@@ -22,4 +23,31 @@ export class QuoteDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
+
+export class QuoteItemDto {
+  @IsString()
+  moduleName!: string;
+
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @IsNumber()
+  quantity!: number;
+
+  @IsNumber()
+  unitPrice!: number;
+}
+
+export class QuoteItemsDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => QuoteItemDto)
+  items!: QuoteItemDto[];
+}
+
+export class StatusDto {
+  @IsIn(['draft', 'sent', 'accepted', 'rejected', 'expired'])
+  status!: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
 }
