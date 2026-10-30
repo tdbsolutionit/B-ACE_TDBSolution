@@ -1,6 +1,6 @@
 'use client';
 
-import { Loading } from '@/components/shared/loading'; // Lưu ý đổi đường dẫn nếu cần
+import { Loading } from '@/components/shared/loading';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { CommandPalette } from '@/components/shared/command-palette';
@@ -29,21 +29,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const [celebration, setCelebration] = useState<{ dealName: string; value?: number; owner?: string; at: string; } | null>(null);
 
-  // Lấy logo
+  // SỬA LỖI: Chỉ phụ thuộc vào ID của user thay vì toàn bộ object session
+  const userId = session?.user?.sub || session?.user?.id;
+
   useEffect(() => {
-    if (!session) return;
+    if (!userId) return;
     const loadLogo = () => {
       api<{ logoUrl: string | null }>('/tenants/me').then((res) => setTenantLogo(res.logoUrl)).catch(() => setTenantLogo(null));
     };
     loadLogo();
     window.addEventListener('tenant:updated', loadLogo);
     return () => window.removeEventListener('tenant:updated', loadLogo);
-  }, [session]);
+  }, [userId]);
 
-  // Tự động collapse
   useEffect(() => { setCollapsed(isNarrow); }, [isNarrow]);
 
-  // Phím tắt
   useGotoSequence({ h: '/', c: '/customers', d: '/projects', o: '/deals', t: '/tasks', l: '/calendar', r: '/reports', i: '/integrations', s: '/settings' }, (path) => router.push(path));
 
   useEffect(() => {
@@ -57,19 +57,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Auth guard
   useEffect(() => { if (ready && !session) router.replace('/login'); }, [ready, session, router]);
 
-  // Mở khóa âm thanh
   useEffect(() => {
     const unlock = () => flushChime();
     window.addEventListener('pointerdown', unlock);
     return () => window.removeEventListener('pointerdown', unlock);
   }, []);
 
-  // Celebration (Deal Won / Quote Accepted)
+  // SỬA LỖI: Phụ thuộc vào userId thay vì session
   useEffect(() => {
-    if (!session) return;
+    if (!userId) return;
     const unsub1 = on('deal:stage-changed', (event: any) => {
       if (event.payload?.status !== 'won') return;
       setCelebration({ dealName: event.payload.name, value: event.payload.value, owner: event.payload.owner, at: event.at });
@@ -78,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setCelebration({ dealName: `Báo giá ${event.payload?.quoteNumber || ''}`, value: event.payload?.price, owner: event.payload?.title, at: event.at });
     });
     return () => { unsub1(); unsub2(); };
-  }, [session, on]);
+  }, [userId, on]);
 
   const label = useMemo(() => {
     if (pathname.startsWith('/customers')) return 'Khách hàng';
@@ -109,32 +107,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Celebration open={!!celebration} data={celebration} onClose={() => setCelebration(null)} />
       
       <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
-        {/* SIDEBAR ĐÃ ĐƯỢC TÁCH */}
-        <Sidebar 
-          collapsed={collapsed} 
-          setCollapsed={setCollapsed} 
-          user={user} 
-          tenantLogo={tenantLogo} 
-          onOpenHelp={() => setHelp(true)} 
-          onLogout={handleLogout} 
-        />
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} user={user} tenantLogo={tenantLogo} onOpenHelp={() => setHelp(true)} onLogout={handleLogout} />
 
         <div className="app-main">
-          {/* HEADER ĐÃ ĐƯỢC TÁCH */}
-          <Header 
-            user={user} 
-            label={label} 
-            connected={connected} 
-            on={on} 
-            onOpenShortcuts={() => setShowShortcuts(true)} 
-          />
+          <Header user={user} label={label} connected={connected} on={on} onOpenShortcuts={() => setShowShortcuts(true)} />
           
           <main className={`page-content ${pathname.startsWith('customers') ? 'split-view-active' : ''}`}>
             {children}
           </main>
         </div>
 
-        {/* HELP MODAL ĐÃ ĐƯỢC TÁCH */}
         <HelpModal open={help} onClose={() => setHelp(false)} />
       </div>
     </>

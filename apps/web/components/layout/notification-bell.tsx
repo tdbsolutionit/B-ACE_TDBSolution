@@ -15,9 +15,16 @@ export function NotificationBell({ on }: { on: (event: string, cb: (data: any) =
   const [overdue, setOverdue] = useState<TaskRow[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const refresh = () => {
       api<TaskRow[]>('/tasks').then((rows) => {
-        const next = rows.filter((row) => row.overdue || row.dueToday || row.dueTomorrow);
+        if (!isMounted) return;
+        
+        // Đảm bảo rows là mảng để không bị lỗi filter
+        const safeRows = Array.isArray(rows) ? rows : [];
+        const next = safeRows.filter((row) => row.overdue || row.dueToday || row.dueTomorrow);
+        
         setOverdue(next);
         const signature = next.map((row) => row.id).sort().join(',');
         const seen = sessionStorage.getItem(NOTICE_SEEN);
@@ -30,10 +37,15 @@ export function NotificationBell({ on }: { on: (event: string, cb: (data: any) =
       }).catch(() => {});
     };
 
-    refresh(); // Gọi lần đầu
+    refresh();
     const unsub1 = on('task:created', refresh);
     const unsub2 = on('task:updated', refresh);
-    return () => { unsub1(); unsub2(); };
+    
+    return () => { 
+      isMounted = false; // Dọn dẹp
+      unsub1(); 
+      unsub2(); 
+    };
   }, [on]);
 
   return (

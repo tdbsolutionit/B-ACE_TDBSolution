@@ -4,14 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { toast } from '@/components/ui/toast';
 import { getApiBase, useAuth } from '@/lib/auth';
 
-type RealtimeEvent = {
-  type: string;
-  payload: any;
-  at: string;
-};
-
+type RealtimeEvent = { type: string; payload: any; at: string; };
 type Listener = (event: RealtimeEvent) => void;
-
 type RealtimeContextValue = {
   connected: boolean;
   toastEnabled: boolean;
@@ -40,12 +34,9 @@ const TOAST_MAP: Record<string, (p: any) => string | null> = {
   'customer:created': (p) => `👤 Khách hàng mới: ${p.name}`,
   'customer:assigned': (p) => `👥 Đã gán ${p.count} khách cho ${p.assigneeName}`,
   'quote:accepted': (p) => `🎉 Báo giá "${p.quoteNumber}" đã được chốt thành công!`,
-  'message:created': () => null,
-  'message:updated': () => null,
-  'message:deleted': () => null,
-  'message:reaction': () => null,
-  'user:typing': () => null,
-  'room:read': () => null,
+  'message:created': () => null, 'message:updated': () => null,
+  'message:deleted': () => null, 'message:reaction': () => null,
+  'user:typing': () => null, 'room:read': () => null,
 };
 
 const ALL_EVENTS = Object.keys(TOAST_MAP);
@@ -66,10 +57,8 @@ function pushToast(type: string, payload: any, enabled: boolean) {
     existing.lastPayload = payload;
     return;
   }
-
   const buffer: ToastBuffer = { count: 1, lastPayload: payload, timer: null };
   toastBuffers.set(type, buffer);
-
   buffer.timer = window.setTimeout(() => {
     const b = toastBuffers.get(type);
     if (!b) return;
@@ -87,6 +76,10 @@ function pushToast(type: string, payload: any, enabled: boolean) {
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
+  
+  // LẤY ID CỦA USER (Dạng String) THAY VÌ CẢ OBJECT SESSION
+  const userId = session?.user?.sub || session?.user?.id;
+
   const [connected, setConnected] = useState(false);
   const [toastEnabled, setToastEnabledState] = useState(true);
   const listenersRef = useRef<Map<string, Set<Listener>>>(new Map());
@@ -118,18 +111,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   // ─── SSE Connection ──────────────────────────────────────────
   useEffect(() => {
-    if (!session?.user) {
+    if (!userId) {
       esRef.current?.close();
       esRef.current = null;
       setConnected(false);
       return;
     }
 
-    // KHÔNG CẦN TOKEN. Trình duyệt tự gửi HTTPOnly Cookie kèm theo.
-    const baseUrl = getApiBase();
-    const url = `${baseUrl}/realtime/stream`;
-
-    // withCredentials: true BẮT BUỘC để trình duyệt gửi kèm Cookie
+    const url = `${getApiBase()}/realtime/stream`;
     const es = new EventSource(url, { withCredentials: true });
     esRef.current = es;
 
@@ -137,6 +126,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     es.onerror = () => {
       setConnected(false);
+      // BẮT BUỘC: Đóng kết nối khi lỗi (đặc biệt là 401) để chặn EventSource tự động retry vô hạn
+      es.close();
     };
 
     const handlers = new Map<string, (event: Event) => void>();
@@ -145,17 +136,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       const handler = (event: Event) => {
         try {
           const data = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
-
           if (TOAST_MAP[type]?.(data.payload)) {
             pushToast(type, data.payload, toastEnabledRef.current);
           }
-
           listenersRef.current.get(type)?.forEach((fn) => fn(data));
         } catch (error) {
           console.error(`Không thể xử lý realtime event "${type}"`, error);
         }
       };
-
       handlers.set(type, handler);
       es.addEventListener(type, handler);
     }
@@ -168,10 +156,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       if (esRef.current === es) {
         esRef.current = null;
       }
-      setConnected(false);
+      // ĐÃ XÓA setConnected(false) Ở ĐÂY ĐỂ TRÁNH RENDER LOOP
     };
-  }, [session]);
-
+  }, [userId]); // Dependency giờ là một String (userId) nên cực kỳ ổn định
 
   const on = useCallback((type: string, listener: Listener) => {
     if (!listenersRef.current.has(type)) {
@@ -182,11 +169,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       listenersRef.current.get(type)?.delete(listener);
     };
   }, []);
+
   const contextValue = useMemo(() => ({
-    connected,
-    toastEnabled,
-    setToastEnabled,
-    on
+    connected, toastEnabled, setToastEnabled, on
   }), [connected, toastEnabled, setToastEnabled, on]);
 
   return (

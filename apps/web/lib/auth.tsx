@@ -277,7 +277,9 @@ async function requestApi(
   }
 
   if (response.status === 401) {
-    forceLogout();
+    if (path.includes('/auth/me') || path.includes('/auth/refresh')) {
+      forceLogout();
+    }
     throw new Error('Unauthorized');
   }
 

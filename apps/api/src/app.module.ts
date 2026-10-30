@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CustomersModule } from './customers/customers.module';
@@ -21,17 +23,34 @@ import { RolesModule } from './roles/roles.module';
 import { TeamsModule } from './teams/teams.module';
 import { StagesModule } from './stages/stages.module';
 import { TenantsModule } from './tenants/tenants.module';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import * as path from 'path';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: path.resolve(process.cwd(), '.env'),
+    }),
+
+    JwtModule.registerAsync({
+      global: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): JwtModuleOptions => ({
+        secret: configService.get<string>('JWT_SECRET') || 'fallback_secret',
+        signOptions: { 
+          expiresIn: (configService.get<string>('JWT_EXPIRES') || '8h') as any 
+        },
+      }),
+    }),
+
+    ThrottlerModule.forRoot([{
+      ttl: 60000, 
+      limit: 10,
+    }]),
+
     RealtimeModule,
     PrismaModule,
-    JwtModule.register({
-      global: true,
-      secret: process.env.JWT_SECRET || 'dev-secret-change-me',
-      signOptions: { expiresIn: '8h' },
-    }),
     AuthModule,
     CustomersModule,
     OpportunitiesModule,
@@ -47,12 +66,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     RolesModule,
     TeamsModule,
     StagesModule,
-    FilesModule,
     TenantsModule,
-    ThrottlerModule.forRoot([{
-      ttl: 60000, 
-      limit: 10,
-    }]),
   ],
   controllers: [HealthController],
   providers: [
