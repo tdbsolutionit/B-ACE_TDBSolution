@@ -276,12 +276,15 @@ async function requestApi(
     throw error;
   }
 
-  if (response.status === 401) {
-    if (path.includes('/auth/me') || path.includes('/auth/refresh')) {
-      forceLogout();
-    }
+if (response.status === 401 && !path.includes('/auth/login')) {
+  try {
+    await fetch(buildApiUrl('/auth/refresh'), { method: 'POST', credentials: 'include' });
+    return requestApi(path, options, skipErrorToast);
+  } catch (err) {
+    forceLogout();
     throw new Error('Unauthorized');
   }
+}
 
   if (!response.ok) {
     const error = new Error(

@@ -48,7 +48,6 @@ export default function QuoteDetailPage() {
   const { session } = useAuth();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
-  const [margin, setMargin] = useState(50);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
@@ -56,7 +55,6 @@ export default function QuoteDetailPage() {
   function load() {
     return api<Quote>(`/quotes/${params.id}`).then((row) => {
       setQuote(row);
-      setMargin(Number(row.profitMargin) || 0);
       const items = (row.items || []).map((item) => ({
         id: item.id,
         moduleName: item.moduleName,
@@ -88,7 +86,6 @@ export default function QuoteDetailPage() {
     const updated = await api<Quote>(`/quotes/${params.id}/items`, {
       method: 'PATCH',
       body: JSON.stringify({
-        profitMargin: margin,
         items: lines.map((line) => ({
           moduleName: line.moduleName,
           unit: line.unit || 'Gói',
@@ -102,8 +99,7 @@ export default function QuoteDetailPage() {
     setTimeout(() => setSaved(false), 2000);
   }
 
-  const cost = lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0);
-  const price = Math.round(cost / (1 - (Number(margin) || 0) / 100));
+  const price = lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0);
 
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!quote) return <p className="text-sm text-muted-foreground">Đang tải báo giá…</p>;
@@ -119,7 +115,7 @@ export default function QuoteDetailPage() {
 
         <button
           type="button"
-          onClick={() => printQuote(quote, lines, margin, session?.user).catch(console.error)}
+          onClick={() => printQuote(quote, lines, session?.user).catch(console.error)}
           className="inline-flex h-9 items-center gap-2 rounded-md border border-primary/40 bg-secondary px-4 text-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
         >
           <FileDown size={16} /> Xuất PDF / In báo giá
@@ -173,13 +169,9 @@ export default function QuoteDetailPage() {
           ))}
         </div>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-border pt-4">
-          <label className="text-xs text-muted-foreground">
-            Biên lợi nhuận %
-            <input type="number" min={0} value={margin} onChange={(event) => setMargin(Number(event.target.value))} className="mt-1 block h-10 w-28 rounded-md border border-input px-3 text-sm text-foreground" />
-          </label>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">Chi phí {vnd(cost)}</p>
-            <p className="mt-1 text-lg font-semibold text-primary">{vnd(price)}</p>
+          <div className="flex w-full items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">Tổng cộng:</span>
+            <p className="text-lg font-semibold text-primary">{vnd(price)}</p>
           </div>
         </div>
         <div className="mt-4 flex items-center justify-end gap-3">

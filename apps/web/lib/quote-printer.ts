@@ -14,7 +14,7 @@ type QuoteData = {
   } | null;
   opportunity?: {
     name?: string | null;
-    code?: string | null; 
+    code?: string | null;
   } | null;
 };
 
@@ -23,7 +23,6 @@ type UserData = { name?: string | null; email?: string | null; phone?: string | 
 export async function printQuote(
   quote: QuoteData, 
   lines: LineData[], 
-  margin: number,
   currentUser?: UserData | null
 ) {
   let tenant: any = {};
@@ -36,7 +35,6 @@ export async function printQuote(
   const today = new Date();
   const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
   
-  const marginDecimal = (Number(margin) || 0) / 100;
   let subtotal = 0;
 
   const creatorName = currentUser?.name || 'Người lập báo giá';
@@ -72,8 +70,7 @@ export async function printQuote(
   const defaultUnit = tenant.quoteUnit || 'Gói';
 
   const rows = lines.map((line, idx) => {
-    const rawCost = Number(line.unitPrice) || 0;
-    const sellUnit = Math.round(rawCost / (1 - marginDecimal));
+    const sellUnit = Number(line.unitPrice) || 0;
     const qty = Number(line.quantity) || 1;
     const lineTotal = sellUnit * qty;
     subtotal += lineTotal;
@@ -260,40 +257,34 @@ export async function printQuote(
       </td>
     </tr>
   </table>
-
-  <script>
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        window.focus();
-        window.print();
-      }, 350);
-    });
-  </script>
 </body>
 </html>`;
 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
 
-  const popup = window.open(url, '_blank');
-  if (!popup) {
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    iframe.onload = () => {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.src = url;
+
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      
       setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        setTimeout(() => document.body.removeChild(iframe), 2500);
-      }, 400);
-    };
-  }
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(url);
+      }, 1000);
+    }, 500);
+  };
 }
 
 function escapeHtml(value?: string | null) {

@@ -212,6 +212,7 @@ export default function OpportunitiesPage() {
               <div className="grid gap-1.5">
                 <label className="text-sm font-medium">Giai đoạn</label>
                 <select name="stageId" className="crm-select" defaultValue={selectedStageId || stages[0]?.id || ""}>
+                  {stages.length === 0 && <option value="">Đang tải hoặc chưa có giai đoạn...</option>}
                   {stages.map((stage) => (
                     <option key={stage.id} value={stage.id}>{stage.name}</option>
                   ))}

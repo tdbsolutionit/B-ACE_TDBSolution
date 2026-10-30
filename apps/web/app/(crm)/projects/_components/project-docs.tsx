@@ -47,7 +47,7 @@ export function ProjectDocs({ projectId, docs, tab, setTab }: ProjectDocsProps) 
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[13px] text-muted-foreground">{cards.length} {current.label.toLowerCase()}{cards.length === 0 ? ' - chưa có' : ''}</p>
-        <Link href={tab === 'quote' ? `/projects/${projectId}/quotes/tao` : `/projects/${projectId}/quotes/tao?kind=${tab}`} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3.5 text-[13px] font-medium text-white" style={{ background: current.color }}>
+        <Link href={tab === 'quote' ? `/projects/${projectId}/quotes/create` : `/projects/${projectId}/quotes/create?kind=${tab}`} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3.5 text-[13px] font-medium text-white" style={{ background: current.color }}>
           <Plus size={14} /> Tạo {current.label.toLowerCase()}
         </Link>
       </div>

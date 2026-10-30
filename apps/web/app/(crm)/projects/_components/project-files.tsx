@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FileText, UploadCloud, Trash2, Download, Loader2, Paperclip } from 'lucide-react';
-import { api } from '@/lib/auth';
+import { api, getApiBase } from '@/lib/auth';
 import { toast } from '@/components/ui/toast';
 
 type ProjectFile = {
@@ -14,7 +14,7 @@ type ProjectFile = {
 };
 
 interface ProjectFilesProps {
-  projectId: string; // Đã sửa thành projectId
+  projectId: string;
 }
 
 export function ProjectFiles({ projectId }: ProjectFilesProps) {
@@ -30,11 +30,17 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
   async function fetchFiles() {
     try {
       setLoading(true);
-      // Gọi API lấy danh sách file đính kèm
-      const res = await api<ProjectFile[]>(`/opportunities/${projectId}/files`);
-      setFiles(Array.isArray(res) ? res : []);
+      const res = await api<any[]>(`/files?opportunityId=${projectId}`);
+      const mappedFiles = (Array.isArray(res) ? res : []).map(f => ({
+        id: f.id,
+        name: f.name,
+        size: f.size,
+        createdAt: f.createdAt,
+        url: `${getApiBase()}/files/${f.id}/download`, 
+      }));
+      
+      setFiles(mappedFiles);
     } catch (err) {
-      // api() đã tự động bắn toast lỗi, chỉ cần log ra console để debug
       console.error(err);
     } finally {
       setLoading(false);
@@ -45,22 +51,22 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Giới hạn dung lượng file (ví dụ: 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      return toast.error('Kích thước file không được vượt quá 10MB');
+    if (file.size > 5 * 1024 * 1024) {
+      return toast.error('Kích thước file không được vượt quá 5MB');
     }
 
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('opportunityId', projectId);
 
     try {
-      await api(`/opportunities/${projectId}/files`, {
+      await api(`/files/upload`, {
         method: 'POST',
         body: formData,
       });
       toast.success('Tải file lên thành công');
-      await fetchFiles(); // Refresh danh sách
+      await fetchFiles();
     } catch (err) {
       console.error(err);
     } finally {
@@ -73,7 +79,7 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
     if (!confirm(`Bạn có chắc muốn xóa file "${fileName}"?`)) return;
 
     try {
-      await api(`/opportunities/${projectId}/files/${fileId}`, { method: 'DELETE' });
+      await api(`/files/${fileId}`, { method: 'DELETE' });
       setFiles((prev) => prev.filter((f) => f.id !== fileId));
       toast.success('Đã xóa file');
     } catch (err) {
@@ -106,6 +112,7 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
             ref={fileInputRef}
             className="hidden"
             onChange={handleUpload}
+            accept=".pdf, image/png, image/jpeg"
           />
           <button
             type="button"

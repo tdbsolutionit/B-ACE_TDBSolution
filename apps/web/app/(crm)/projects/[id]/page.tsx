@@ -105,8 +105,6 @@ export default function ProjectPage() {
         tab={tab}
         setTab={setTab}
       />
-
-      {/* TRUYỀN ĐÚNG PROP `projectId` VÀO ĐÂY */}
       <div className="mt-5">
         <ProjectFiles projectId={project.id} />
       </div>
