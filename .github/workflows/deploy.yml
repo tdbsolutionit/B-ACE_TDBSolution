@@ -55,7 +55,7 @@ jobs:
             "ODOO_URL=${{ secrets.ODOO_URL }}",
             "ODOO_DB=${{ secrets.ODOO_DB }}",
             "ODOO_USERNAME=${{ secrets.ODOO_USERNAME }}",
-            "ODOO_PASSWORD=${{ secrets.ODOO_PASSWORD }}",
+            "ODOO_PASSWORD=${{ secrets.ODOO_PASSWORD }}"
           )
           [System.IO.File]::WriteAllLines("C:\apps\bace\apps\api\.env", $linesApi, (New-Object System.Text.UTF8Encoding $False))
 
