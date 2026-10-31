@@ -208,4 +208,42 @@ export class AuthService {
     if (!payload.sub) throw new UnauthorizedException('Refresh token không hợp lệ');
     return this.refreshTokens(payload.sub, refreshToken, res);
   }
+
+    async apiLogin(dto: LoginDto) {
+    const users = await this.prisma.user.findMany({
+      where: { email: dto.email.toLowerCase(), status: 'active' },
+      take: 2,
+      include: { roleRef: { include: { permissions: { include: { permission: true } } } } },
+    });
+
+    if (users.length !== 1) throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
+    
+    const user = users[0];
+    const ok = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!ok) throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
+    if (!user.roleId || !user.roleRef) throw new UnauthorizedException('Tài khoản chưa được gán vai trò');
+
+    const payload = {
+      sub: user.id,
+      tenantId: user.tenantId,
+      role: user.role,
+      email: user.email,
+      name: user.name,
+      roleId: user.roleId,
+      roleName: user.roleRef.name,
+      teamId: user.teamId,
+      permissions: user.roleRef.permissions.map((item) => item.permission.code),
+      tokenVersion: user.tokenVersion,
+    };
+
+    const accessToken = await this.jwt.signAsync(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '7d',
+    });
+
+    return {
+      accessToken,
+      user: payload,
+    };
+  }
 }
