@@ -108,6 +108,7 @@ model Stage {
 model Customer {
   id            String         @id @default(uuid())
   tenantId      String         @map("tenant_id")
+  odooPartnerId String?        @unique @map("odoo_partner_id")
   code          String?
   shortCode     String?        @map("short_code") 
   name          String
