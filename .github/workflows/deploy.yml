@@ -49,7 +49,9 @@ jobs:
             "JWT_EXPIRES=8h",
             "API_PORT=3001",
             "WEB_ORIGIN=http://192.168.103.8:3000",
-            "NODE_ENV=production"
+            "NODE_ENV=production",
+            "SWAGGER_USER=${{ secrets.SWAGGER_USER }}",
+            "SWAGGER_PASSWORD=${{ secrets.SWAGGER_PASSWORD }}"
           )
           [System.IO.File]::WriteAllLines("C:\apps\bace\apps\api\.env", $linesApi, (New-Object System.Text.UTF8Encoding $False))
 
