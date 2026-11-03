@@ -5,7 +5,7 @@ import { AuthUser, owned, scope } from '../../common/auth';
 import { logActivity } from '../../common/activity';
 import { CustomerDto, CustomerPatchDto } from '../dto/customer.dto';
 import { CustomerStatus } from '@prisma/client';
-import { OdooService } from '../odoo.service';
+import { IntegrationManager } from '../../integrations/integration.manager';
 import { CustomerHelperService } from './customer-helper.service';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class CustomersCrudService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
-    private readonly odooService: OdooService,
+    private readonly integrationManager: IntegrationManager,
     private readonly helper: CustomerHelperService,
   ) {}
 
@@ -108,13 +108,12 @@ export class CustomersCrudService {
 
     this.realtime.emit('customer:created', { id: result.presented.id, name: result.presented.name, company: result.presented.company }, { tenantId: user.tenantId });
 
-    this.odooService.pushCustomerToOdoo(result.raw).then(async (odooId) => {
-      if (odooId) {
-        await this.prisma.withTenant(user.tenantId, (tx) =>
-          tx.customer.update({ where: { id: result.raw.id }, data: { odooPartnerId: String(odooId) } }),
-        );
-      }
-    }).catch(console.error);
+    const odooPartnerId = await this.integrationManager.syncCustomerToAll(result.raw, user);
+    if (odooPartnerId) {
+      await this.prisma.withTenant(user.tenantId, (tx) =>
+        tx.customer.update({ where: { id: result.raw.id }, data: { odooPartnerId } }),
+      );
+    }
 
     return result.presented;
   }
@@ -155,13 +154,12 @@ export class CustomersCrudService {
     this.realtime.emit('customer:updated', result.presented, { tenantId: user.tenantId });
 
     if (!fromOdoo) {
-      this.odooService.pushCustomerToOdoo(result.raw).then(async (odooId) => {
-        if (odooId && !result.raw.odooPartnerId) {
-          await this.prisma.withTenant(user.tenantId, (tx) =>
-            tx.customer.update({ where: { id: result.raw.id }, data: { odooPartnerId: String(odooId) } }),
-          );
-        }
-      }).catch(console.error);
+      const odooPartnerId = await this.integrationManager.syncCustomerToAll(result.raw, user);
+      if (odooPartnerId && !result.raw.odooPartnerId) {
+        await this.prisma.withTenant(user.tenantId, (tx) =>
+          tx.customer.update({ where: { id: result.raw.id }, data: { odooPartnerId } }),
+        );
+      }
     }
 
     return result.presented;

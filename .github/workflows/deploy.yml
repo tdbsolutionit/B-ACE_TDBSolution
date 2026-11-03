@@ -30,7 +30,6 @@ jobs:
           git reset --hard HEAD
           git clean -fd
           git fetch --all --tags
-
           git checkout tags/${{ github.ref_name }} -f
           
           if (-not (Test-Path "C:\apps\bace\ecosystem.config.js")) {
@@ -51,11 +50,7 @@ jobs:
             "WEB_ORIGIN=http://192.168.103.8:3000",
             "NODE_ENV=production",
             "SWAGGER_USER=${{ secrets.SWAGGER_USER }}",
-            "SWAGGER_PASSWORD=${{ secrets.SWAGGER_PASSWORD }}",
-            "ODOO_URL=${{ secrets.ODOO_URL }}",
-            "ODOO_DB=${{ secrets.ODOO_DB }}",
-            "ODOO_USERNAME=${{ secrets.ODOO_USERNAME }}",
-            "ODOO_PASSWORD=${{ secrets.ODOO_PASSWORD }}"
+            "SWAGGER_PASSWORD=${{ secrets.SWAGGER_PASSWORD }}"
           )
           [System.IO.File]::WriteAllLines("C:\apps\bace\apps\api\.env", $linesApi, (New-Object System.Text.UTF8Encoding $False))
 
@@ -69,7 +64,6 @@ jobs:
         working-directory: C:\apps\bace
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          # Sử dụng npm ci để đảm bảo cài đúng version trong package-lock.json
           npm ci
 
       - name: Run DB migrations and Prisma Generate
@@ -79,11 +73,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           $env:Path = "C:\Program Files\nodejs\;C:\Users\Administrator\AppData\Roaming\npm;" + $env:Path
-          
-          # KHUYẾN NGHỊ: Nếu có dùng Prisma Migrate, hãy dùng lệnh dưới đây thay vì db push
-          # npx prisma migrate deploy
-          
-          # Nếu bạn vẫn muốn dùng db push, hãy bỏ cờ --accept-data-loss để CI/CD chặn lại nếu có rủi ro
           npx prisma db push
           npx prisma generate
 
@@ -140,7 +129,7 @@ jobs:
       - name: Health check with retry
         shell: powershell
         run: |
-          $maxRetries = 10 # Tăng thời gian chờ lên 50 giây đề phòng Next.js khởi động chậm
+          $maxRetries = 10
           $retryCount = 0
           $success = $false
           
@@ -151,25 +140,22 @@ jobs:
             $webOk = $false
             $apiOk = $false
 
-            # 1. Check Frontend (Next.js)
             try {
               $webResponse = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
               if ($webResponse.StatusCode -eq 200) { $webOk = $true }
             } catch {
-              Write-Host "  -> Web error: $($_.Exception.Message)" # In ra lỗi thật
+              Write-Host "  -> Web error: $($_.Exception.Message)" 
             }
 
-            # 2. Check API (NestJS)
             try {
               $apiResponse = Invoke-WebRequest -Uri "http://localhost:3001" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
               if ($apiResponse.StatusCode -eq 200) { $apiOk = $true }
             } catch {
-              # Xử lý bẫy 404 của NestJS: 404 nghĩa là app đang chạy nhưng không có route gốc
               if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 404) {
                 $apiOk = $true
                 Write-Host "  -> API returned 404 (App is running)"
               } else {
-                Write-Host "  -> API error: $($_.Exception.Message)" # In ra lỗi thật
+                Write-Host "  -> API error: $($_.Exception.Message)" 
               }
             }
             

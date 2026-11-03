@@ -1,23 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 
+export type OdooConfig = {
+  url: string;
+  db: string;
+  username: string;
+  password: string;
+};
+
 @Injectable()
 export class OdooService {
   private readonly logger = new Logger(OdooService.name);
-  private readonly odooUrl = process.env.ODOO_URL;
-  private readonly odooDb = process.env.ODOO_DB;
-  private readonly odooUsername = process.env.ODOO_USERNAME;
-  private readonly odooPassword = process.env.ODOO_PASSWORD;
 
-  async authenticate(): Promise<number> {
+  async authenticate(config: OdooConfig): Promise<number> {
     try {
-      const response = await axios.post(`${this.odooUrl}/jsonrpc`, {
+      const response = await axios.post(`${config.url}/jsonrpc`, {
         jsonrpc: '2.0',
         method: 'call',
         params: {
-          db: this.odooDb,
-          login: this.odooUsername,
-          password: this.odooPassword,
+          db: config.db,
+          login: config.username,
+          password: config.password,
         },
         id: 1,
       });
@@ -33,14 +36,24 @@ export class OdooService {
     }
   }
 
-  async pushCustomerToOdoo(customer: any): Promise<number | null> {
-    if (!this.odooUrl || !this.odooDb) {
+  async testConnection(config: any): Promise<boolean> {
+    await this.authenticate(config);
+    return true;
+  }
+
+  async syncCustomer(customer: any, config: any): Promise<string | null> {
+    const odooId = await this.pushCustomerToOdoo(customer, config);
+    return odooId ? String(odooId) : null;
+  }
+
+  private async pushCustomerToOdoo(customer: any, config: OdooConfig): Promise<number | null> {
+    if (!config.url || !config.db) {
       this.logger.warn('Chưa cấu hình Odoo, bỏ qua đồng bộ');
       return null;
     }
 
     try {
-      const uid = await this.authenticate();
+      const uid = await this.authenticate(config);
 
       const partnerData = {
         name: customer.name,
@@ -54,26 +67,26 @@ export class OdooService {
       let odooId = customer.odooPartnerId ? Number(customer.odooPartnerId) : null;
 
       if (odooId) {
-        await axios.post(`${this.odooUrl}/jsonrpc`, {
+        await axios.post(`${config.url}/jsonrpc`, {
           jsonrpc: '2.0',
           method: 'call',
           params: {
             service: 'object',
             method: 'execute_kw',
-            args: [this.odooDb, uid, this.odooPassword, 'res.partner', 'write', [[odooId], partnerData]],
+            args: [config.db, uid, config.password, 'res.partner', 'write', [[odooId], partnerData]],
           },
           id: 2,
         });
         this.logger.log(`Đã cập nhật khách hàng ${customer.name} (ID: ${odooId}) trên Odoo`);
         return odooId;
       } else {
-        const response = await axios.post(`${this.odooUrl}/jsonrpc`, {
+        const response = await axios.post(`${config.url}/jsonrpc`, {
           jsonrpc: '2.0',
           method: 'call',
           params: {
             service: 'object',
             method: 'execute_kw',
-            args: [this.odooDb, uid, this.odooPassword, 'res.partner', 'create', [partnerData]],
+            args: [config.db, uid, config.password, 'res.partner', 'create', [partnerData]],
           },
           id: 3,
         });

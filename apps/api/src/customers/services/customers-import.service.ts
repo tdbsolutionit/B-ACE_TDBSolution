@@ -3,14 +3,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser, scope } from '../../common/auth';
 import { logActivity } from '../../common/activity';
 import { ImportDto, ImportRow } from '../dto/customer.dto';
-import { OdooService } from '../odoo.service';
+import { IntegrationManager } from '../../integrations/integration.manager';
 import { CustomerHelperService } from './customer-helper.service';
 
 @Injectable()
 export class CustomersImportService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly odooService: OdooService,
+    private readonly integrationManager: IntegrationManager,
     private readonly helper: CustomerHelperService,
   ) {}
 
@@ -70,16 +70,15 @@ export class CustomersImportService {
           },
         });
         
-        this.odooService.pushCustomerToOdoo(created).then(async (odooId) => {
-          if (odooId) {
-            await this.prisma.withTenant(user.tenantId, (t) =>
-              t.customer.update({
-                where: { id: created.id },
-                data: { odooPartnerId: String(odooId) },
-              }),
-            );
-          }
-        }).catch(console.error);
+        const odooPartnerId = await this.integrationManager.syncCustomerToAll(created, user);
+        if (odooPartnerId) {
+          await this.prisma.withTenant(user.tenantId, (t) =>
+            t.customer.update({
+              where: { id: created.id },
+              data: { odooPartnerId },
+            }),
+          );
+        }
 
         createdCount++;
       }

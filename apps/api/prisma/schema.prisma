@@ -26,6 +26,8 @@ model Tenant {
   quoteNotes   String? @map("quote_notes")
   quoteUnit    String? @default("Gói") @map("quote_unit")
 
+  integrations  Integration[]
+
   timezone   String   @default("Asia/Ho_Chi_Minh")
   currency   String   @default("VND")
   language   String   @default("vi")
@@ -445,6 +447,7 @@ model Ticket {
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  department   Team?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   
 
   @@index([tenantId, status])
@@ -557,4 +560,38 @@ model Team {
   @@unique([tenantId, name])
   @@index([tenantId])
   @@map("teams")
+}
+
+model Integration {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  provider       String   
+  config         Json     
+  isActive       Boolean  @default(true) @map("is_active")
+  
+  // THÊM CÁC TRƯỜNG NÀY ĐỂ LƯU TRẠNG THÁI
+  lastSyncedAt   DateTime? @map("last_synced_at")
+  syncStatus     String    @default("idle") @map("sync_status")
+  errorMessage   String?   @map("error_message")
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  logs           IntegrationLog[]
+  @@unique([tenantId, provider])
+  @@map("integrations")
+}
+
+model IntegrationLog {
+  id            String   @id @default(uuid())
+  integrationId String   @map("integration_id")
+  action        String
+  status        String
+  message       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@map("integration_logs")
 }
