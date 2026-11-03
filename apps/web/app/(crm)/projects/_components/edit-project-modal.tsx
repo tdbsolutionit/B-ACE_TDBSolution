@@ -1,6 +1,7 @@
 'use client';
 
 import { type ProjectRow, type StageRow } from '@/lib/crm';
+import { CustomerSelect } from '@/components/shared/customer-select';
 
 interface EditProjectModalProps {
   open: boolean;
@@ -23,10 +24,17 @@ export function EditProjectModal({ open, onClose, project, stages, onSubmit }: E
             <label className="text-sm font-medium">Mã dự án</label>
             <input name="code" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={project.code || ''} placeholder="Chưa có mã dự án" />
           </div>
+          
           <div className="grid gap-1.5">
             <label className="text-sm font-medium">Tên dự án <span className="text-destructive">*</span></label>
             <input name="name" required className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Nhập tên dự án" defaultValue={project.name} />
           </div>
+
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium">Khách hàng <span className="text-destructive">*</span></label>
+            <CustomerSelect name="customerId" required defaultValue={project.customerId} />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <label className="text-sm font-medium">Giá trị dự án (VNĐ)</label>
@@ -37,10 +45,12 @@ export function EditProjectModal({ open, onClose, project, stages, onSubmit }: E
               <input name="probability" type="number" min="0" max="100" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={project.probability} />
             </div>
           </div>
+
           <div className="grid gap-1.5">
             <label className="text-sm font-medium">Ngày dự kiến chốt</label>
             <input name="closeDate" type="date" className="h-10 rounded-md border border-input px-3 text-sm" defaultValue={project.closeDate || ''} />
           </div>
+
           <div className="grid gap-1.5">
             <label className="text-sm font-medium">Giai đoạn</label>
             <select name="stageId" className="crm-select" defaultValue={project.stageId}>
@@ -49,6 +59,7 @@ export function EditProjectModal({ open, onClose, project, stages, onSubmit }: E
               ))}
             </select>
           </div>
+
           <div className="mt-2 flex justify-end gap-2">
             <button type="button" onClick={onClose} className="h-9 rounded-md border px-4 text-sm">Hủy</button>
             <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Lưu thay đổi</button>

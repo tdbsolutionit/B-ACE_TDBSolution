@@ -9,12 +9,11 @@ import { api } from '@/lib/auth';
 import { type CustomerRow, type PaginatedResponse } from '@/lib/crm';
 import { exportToExcel } from '@/lib/utils';
 import { useRealtime } from '@/lib/realtime';
-import { CustomerTable } from '../_components/customer-table';
+import { CustomerTable } from './customer-table';
 import { BulkActionBar } from '@/components/shared/bulk-action-bar';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { toast } from '@/components/ui/toast';
 import { usePermission } from '@/hooks/use-permission';
-
 import { AddCustomerModal } from './add-customer-modal';
 import { CustomerToolbar } from './customer-toolbar';
 
@@ -26,15 +25,12 @@ function ListPane() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
   const [q, setQ] = useState(params.get('q') || '');
-  const [status] = useState('');
-  const [source] = useState('');
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState('');
   const [importNote, setImportNote] = useState('');
   const [users, setUsers] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<any>({ total: 0, page: 1, limit: 20, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
   const limit = 20;
@@ -42,15 +38,15 @@ function ListPane() {
   const { on } = useRealtime();
 
   useEffect(() => { setPage(1); }, [tab, q]);
-
+  
   useEffect(() => {
     setLoading(true);
     api<PaginatedResponse<CustomerRow>>(`/customers?page=${page}&limit=${limit}&q=${q}&tab=${tab}`)
       .then((res) => {
-        setRows(res.data || []);
+        setRows(res.data || []); 
         setMeta(res.meta || { total: 0, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => console.error(err))
       .finally(() => setLoading(false));
   }, [page, q, limit, tab]);
 
@@ -66,9 +62,8 @@ function ListPane() {
     const unsubCreated = on('customer:created', (e) => {
       if (e.payload?.id) {
         api<CustomerRow>(`/customers/${e.payload.id}`)
-          .then((c) => {
-            if (c) setRows((prev) => (prev.some((r) => r.id === c.id) ? prev : [c, ...prev]));
-          }).catch(() => { });
+          .then((c) => { if (c) setRows((prev) => (prev.some((r) => r.id === c.id) ? prev : [c, ...prev])); })
+          .catch(() => { });
       }
     });
 
@@ -85,7 +80,6 @@ function ListPane() {
     };
   }, [on]);
 
-  // --- CẬP NHẬT IMPORT EXCEL BẰNG EXCELJS ---
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -102,57 +96,21 @@ function ListPane() {
         const buffer = event.target?.result as ArrayBuffer;
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(buffer);
-
-        const normalize = (s: string) =>
-          String(s ?? '').normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' ');
-        const targetSheetName = 'Khách hàng - Code';
-
-        let worksheet =
-          workbook.getWorksheet(targetSheetName) ||
-          workbook.worksheets.find((ws) => normalize(ws.name) === normalize(targetSheetName)) ||
-          workbook.worksheets[1] ||
-          workbook.worksheets[0];
-
+        
+        const worksheet = workbook.getWorksheet(1);
         if (!worksheet) throw new Error('File không có dữ liệu');
 
-        const getCellText = (cell: ExcelJS.Cell): string => {
-          const v: any = cell.value;
-          if (v == null) return '';
-          if (typeof v === 'object') {
-            if ('result' in v && v.result != null) return String(v.result); // formula có cache
-            if ('richText' in v) return v.richText.map((t: any) => t.text).join('');
-            if ('text' in v) return String(v.text);
-            if (v instanceof Date) return v.toISOString();
-            return '';
-          }
-          return String(v);
-        };
-
-        let headerRowNumber = 0;
-        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-          if (headerRowNumber) return;
-          row.eachCell({ includeEmpty: false }, (cell) => {
-            const t = normalize(getCellText(cell));
-            if (t === 'tên khách hàng' || t === 'stt' || t.includes('mã số')) {
-              headerRowNumber = rowNumber;
-            }
-          });
-        });
-        if (!headerRowNumber) headerRowNumber = 1; // fallback
-
         const headerMap: Record<string, number> = {};
-        worksheet.getRow(headerRowNumber).eachCell((cell, colNumber) => {
-          const key = normalize(getCellText(cell));
-          if (!key) return;
-          if (headerMap[key] === undefined) headerMap[key] = colNumber;
+        worksheet.getRow(1).eachCell((cell, colNumber) => {
+          if (cell.value) headerMap[String(cell.value).trim().toLowerCase()] = colNumber;
         });
 
         const getCellValue = (row: ExcelJS.Row, possibleNames: string[]) => {
           for (const name of possibleNames) {
-            const colNumber = headerMap[normalize(name)];
+            const colNumber = headerMap[name.toLowerCase()];
             if (colNumber) {
-              const val = getCellText(row.getCell(colNumber)).trim();
-              if (val && val !== 'N/A' && val !== 'NA') return val;
+              const val = row.getCell(colNumber).text;
+              if (val && val.trim() !== 'N/A') return val.trim();
             }
           }
           return '';
@@ -160,31 +118,21 @@ function ListPane() {
 
         const formattedRows: any[] = [];
         worksheet.eachRow((row, rowNumber) => {
-          if (rowNumber <= headerRowNumber) return;
-
+          if (rowNumber === 1) return;
           const name = getCellValue(row, ['Tên khách hàng', 'Tên KH', 'Tên']);
           if (!name) return;
 
           let code = getCellValue(row, ['Mã', 'Mã khách hàng', 'Mã KH', 'code']);
           let shortCode = getCellValue(row, ['Mã số ( Code)', 'Mã số', 'shortCode']);
-          if (shortCode && shortCode.startsWith('KH')) {
-            shortCode = shortCode.replace(/^KH/, '').replace(/^0+/, '');
-          }
+          if (shortCode && shortCode.startsWith('KH')) shortCode = shortCode.replace('KH', '').replace(/^0+/, '');
 
           formattedRows.push({
-            name,
-            code: code || undefined,
-            shortCode: shortCode || undefined,
+            name, code: code || undefined, shortCode: shortCode || undefined,
             company: getCellValue(row, ['Thông tin khách hàng', 'Công ty']) || name,
-            taxCode: getCellValue(row, ['MST', 'Mã số thuế']),
-            address: getCellValue(row, ['Địa chỉ']),
-            website: getCellValue(row, ['WEBSITE', 'Website']),
-            industry: getCellValue(row, ['Lĩnh vực', 'Ngành nghề']),
-            phone: getCellValue(row, ['Số điện thoại']),
-            email: getCellValue(row, ['Email']),
-            type: 'business',
-            status: 'active',
-            sourceName: 'Import File',
+            taxCode: getCellValue(row, ['MST', 'Mã số thuế']), address: getCellValue(row, ['Địa chỉ']),
+            website: getCellValue(row, ['WEBSITE', 'Website']), industry: getCellValue(row, ['Lĩnh vực', 'Ngành nghề']),
+            phone: getCellValue(row, ['Số điện thoại']), email: getCellValue(row, ['Email']),
+            type: 'business', status: 'active', sourceName: 'Import File',
           });
         });
 
@@ -193,22 +141,15 @@ function ListPane() {
           return;
         }
 
-        const result = await api<{
-          created: number;
-          skipped: Array<{ name: string; reason: string }>;
-        }>('/customers/import', {
-          method: 'POST',
-          body: JSON.stringify({ rows: formattedRows }),
+        const result = await api<{ created: number; skipped: Array<{ name: string; reason: string }> }>('/customers/import', {
+          method: 'POST', body: JSON.stringify({ rows: formattedRows }),
         });
 
-        const fresh = await api<{ data: CustomerRow[] }>('/customers');
+        const fresh = await api<{data: CustomerRow[]}>('/customers');
         setRows(fresh.data || []);
         toast.success(`Đã import thành công ${result.created} khách hàng!`);
-        if (result.skipped.length > 0) {
-          toast.error(`Bỏ qua ${result.skipped.length} dòng do trùng SĐT/Email.`);
-        }
+        if (result.skipped.length > 0) toast.error(`Bỏ qua ${result.skipped.length} dòng do trùng SĐT/Email.`);
       } catch (err: any) {
-        console.error('[import] failed:', err);
         toast.error(err.message || 'Lỗi khi đọc file Excel');
       }
     };
@@ -221,12 +162,10 @@ function ListPane() {
       if (tab === 'lead' && row.status !== 'lead') return false;
       if (tab === 'customer' && row.status !== 'active') return false;
       if (tab === 'has_opp' && row.oppCount === 0) return false;
-      if (status && row.status !== status) return false;
-      if (source && row.sourceName !== source) return false;
       const blob = `${row.name} ${row.company || ''} ${row.phone || ''} ${row.email || ''} ${row.code || ''} ${row.shortCode || ''}`.toLowerCase();
       return blob.includes(q.toLowerCase());
     });
-  }, [rows, tab, q, status, source]);
+  }, [rows, tab, q]);
 
   const bulk = useBulkSelection(filtered);
 
@@ -292,7 +231,7 @@ function ListPane() {
     ['customer', 'Khách hàng', meta.stats?.active || 0],
   ] as const;
 
-  const activeId = pathname.startsWith('customers/') ? pathname.split('/')[2] : undefined;
+  const activeId = pathname.startsWith('/customers/') ? pathname.split('/')[2] : undefined;
 
   return (
     <div className="flex h-full flex-col">
@@ -315,8 +254,7 @@ function ListPane() {
       />
 
       {importNote && <p className="mx-4 mt-3 rounded-md border border-primary/30 bg-secondary px-3 py-2 text-xs">{importNote}</p>}
-      {error && <p className="px-4 pt-2 text-xs text-destructive">{error}</p>}
-
+      
       <div className="customer-list-scroll min-h-0 flex-1 overflow-auto">
         <CustomerTable
           rows={filtered}
@@ -346,9 +284,9 @@ function ListPane() {
         onDelete={handleBulkDelete}
       />
 
-      <AddCustomerModal
-        open={open}
-        onClose={() => setOpen(false)}
+      <AddCustomerModal 
+        open={open} 
+        onClose={() => setOpen(false)} 
         onSuccess={(created) => setRows((current) => [created, ...current])}
       />
     </div>

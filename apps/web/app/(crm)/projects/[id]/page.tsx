@@ -34,7 +34,7 @@ export default function ProjectPage() {
       if (!row) throw new Error('Không tìm thấy dự án');
       setProject(row);
     } catch (err: any) {
-      console.error(err); // api() đã bắn toast
+      console.error(err);
     }
   }
 

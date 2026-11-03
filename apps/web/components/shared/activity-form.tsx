@@ -14,7 +14,7 @@ export function ActivityForm({
   relatedId,
   onSaved,
 }: {
-  relatedType: 'customer' | 'opportunity';
+  relatedType: 'customer' | 'opportunity' | 'ticket';
   relatedId: string;
   onSaved: () => void;
 }) {

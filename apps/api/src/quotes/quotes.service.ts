@@ -259,4 +259,39 @@ export class QuotesService {
 
     return updated;
   }
+
+  async remove(user: AuthUser, id: string) {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const quote = await tx.quote.findFirstOrThrow({
+        where: scope(user.tenantId, {
+          id,
+          ...(user.role === 'sales' ? { opportunity: { assignedTo: user.sub } } : {}),
+        }),
+      });
+      
+      await logActivity(tx, user, {
+        type: 'note',
+        subject: 'Xóa báo giá',
+        content: quote.quoteNumber,
+        relatedType: 'quote',
+        relatedId: quote.id,
+      });
+      
+      await tx.quote.delete({ where: { id: quote.id } });
+      
+      return { ok: true };
+    });
+  }
+
+  async bulkDelete(user: AuthUser, ids: string[]) {
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const deleted = await tx.quote.deleteMany({
+        where: scope(user.tenantId, {
+          id: { in: ids },
+          ...(user.role === 'sales' ? { opportunity: { assignedTo: user.sub } } : {}),
+        }),
+      });
+      return { count: deleted.count };
+    });
+  }
 }

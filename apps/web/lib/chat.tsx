@@ -341,7 +341,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
 
-      // Clear sau 3s
       const key = `typing-${userId}`;
       const existing = typingTimeouts.current.get(key);
       if (existing) window.clearTimeout(existing);

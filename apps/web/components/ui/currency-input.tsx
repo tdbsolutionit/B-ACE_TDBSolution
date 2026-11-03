@@ -15,7 +15,6 @@ type Props = {
 function formatNumber(raw: string): string {
   const digits = raw.replace(/\D/g, '');
   if (!digits) return '';
-  // Xóa số 0 thừa ở đầu khi có số khác đằng sau (VD: "02" -> "2")
   const cleaned = digits.replace(/^0+(?=\d)/, '');
   return cleaned.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }

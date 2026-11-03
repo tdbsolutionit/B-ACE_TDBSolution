@@ -3,8 +3,6 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('--- BẮT ĐẦU DỌN DẸP DATA TEST ---');
-
-  // Danh sách ID hoặc tên các khách hàng test ban đầu
   const testCustomerNames = [
     'Công ty TNHH An Phát',
     'Công ty CP Đại Việt',
@@ -26,7 +24,6 @@ async function main() {
     console.log(` - ${c.name} (${c.id})`);
   }
 
-  // Xoá khách hàng test (sẽ tự động cascade xoá cơ hội & báo giá liên quan)
   if (testCustomers.length > 0) {
     const custIds = testCustomers.map(c => c.id);
     const deleteResult = await prisma.customer.deleteMany({
@@ -35,7 +32,6 @@ async function main() {
     console.log(`=> Đã xoá thành công ${deleteResult.count} khách hàng test và toàn bộ cơ hội/báo giá kèm theo.`);
   }
 
-  // Dọn dẹp các task test
   const testTasks = await prisma.task.deleteMany({
     where: {
       OR: [
@@ -50,7 +46,6 @@ async function main() {
   });
   console.log(`=> Đã xoá thành công ${testTasks.count} công việc (task) test.`);
 
-  // Đếm lại tổng số bản ghi thực tế
   const totalCustomers = await prisma.customer.count();
   const totalOpportunities = await prisma.opportunity.count();
   const totalQuotes = await prisma.quote.count();

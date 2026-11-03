@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from '@/lib/auth';
 import { usePermission } from '@/hooks/use-permission';
-import { toast } from '@/components/ui/toast'; // <--- Import toast
+import { toast } from '@/components/ui/toast';
 import { UsersManagement } from '@/app/(crm)/settings/_components/UsersManagement';
 import { PipelineSection } from '@/app/(crm)/settings/_components/PipelineSection';
 import { TeamsManagement } from '@/app/(crm)/settings/_components/TeamsManagement';
@@ -11,7 +11,7 @@ import { RolesManagement } from '@/app/(crm)/settings/_components/RolesManagemen
 import { SecuritySection } from '@/app/(crm)/settings/_components/SecuritySection';
 
 import { CompanyForm, INITIAL_COMPANY, NotificationKey, toForm, toPayload, parseApiError } from '@/app/(crm)/settings/_components/settings-utils';
-import { ComingSoon, Card } from '@/app/(crm)/settings/_components/SettingsUI'; // Bỏ StatusBanner
+import { ComingSoon, Card } from '@/app/(crm)/settings/_components/SettingsUI';
 import { CompanySection } from '@/app/(crm)/settings/_components/CompanySection';
 import { NotificationSection } from '@/app/(crm)/settings/_components/NotificationSection';
 
@@ -53,7 +53,6 @@ export default function SettingsPage() {
                 const data = await api<CompanyForm>('/tenants/me');
                 if (!cancelled) setCompany(toForm(data));
             } catch (error) {
-                // api() đã tự động hiển thị Toast lỗi, không cần làm gì thêm
                 console.error(error);
             }
         }
@@ -90,7 +89,7 @@ export default function SettingsPage() {
             updateCompany('logoUrl', `${apiUrl}${res.fileUrl}`);
             toast.success('Đã tải logo lên thành công');
         } catch (error) {
-            // api() đã tự động hiển thị Toast lỗi
+            toast.error('Lỗi khi tải logo lên');
         } finally {
             setUploadingLogo(false);
             e.target.value = '';
@@ -102,7 +101,6 @@ export default function SettingsPage() {
         setFieldErrors({});
 
         try {
-            // Đặt tham số thứ 3 là `true` để tắt Toast lỗi tự động (vì ta sẽ hiện lỗi đỏ dưới input)
             const saved = await api<CompanyForm>('/tenants/me', {
                 method: 'PATCH',
                 body: JSON.stringify(toPayload(company)),
@@ -114,8 +112,7 @@ export default function SettingsPage() {
         } catch (error) {
             const { title, fields } = parseApiError(error);
             setFieldErrors(fields);
-            
-            // Nếu lỗi không phải do nhập liệu sai (không có lỗi ở field nào) -> Hiện Toast
+
             if (Object.keys(fields).length === 0) {
                 toast.error(title || 'Không lưu được thông tin công ty');
             }

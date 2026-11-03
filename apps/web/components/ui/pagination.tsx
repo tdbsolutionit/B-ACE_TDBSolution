@@ -10,8 +10,6 @@ type PaginationProps = {
 
 export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
   if (totalPages <= 1) return null;
-
-  // Tạo mảng các trang hiển thị (có dấu ... nếu quá nhiều trang)
   const getPageNumbers = () => {
     const pages = [];
     const maxVisible = 5;

@@ -23,6 +23,7 @@ import { RolesModule } from './roles/roles.module';
 import { TeamsModule } from './teams/teams.module';
 import { StagesModule } from './stages/stages.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { TicketsModule } from './tickets/tickets.module'
 import * as path from 'path';
 
 @Module({
@@ -67,6 +68,7 @@ import * as path from 'path';
     TeamsModule,
     StagesModule,
     TenantsModule,
+    TicketsModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -29,7 +29,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const [celebration, setCelebration] = useState<{ dealName: string; value?: number; owner?: string; at: string; } | null>(null);
 
-  // SỬA LỖI: Chỉ phụ thuộc vào ID của user thay vì toàn bộ object session
   const userId = session?.user?.sub || session?.user?.id;
 
   useEffect(() => {
@@ -65,7 +64,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('pointerdown', unlock);
   }, []);
 
-  // SỬA LỖI: Phụ thuộc vào userId thay vì session
   useEffect(() => {
     if (!userId) return;
     const unsub1 = on('deal:stage-changed', (event: any) => {
@@ -110,8 +108,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} user={user} tenantLogo={tenantLogo} onOpenHelp={() => setHelp(true)} onLogout={handleLogout} />
 
         <div className="app-main">
-          <Header user={user} label={label} connected={connected} on={on} onOpenShortcuts={() => setShowShortcuts(true)} />
-          
+        <Header 
+          user={user} 
+          label={label} 
+          connected={connected} 
+          on={on} 
+          onOpenShortcuts={() => setShowShortcuts(true)} 
+          onLogout={handleLogout}
+        />          
           <main className={`page-content ${pathname.startsWith('customers') ? 'split-view-active' : ''}`}>
             {children}
           </main>

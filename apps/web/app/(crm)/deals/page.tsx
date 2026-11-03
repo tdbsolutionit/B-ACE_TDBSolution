@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/auth';
 import {
-  type CustomerRow,
   type ProjectRow,
   type StageRow,
 } from '@/lib/crm';
@@ -13,6 +12,7 @@ import { compactMoney } from '@/lib/utils';
 import { KanbanBoard } from './_components/kanban-board';
 import { toast } from '@/components/ui/toast';
 import { Search, Plus } from 'lucide-react';
+import { CustomerSelect } from '@/components/shared/customer-select';
 
 type ApiList<T> = T[] | {
   data?: T[] | { items?: T[] };
@@ -49,7 +49,6 @@ export default function OpportunitiesPage() {
   const router = useRouter();
 
   const [rows, setRows] = useState<ProjectRow[]>([]);
-  const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [stages, setStages] = useState<StageRow[]>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
@@ -61,17 +60,15 @@ export default function OpportunitiesPage() {
 
     async function loadData() {
       try {
-        const [opportunitiesResponse, customersResponse, stagesResponse] =
+        const [opportunitiesResponse, stagesResponse] =
           await Promise.all([
             api<ApiList<ProjectRow>>('/opportunities'),
-            api<ApiList<CustomerRow>>('/customers'),
             api<ApiList<StageRow>>('/opportunities/stages'),
           ]);
 
         if (cancelled) return;
 
         setRows(toArray(opportunitiesResponse));
-        setCustomers(toArray(customersResponse));
         setStages(toArray(stagesResponse));
       } catch (err: unknown) {
         if (cancelled) return;
@@ -202,12 +199,7 @@ export default function OpportunitiesPage() {
               </div>
               <div className="grid gap-1.5">
                 <label className="text-sm font-medium">Khách hàng <span className="text-destructive">*</span></label>
-                <select name="customerId" required className="crm-select" defaultValue="">
-                  <option value="" disabled>Chọn khách hàng</option>
-                  {customers.map((row) => (
-                    <option key={row.id} value={row.id}>{row.name}</option>
-                  ))}
-                </select>
+                <CustomerSelect name="customerId" required />
               </div>
               <div className="grid gap-1.5">
                 <label className="text-sm font-medium">Giai đoạn</label>

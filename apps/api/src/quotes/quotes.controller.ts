@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Delete } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { AuthUser } from '../common/auth';
 import { CurrentUser } from '../common/current-user.decorator';
 import { QuotesService } from './quotes.service';
 import { QuoteDto, QuoteItemsDto, StatusDto } from './dto/quotes.dto';
+import { BulkDeleteDto } from './dto/quotes.dto';
 
 @ApiTags('quotes')
 @ApiBearerAuth()
@@ -47,5 +48,18 @@ export class QuotesController {
   @ApiBody({ type: StatusDto })
   setStatus(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: StatusDto) {
     return this.quotesService.setStatus(user, id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Xóa báo giá' })
+  @ApiParam({ name: 'id', description: 'ID của báo giá cần xóa' })
+  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.quotesService.remove(user, id);
+  }
+  @Post('bulk-delete')
+  @ApiOperation({ summary: 'Xóa hàng loạt báo giá' })
+  @ApiBody({ type: BulkDeleteDto })
+  bulkDelete(@CurrentUser() user: AuthUser, @Body() dto: BulkDeleteDto) {
+    return this.quotesService.bulkDelete(user, dto.ids);
   }
 }

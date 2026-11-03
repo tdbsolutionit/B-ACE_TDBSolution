@@ -340,7 +340,6 @@ export class OpportunitiesService {
     return { ok: true };
   }
 
-  // --- Các hàm Helper dùng nội bộ ---
 
   private async names(tx: PrismaClient, tenantId: string) {
     const users = await tx.user.findMany({

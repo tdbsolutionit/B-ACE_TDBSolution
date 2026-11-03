@@ -1,4 +1,4 @@
-'use client'; // Thêm dòng này ở đầu file
+'use client';
 
 import { useRouter } from 'next/navigation';
 import CustomerDetailPage from '@/app/(crm)/customers/[id]/page';

@@ -9,6 +9,8 @@ import { vnd } from '@/lib/utils';
 import { toast } from '@/components/ui/toast';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { printQuote } from '@/lib/quote-printer';
+import { SubmitButton } from '@/components/ui/submit-button';
+import { StatusBadge } from '@/components/shared/badges';
 
 type Line = { id?: string; moduleName: string; unit?: string; quantity: number; unitPrice: number; total?: number };
 
@@ -24,17 +26,8 @@ type Quote = {
   totalCost: number;
   sellingPrice: number;
   customer: {
-    name: string;
-    code?: string | null;
-    shortCode?: string | null;
-    company?: string | null;
-    address?: string | null;
-    contactName?: string | null;
-    contactPhone?: string | null;
-    contactEmail?: string | null;
-    phone?: string | null;
-    email?: string | null;
-    taxCode?: string | null;
+    name: string; code?: string | null; shortCode?: string | null; company?: string | null; address?: string | null;
+    contactName?: string | null; contactPhone?: string | null; contactEmail?: string | null; phone?: string | null; email?: string | null; taxCode?: string | null;
   };
   opportunity: { id: string; name: string; code?: string | null };
   items?: Line[];
@@ -49,8 +42,7 @@ export default function QuoteDetailPage() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
-
+  const [saving, setSaving] = useState(false);
 
   function load() {
     return api<Quote>(`/quotes/${params.id}`).then((row) => {
@@ -83,25 +75,31 @@ export default function QuoteDetailPage() {
   }
 
   async function saveLines() {
-    const updated = await api<Quote>(`/quotes/${params.id}/items`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        items: lines.map((line) => ({
-          moduleName: line.moduleName,
-          unit: line.unit || 'Gói',
-          quantity: Number(line.quantity) || 0,
-          unitPrice: Number(line.unitPrice) || 0,
-        })),
-      }),
-    });
-    setQuote((current) => current ? { ...current, ...updated, items: updated.items } : current);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    try {
+      const updated = await api<Quote>(`/quotes/${params.id}/items`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          items: lines.map((line) => ({
+            moduleName: line.moduleName,
+            unit: line.unit || 'Gói',
+            quantity: Number(line.quantity) || 0,
+            unitPrice: Number(line.unitPrice) || 0,
+          })),
+        }),
+      });
+      setQuote((current) => current ? { ...current, ...updated, items: updated.items } : current);
+      toast.success('Đã lưu hạng mục');
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi lưu hạng mục');
+    } finally {
+      setSaving(false);
+    }
   }
 
   const price = lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0);
 
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (error && !quote) return <p className="text-sm text-destructive">{error}</p>;
   if (!quote) return <p className="text-sm text-muted-foreground">Đang tải báo giá…</p>;
 
   return (
@@ -122,46 +120,30 @@ export default function QuoteDetailPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         {STATUSES.map((status) => (
-          <button key={status} type="button" onClick={() => setStatus(status)} className={quote.status === status ? 'rounded-full bg-primary px-3 py-1 text-xs text-primary-foreground' : 'rounded-full border px-3 py-1 text-xs hover:bg-accent'}>
-            {LABEL[status]}
+          <button key={status} type="button" onClick={() => setStatus(status)} className={quote.status === status ? 'ring-2 ring-primary ring-offset-1 rounded-full' : 'opacity-60 hover:opacity-100 transition-opacity'}>
+            <StatusBadge status={status} />
           </button>
         ))}
       </div>
 
-      <section className="data-panel mt-6">
+      <section className="data-panel">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold">Hạng mục</h2>
-          <button type="button" onClick={() => setLines((current) => [...current, { moduleName: '', quantity: 1, unitPrice: 0 }])} className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-xs">
+          <button type="button" onClick={() => setLines((current) => [...current, { moduleName: '', quantity: 1, unitPrice: 0 }])} className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-xs hover:bg-accent">
             <Plus size={14} /> Thêm dòng
           </button>
         </div>
         <div className="space-y-2">
           {lines.map((line, index) => (
-
             <div key={line.id || index} className="grid grid-cols-[1fr_80px_80px_140px_36px] gap-2 items-center">
               <input value={line.moduleName} onChange={(event) => updateLine(setLines, index, { moduleName: event.target.value })} className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Tên hạng mục" />
-
-              <input
-                value={line.unit || ''}
-                onChange={(event) => updateLine(setLines, index, { unit: event.target.value })}
-                className="h-10 rounded-md border border-input px-3 text-sm text-center"
-                placeholder="Đơn vị"
-              />
-
+              <input value={line.unit || ''} onChange={(event) => updateLine(setLines, index, { unit: event.target.value })} className="h-10 rounded-md border border-input px-3 text-sm text-center" placeholder="Đơn vị" />
               <input type="number" min={0} value={line.quantity} onChange={(event) => updateLine(setLines, index, { quantity: Number(event.target.value) })} className="h-10 rounded-md border border-input px-3 text-sm" placeholder="SL" />
-
               <div className="h-10">
-                <CurrencyInput
-                  key={line.id || index}
-                  name={`unitPrice-${index}`}
-                  defaultValue={line.unitPrice}
-                  onChange={(val) => updateLine(setLines, index, { unitPrice: Number(val) })}
-                  placeholder="0"
-                />
+                <CurrencyInput key={line.id || index} name={`unitPrice-${index}`} defaultValue={line.unitPrice} onChange={(val) => updateLine(setLines, index, { unitPrice: Number(val) })} placeholder="0" />
               </div>
-
               <button type="button" className="inline-flex items-center justify-center text-muted-foreground hover:text-destructive" onClick={() => setLines((current) => current.filter((_, item) => item !== index))}>
                 <Trash2 size={15} />
               </button>
@@ -175,8 +157,7 @@ export default function QuoteDetailPage() {
           </div>
         </div>
         <div className="mt-4 flex items-center justify-end gap-3">
-          {saved && <span className="text-sm text-success">Đã lưu hạng mục</span>}
-          <button type="button" onClick={() => saveLines().catch((err: Error) => setError(err.message))} className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">Lưu hạng mục</button>
+          <SubmitButton isSaving={saving} label="Lưu hạng mục" onClick={saveLines} />
         </div>
       </section>
     </>

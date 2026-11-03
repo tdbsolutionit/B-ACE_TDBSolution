@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { type ProjectRow } from '@/lib/crm';
 import { compactMoney } from '@/lib/utils';
-import { STATUS } from '../_lib/project-utils'; // Import từ _lib
+import { StatusBadge } from '@/components/shared/badges';
 
 interface ProjectTableProps {
   rows: ProjectRow[];
@@ -61,13 +61,7 @@ export function ProjectTable({ rows, bulk }: ProjectTableProps) {
                 {project.customer || '—'}
               </td>
               <td className="px-4 py-3 text-center">
-                <span className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                  project.status === 'won' ? 'bg-green-100 text-green-700' :
-                  project.status === 'lost' ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {STATUS[project.status]}
-                </span>
+                <StatusBadge status={project.status} />
               </td>
               <td className="px-4 py-3 text-right font-medium">
                 {project.value > 0 ? compactMoney(project.value) : <span className="text-muted-foreground/50">—</span>}

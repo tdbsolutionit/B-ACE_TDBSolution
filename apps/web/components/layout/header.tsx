@@ -1,25 +1,49 @@
 'use client';
 
 import Link from 'next/link';
-import { CalendarDays, ChevronRight, CircleHelp, Command, Plus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { 
+  CalendarDays, 
+  ChevronRight, 
+  CircleHelp, 
+  Command, 
+  LogOut, 
+  Plus, 
+  Search,
+  Settings,
+  User as UserIcon
+} from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import { CREATE_ITEMS, openSearch } from './constants';
 import { NotificationBell } from './notification-bell';
 import { initials, roleLabel } from '@/lib/utils';
 
 export function Header({
-  user, label, connected, on, onOpenShortcuts,
+  user, label, connected, on, onOpenShortcuts, onLogout,
 }: {
   user: { name: string; role: string };
   label: string;
   connected: boolean;
   on: any;
   onOpenShortcuts: () => void;
+  onLogout: () => void;
 }) {
   const [create, setCreate] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
   const dateLabel = new Intl.DateTimeFormat('vi-VN', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
   }).format(new Date());
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="app-header">
@@ -38,7 +62,6 @@ export function Header({
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        {/* Tạo mới */}
         <div className="relative">
           <button type="button" onClick={() => setCreate((v) => !v)} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90">
             <Plus size={16} />
@@ -63,13 +86,11 @@ export function Header({
           )}
         </div>
 
-        {/* Trạng thái realtime */}
         <span title={connected ? 'Đang cập nhật trực tiếp' : 'Mất kết nối'} className="hidden items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground md:inline-flex">
           <span className={`size-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-gray-400'}`} />
           {connected ? 'Trực tiếp' : 'Ngoại tuyến'}
         </span>
 
-        {/* Ngày -> mở lịch */}
         <Link href="/calendar" className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-xs capitalize text-muted-foreground hover:bg-accent xl:inline-flex">
           <CalendarDays size={14} />
           {dateLabel}
@@ -79,21 +100,50 @@ export function Header({
           <CircleHelp size={18} />
         </button>
 
-        {/* Component Chuông (Đã tách) */}
         <NotificationBell on={on} />
 
         <span className="mx-1 hidden h-6 border-l border-border sm:block" />
 
-        {/* Người dùng */}
-        <Link href="/users" className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-2 hover:bg-accent">
-          <span className="avatar-initials avatar-profile inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-            {initials(user.name)}
-          </span>
-          <span className="hidden text-left leading-tight md:block">
-            <span className="block max-w-[140px] truncate text-xs font-semibold">{user.name}</span>
-            <span className="block text-[10px] text-muted-foreground">{roleLabel(user.role)}</span>
-          </span>
-        </Link>
+        <div className="relative" ref={profileRef}>
+          <button 
+            type="button"
+            onClick={() => setProfileOpen(!profileOpen)}
+            className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-2 hover:bg-accent transition-colors"
+          >
+            <span className="avatar-initials avatar-profile inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+              {initials(user.name)}
+            </span>
+            <span className="hidden text-left leading-tight md:block">
+              <span className="block max-w-[140px] truncate text-xs font-semibold">{user.name}</span>
+              <span className="block text-[10px] text-muted-foreground">{roleLabel(user.role)}</span>
+            </span>
+          </button>
+
+          {profileOpen && (
+            <div className="absolute right-0 z-50 mt-2 w-48 rounded-xl border border-border bg-card py-1 shadow-lg">
+              <div className="border-b border-border px-3 py-2">
+                <p className="truncate text-xs font-semibold">{user.name}</p>
+                <p className="text-[10px] text-muted-foreground">{roleLabel(user.role)}</p>
+              </div>
+              <Link href="/tai-khoan" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent">
+                <UserIcon size={14} /> Tài khoản của tôi
+              </Link>
+              <Link href="/cai-dat" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent">
+                <Settings size={14} /> Cài đặt
+              </Link>
+              <button 
+                type="button"
+                onClick={() => {
+                  setProfileOpen(false);
+                  onLogout();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50"
+              >
+                <LogOut size={14} /> Đăng xuất
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

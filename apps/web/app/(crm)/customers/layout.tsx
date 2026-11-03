@@ -16,7 +16,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
   
   const isFullMode = searchParams.get('full') === '1';
   
-  // SỬA LỖI REGEX TẠI ĐÂY: Thêm dấu / chuẩn xác
   const hasDetail = /^\/customers\/[^/]+/.test(pathname);
   
   const [isNarrow, setIsNarrow] = useState(false);
@@ -24,7 +23,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
   const [dragging, setDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Responsive check
   useEffect(() => {
     function check() {
       setIsNarrow(window.innerWidth < 1280);
@@ -34,7 +32,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // ESC để đóng preview (quay về danh sách)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
@@ -86,7 +83,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     };
   }, [dragging, onMouseMove, onMouseUp]);
 
-  // SỬA LỖI LOGIC RENDER TẠI ĐÂY: Ưu tiên check isFullMode trước
   if (isFullMode) {
     return (
       <div className="h-full w-full">
@@ -97,7 +93,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Chưa chọn khách → list full width
   if (!hasDetail) {
     return (
       <div className="h-full w-full">
@@ -106,7 +101,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Màn hình hẹp → chỉ detail
   if (isNarrow) {
     return (
       <div className="h-full w-full">
@@ -117,7 +111,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Màn hình rộng → split view với thanh kéo
   return (
     <div
       ref={containerRef}

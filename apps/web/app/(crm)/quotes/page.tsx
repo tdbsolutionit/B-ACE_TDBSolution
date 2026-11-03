@@ -1,67 +1,154 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/auth';
-import { vnd } from '@/lib/utils';
-
-const STATUS: Record<string, string> = {
-  draft: 'Nháp',
-  sent: 'Đã gửi',
-  accepted: 'Đã chấp nhận',
-  rejected: 'Đã từ chối',
-  expired: 'Hết hạn',
-};
+import { toast } from '@/components/ui/toast';
+import { StatusBadge } from '@/components/shared/badges';
+import { BulkActionBar } from '@/components/shared/bulk-action-bar';
+import { useBulkSelection } from '@/hooks/use-bulk-selection';
+import { compactMoney } from '@/lib/utils';
+import Link from 'next/link';
+import { FileText, Search } from 'lucide-react';
 
 type QuoteRow = {
   id: string;
   quoteNumber: string;
   title: string;
-  kind: string;
   status: string;
   sellingPrice: number;
-  customer: { name: string };
-  opportunity: { name: string };
+  customer?: { name: string };
+  opportunity?: { name: string };
 };
 
 export default function QuotesPage() {
-  const [rows, setRows] = useState<QuoteRow[]>([]);
-  const [error, setError] = useState('');
+  const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
+
+  function load() {
+    setLoading(true);
+    api<QuoteRow[]>('/quotes')
+      .then((res) => setQuotes(Array.isArray(res) ? res : []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
-    api<QuoteRow[]>('/quotes').then(setRows).catch((err: Error) => setError(err.message));
+    load();
   }, []);
+
+  async function handleBulkDelete() {
+    try {
+      const selectedIds = Array.from(bulk.selected);
+      await api('/quotes/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      setQuotes((prev) => prev.filter((quote) => !bulk.selected.has(quote.id)));
+      toast.success(`Đã xóa ${selectedIds.length} báo giá`);
+      bulk.clear();
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi xóa báo giá');
+    }
+  }
+
+  const filteredQuotes = quotes.filter(quote => 
+    quote.quoteNumber.toLowerCase().includes(q.toLowerCase()) ||
+    quote.title.toLowerCase().includes(q.toLowerCase()) ||
+    (quote.customer?.name && quote.customer.name.toLowerCase().includes(q.toLowerCase()))
+  );
+
+  const bulk = useBulkSelection(filteredQuotes);
 
   return (
     <>
-      <div className="mb-7">
-        <h1 className="font-display text-[28px] font-bold">Báo giá</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">Đề xuất, báo giá và đơn hàng đã lưu theo từng dự án.</p>
-      </div>
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          <span className="mt-0.5">⚠️</span>
-          <p>{error}</p>
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-[28px] font-bold flex items-center gap-2">
+            <FileText className="text-primary" size={28} /> Báo giá
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">Đề xuất, báo giá và đơn hàng đã lưu theo từng dự án.</p>
         </div>
-      )}
-      <section className="data-panel overflow-x-auto">
-        <table className="crm-table">
-          <thead><tr><th>SỐ</th><th>TIÊU ĐỀ</th><th>KHÁCH HÀNG</th><th>DỰ ÁN</th><th>GIÁ BÁN</th><th>TRẠNG THÁI</th></tr></thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td><Link href={`/quotes/${row.id}`} className="font-medium text-primary">{row.quoteNumber}</Link></td>
-                <td>{row.title}</td>
-                <td className="text-xs">{row.customer?.name}</td>
-                <td className="text-xs">{row.opportunity?.name}</td>
-                <td>{vnd(Number(row.sellingPrice))}</td>
-                <td><span className={row.status === 'accepted' ? 'status-badge status-success' : row.status === 'draft' ? 'status-badge status-warning' : 'status-badge status-blue'}>{STATUS[row.status] || row.status}</span></td>
+      </div>
+
+      <div className="mb-4 flex items-center gap-2">
+        <div className="relative min-w-[250px] flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+          <input
+            className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Tìm mã, tiêu đề, khách hàng..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <section className="data-panel overflow-x-auto rounded-xl border border-border bg-card shadow-sm mb-16">
+        {loading ? (
+          <div className="p-8 text-center text-muted-foreground">Đang tải danh sách báo giá...</div>
+        ) : filteredQuotes.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">
+            <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+            Chưa có báo giá nào.
+          </div>
+        ) : (
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="border-b border-border bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 w-12 text-center">
+                  <input
+                    type="checkbox"
+                    className="cursor-pointer"
+                    checked={bulk.isAllSelected}
+                    onChange={bulk.isAllSelected ? bulk.clear : bulk.selectAll}
+                  />
+                </th>
+                <th className="px-4 py-3 font-semibold">Số</th>
+                <th className="px-4 py-3 font-semibold">Tiêu đề</th>
+                <th className="px-4 py-3 font-semibold">Khách hàng</th>
+                <th className="px-4 py-3 font-semibold">Dự án</th>
+                <th className="px-4 py-3 font-semibold text-right">Giá bán</th>
+                <th className="px-4 py-3 font-semibold text-center">Trạng thái</th>
               </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">Chưa có chứng từ.</td></tr>}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredQuotes.map((quote, index) => (
+                <tr key={quote.id} className={`group cursor-pointer hover:bg-muted/30 transition-colors ${bulk.selected.has(quote.id) ? 'bg-muted/50' : ''}`}>
+                  <td className="px-4 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      className="cursor-pointer"
+                      checked={bulk.selected.has(quote.id)}
+                      onClick={(e) => bulk.toggle(quote.id, index, e.shiftKey)}
+                      readOnly
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/quotes/${quote.id}`} className="font-mono text-xs font-semibold text-primary hover:underline">
+                      {quote.quoteNumber}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 font-medium">{quote.title}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{quote.customer?.name || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{quote.opportunity?.name || '—'}</td>
+                  <td className="px-4 py-3 text-right font-medium">{compactMoney(quote.sellingPrice)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <StatusBadge status={quote.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
+
+      <BulkActionBar
+        count={bulk.count}
+        users={[]} 
+        entityName="báo giá"
+        onClear={bulk.clear}
+        onDelete={handleBulkDelete}
+      />
     </>
   );
 }

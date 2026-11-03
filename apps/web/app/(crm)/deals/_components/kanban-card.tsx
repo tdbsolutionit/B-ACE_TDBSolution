@@ -36,7 +36,7 @@ export function KanbanCard({ deal, dragging, highlighted, onDragStart, onDragEnd
       onDragEnd={onDragEnd}
       onClick={() => router.push(`/projects/${deal.id}`)}
       className={`kanban-card group cursor-grab active:cursor-grabbing ${dragging ? 'dragging' : ''
-        } ${highlighted ? 'ring-2 ring-primary animate-pulse' : ''    // ← THÊM
+        } ${highlighted ? 'ring-2 ring-primary animate-pulse' : ''
         }`}
     >
       {deal.code && (

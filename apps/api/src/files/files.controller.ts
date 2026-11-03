@@ -37,19 +37,17 @@ const ALLOWED_TYPES = {
 
 type AllowedMime = keyof typeof ALLOWED_TYPES;
 
-// Tạo thư mục upload nếu chưa tồn tại.
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 function makeContentDisposition(
   disposition: 'attachment' | 'inline',
   originalName: string,
 ): string {
-  // Loại bỏ đường dẫn và các ký tự có thể gây lỗi header.
+
   const name = basename(originalName || 'download')
     .replace(/[\r\n"]/g, '_')
     .replace(/[\\/]/g, '_');
 
-  // Tên ASCII dự phòng cho client cũ.
   const fallback = name.replace(/[^\x20-\x7E]/g, '_');
 
   // Mã hóa UTF-8 cho tên file tiếng Việt.
@@ -100,11 +98,9 @@ export class FilesController {
       throw new BadRequestException('Không nhận được file');
     }
 
-    // Luôn theo dõi đường dẫn hiện tại để dọn file khi lỗi.
     let currentPath = file.path;
 
     try {
-      // Xác định định dạng thực tế từ nội dung file.
       const detected = await fromFile(file.path);
 
       if (
@@ -128,7 +124,6 @@ export class FilesController {
       await rename(file.path, newPath);
       currentPath = newPath;
 
-      // Chỉ lưu MIME được phát hiện từ nội dung file.
       const verifiedFile = {
         ...file,
         filename: storedName,
@@ -138,8 +133,6 @@ export class FilesController {
         mimetype: mimeType,
       };
 
-      // Giữ nguyên định dạng fileUrl mà service đang sử dụng.
-      // Cần bảo đảm service/frontend không coi URL này là route download.
       const fileUrl = `/files/${storedName}`;
 
       const savedFile = await this.filesService.saveFileInfo(
@@ -160,14 +153,12 @@ export class FilesController {
             : null,
       };
     } catch (error) {
-      // Dọn đúng file, kể cả khi rename đã thành công.
       await unlink(currentPath).catch(() => undefined);
 
       if (error instanceof BadRequestException) {
         throw error;
       }
 
-      // Không trả stack trace hoặc đường dẫn nội bộ cho client.
       if (
         error instanceof Error &&
         error.name === 'NotFoundError'
@@ -200,7 +191,6 @@ export class FilesController {
     @Param('id') id: string,
     @Res() res: Response,
   ) {
-    // Service phải kiểm tra quyền truy cập file của user.
     const file = await this.filesService.getFileById(user, id);
     const filePath = join(UPLOAD_DIR, basename(file.storedName));
 
@@ -235,7 +225,6 @@ export class FilesController {
     @Param('id') id: string,
     @Res() res: Response,
   ) {
-    // Service cần xác thực user có quyền xem file này.
     const file = await this.filesService.getPreviewFile(user, id);
     const filePath = join(UPLOAD_DIR, basename(file.storedName));
 
@@ -243,7 +232,6 @@ export class FilesController {
       throw new NotFoundException('File không tồn tại');
     }
 
-    // Không tin MIME lưu trong database; kiểm tra lại nội dung.
     const detected = await fromFile(filePath);
 
     if (detected?.mime !== 'application/pdf') {

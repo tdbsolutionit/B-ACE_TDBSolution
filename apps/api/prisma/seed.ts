@@ -61,7 +61,6 @@ async function main() {
     });
   }
 
-  // TẠO STAGES BẰNG CÁCH CHECK TỒN TẠI TRƯỚC (Tránh lỗi unique constraint)
   for (const s of STAGES) {
     const existingStage = await prisma.stage.findFirst({
       where: {

@@ -4,20 +4,13 @@ import Link from 'next/link';
 import { ClipboardList, FileText, Plus, ShoppingCart } from 'lucide-react';
 import { type DocCard } from '@/lib/crm';
 import { compactMoney } from '@/lib/utils';
+import { StatusBadge } from '@/components/shared/badges';
 
 const TABS = [
   { id: 'proposal' as const, label: 'Đề xuất', icon: ClipboardList, color: '#16a34a', bg: '#dcfce7' },
   { id: 'quote' as const, label: 'Báo giá', icon: FileText, color: '#C9A961', bg: '#F5EBD0' },
   { id: 'po' as const, label: 'Đơn hàng', icon: ShoppingCart, color: '#d97706', bg: '#fef3c7' },
 ];
-
-const STATUS: Record<string, { label: string; bg: string; color: string }> = {
-  draft: { label: 'Nháp', bg: '#fef3c7', color: '#92400e' },
-  sent: { label: 'Đã gửi', bg: '#F5EBD0', color: '#A8894A' },
-  accepted: { label: 'Chấp nhận', bg: '#dcfce7', color: '#166534' },
-  rejected: { label: 'Từ chối', bg: '#fee2e2', color: '#991b1b' },
-  expired: { label: 'Hết hạn', bg: '#f1f5f9', color: '#475569' },
-};
 
 interface ProjectDocsProps {
   projectId: string;
@@ -60,20 +53,19 @@ export function ProjectDocs({ projectId, docs, tab, setTab }: ProjectDocsProps) 
         </div>
       ) : (
         <div className="doc-card-grid">
-          {cards.map((card) => {
-            const status = STATUS[card.status] || STATUS.draft;
-            return (
-              <Link key={card.id} href={`/quotes/${card.id}`} className="rounded-[10px] border border-border bg-white p-4 hover:shadow-md">
-                <p className="text-xs font-semibold" style={{ color: current.color }}>{card.number}</p>
-                <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: status.bg, color: status.color }}>{status.label}</span>
-                <p className="mb-3 mt-3 line-clamp-2 min-h-9 text-[13px] font-medium">{card.title}</p>
-                <div className="flex items-center justify-between border-t border-border pt-2.5">
-                  <span className="text-[11px] text-slate-400">{card.date.split('-').reverse().join('/')}</span>
-                  <strong className="text-sm" style={{ color: current.color }}>{compactMoney(card.price)}</strong>
-                </div>
-              </Link>
-            );
-          })}
+          {cards.map((card) => (
+            <Link key={card.id} href={`/quotes/${card.id}`} className="rounded-[10px] border border-border bg-white p-4 hover:shadow-md">
+              <p className="text-xs font-semibold" style={{ color: current.color }}>{card.number}</p>
+              <div className="mt-1">
+                <StatusBadge status={card.status} />
+              </div>
+              <p className="mb-3 mt-3 line-clamp-2 min-h-9 text-[13px] font-medium">{card.title}</p>
+              <div className="flex items-center justify-between border-t border-border pt-2.5">
+                <span className="text-[11px] text-slate-400">{card.date.split('-').reverse().join('/')}</span>
+                <strong className="text-sm" style={{ color: current.color }}>{compactMoney(card.price)}</strong>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </div>

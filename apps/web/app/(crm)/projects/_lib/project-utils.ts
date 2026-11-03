@@ -2,7 +2,6 @@ import ExcelJS from 'exceljs';
 
 export const STATUS: Record<string, string> = { open: 'Đang thực hiện', won: 'Hoàn thành', lost: 'Tạm dừng' };
 
-// --- BỔ SUNG LẠI MẢNG NÀY ---
 export const PROJECT_EXPORT_COLS = [
   { key: 'code', label: 'Mã dự án' },
   { key: 'name', label: 'Tên dự án' },
@@ -12,7 +11,6 @@ export const PROJECT_EXPORT_COLS = [
   { key: 'status', label: 'Trạng thái' },
   { key: 'closeDate', label: 'Ngày dự kiến chốt' },
 ];
-// -----------------------------
 
 export function formatErrorMessage(err: any): string {
   const msg = err?.message || String(err);

@@ -297,10 +297,9 @@ async function main() {
         }
       }
 
-      // Format chuẩn Mã năm 8 chữ số: 202xMMDD
       let yearFull = yearCode || '20240101';
       if (yearFull.length === 6) {
-        yearFull = `20${yearFull}`; // VD: 240124 -> 20240124
+        yearFull = `20${yearFull}`;
       }
 
       // Format chuẩn Mã dự án: 20240124-0101_Z751_Mua hàng 20 bộ treo xe

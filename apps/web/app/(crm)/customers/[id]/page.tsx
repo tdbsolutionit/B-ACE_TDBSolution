@@ -14,6 +14,7 @@ import { Loading } from '@/components/shared/loading';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { toast } from '@/components/ui/toast';
 import { usePermission } from '@/hooks/use-permission';
+import { CustomerTickets } from '@/components/customers/customer-tickets';
 
 const STATUS: Record<string, string> = { lead: 'Lead', active: 'Đang hoạt động', inactive: 'Ngừng hoạt động' };
 const OPP: Record<string, string> = { open: 'Đang mở', won: 'Thắng', lost: 'Thua' };
@@ -622,6 +623,7 @@ export default function CustomerDetailPage() {
           </div>
         </>
       )}
+      <CustomerTickets customerId={params.id} />
     </div>
   );
 }

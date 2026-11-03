@@ -40,16 +40,13 @@ export class RolesService {
 
     const codes = Array.isArray(dto.permissions) ? dto.permissions : [];
 
-    // Tìm ID của các permission từ mã code gửi lên
     const perms = await this.prisma.permission.findMany({
       where: { code: { in: codes } },
       select: { id: true },
     });
 
     await this.prisma.withTenant(user.tenantId, async (tx) => {
-      // Xóa các quyền cũ
       await tx.rolePermission.deleteMany({ where: { roleId: id } });
-      // Thêm quyền mới
       if (perms.length > 0) {
         await tx.rolePermission.createMany({
           data: perms.map((p) => ({ roleId: id, permissionId: p.id })),

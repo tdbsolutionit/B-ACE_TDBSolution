@@ -39,7 +39,6 @@ export function SecuritySection() {
       setPwd({ current: '', next: '', confirm: '' });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Đổi mật khẩu thất bại';
-      // NestJS thường trả về { message: string } -> parse ra
       try {
         const body = JSON.parse(msg) as { message?: string | string[] };
         const m = Array.isArray(body.message) ? body.message[0] : body.message;

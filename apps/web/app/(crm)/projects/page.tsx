@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { toast } from '@/components/ui/toast';
 import { api } from '@/lib/auth';
-import { type CustomerRow, type ProjectRow, type StageRow } from '@/lib/crm';
+import { type ProjectRow, type StageRow } from '@/lib/crm';
 import { exportToExcel } from '@/lib/utils';
 import { BulkActionBar } from '@/components/shared/bulk-action-bar';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
@@ -15,7 +15,6 @@ import { CreateProjectModal } from './_components/create-project-modal';
 
 export default function ProjectsPage() {
   const [rows, setRows] = useState<ProjectRow[]>([]);
-  const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [stages, setStages] = useState<StageRow[]>([]);
   const [users, setUsers] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const [open, setOpen] = useState(false);
@@ -30,22 +29,6 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     load().catch((err) => console.error(err));
-    
-    api<{ data: CustomerRow[] } | CustomerRow[]>('/customers')
-      .then(res => {
-        if (Array.isArray(res)) {
-          setCustomers(res);
-        } else if (res && Array.isArray(res.data)) {
-          setCustomers(res.data);
-        } else {
-          setCustomers([]);
-        }
-      })
-      .catch((err) => {
-        console.error("Lỗi tải danh sách khách hàng:", err);
-        setCustomers([]);
-      });
-
     api<StageRow[]>('/opportunities/stages').then(res => setStages(Array.isArray(res) ? res : [])).catch(() => setStages([]));
     api<Array<{ id: string; name: string; role?: string }>>('/users').then(res => setUsers(Array.isArray(res) ? res : [])).catch(() => setUsers([]));
   }, []);
@@ -62,7 +45,6 @@ export default function ProjectsPage() {
     if (!file) return;
 
     try {
-      // Gọi hàm helper đã viết ở file project-utils.ts
       const formattedRows = await parseProjectFile(file);
 
       if (!formattedRows.length) {
@@ -188,7 +170,6 @@ export default function ProjectsPage() {
         open={open}
         onClose={() => setOpen(false)}
         onSubmit={create}
-        customers={customers}
         stages={stages}
       />
     </>

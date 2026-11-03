@@ -19,14 +19,13 @@ import { api } from '@/lib/auth';
 import { type CustomerRow } from '@/lib/crm';
 import { initials } from '@/lib/utils';
 
-// <-- SỬA LẠI TYPE CHO ĐÚNG VỚI API TRẢ VỀ -->
 type OpportunityRow = {
   id: string;
   code?: string;
-  name: string;      // API trả về 'name', không phải 'title'
+  name: string;     
   value?: number;
   stage?: string;
-  customer?: string; // API trả về 'customer', không phải 'customerName'
+  customer?: string;
 };
 
 type TaskRow = {
@@ -99,7 +98,7 @@ export function CommandPalette() {
         <div className="flex items-center gap-2 border-b border-border px-4">
           <Search size={18} className="text-muted-foreground" />
           <Command.Input
-            placeholder="Tìm khách, dự án, công việc hoặc gõ lệnh..." // <-- Sửa placeholder
+            placeholder="Tìm khách, dự án, công việc hoặc gõ lệnh..."
             className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
@@ -164,16 +163,15 @@ export function CommandPalette() {
           {/* DỰ ÁN */}
           {opportunities.length > 0 && (
             <Command.Group
-              heading={`Dự án (${opportunities.length})`} // <-- Đổi tên heading
+              heading={`Dự án (${opportunities.length})`}
               className="mt-2 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
             >
               {opportunities.slice(0, 15).map((o) => (
                 <Item
                   key={o.id}
-                  // <-- SỬA VALUE ĐỂ TÌM KIẾM ĐƯỢC -->
                   value={`duan ${o.name} ${o.code || ''} ${o.customer || ''}`} 
-                  onSelect={() => go(`/projects/${o.id}`)} // <-- SỬA LINK ĐIỀU HƯỚNG
-                  icon={<FolderKanban size={16} />} // <-- Đổi icon
+                  onSelect={() => go(`/projects/${o.id}`)}
+                  icon={<FolderKanban size={16} />}
                 >
                   <span className="flex flex-1 items-center justify-between">
                     <span className="font-medium flex items-center gap-2">

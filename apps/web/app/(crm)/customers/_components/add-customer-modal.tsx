@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { api } from '@/lib/auth';
 import { type CustomerRow } from '@/lib/crm';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
+import { Modal } from '@/components/ui/modal';
+import { SubmitButton } from '@/components/ui/submit-button';
 
 interface AddCustomerModalProps {
   open: boolean;
@@ -23,9 +24,8 @@ export function AddCustomerModal({ open, onClose, onSuccess }: AddCustomerModalP
     sourceName: 'Website', taxCode: '', industry: '',
   });
 
-  if (!open) return null;
-
-  async function handleSubmit() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     if (!form.name.trim()) {
       setError('Nhập tên khách hàng');
       return;
@@ -51,10 +51,9 @@ export function AddCustomerModal({ open, onClose, onSuccess }: AddCustomerModalP
       });
       
       toast.success(`Đã thêm ${created.name}`);
-      onSuccess(created); // Trả data về cho parent
+      onSuccess(created);
       onClose();
       
-      // Reset form
       setForm({
         name: '', company: '', phone: '', email: '', address: '',
         type: 'business', status: 'active', sourceName: 'Website', taxCode: '', industry: '',
@@ -67,57 +66,56 @@ export function AddCustomerModal({ open, onClose, onSuccess }: AddCustomerModalP
   }
 
   return (
-    <>
-      <div className="modal-backdrop" onClick={onClose} />
-      <div className="modal-card max-w-2xl">
+    <Modal isOpen={open} onClose={onClose} maxWidth="max-w-2xl">
+      <div className="mb-4">
         <h2 className="text-lg font-semibold">Thêm khách hàng</h2>
         <p className="mt-1 text-sm text-muted-foreground">Chọn loại khách hàng và điền thông tin</p>
-        
-        <div className="mt-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => setForm({ ...form, type: 'individual' })} className={`rounded-lg border-2 p-3 text-center ${form.type === 'individual' ? 'border-primary bg-primary/5' : 'border-input'}`}>
-              <p className="text-sm font-semibold">Cá nhân</p>
-            </button>
-            <button type="button" onClick={() => setForm({ ...form, type: 'business' })} className={`rounded-lg border-2 p-3 text-center ${form.type === 'business' ? 'border-primary bg-primary/5' : 'border-input'}`}>
-              <p className="text-sm font-semibold">Doanh nghiệp</p>
-            </button>
-          </div>
-
-          <Input placeholder={form.type === 'business' ? 'Tên doanh nghiệp *' : 'Tên khách hàng *'} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          
-          {form.type === 'business' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Input placeholder="Mã số thuế" value={form.taxCode} onChange={(e) => setForm({ ...form, taxCode: e.target.value })} />
-              <Input placeholder="Lĩnh vực" value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input placeholder="Số điện thoại" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </div>
-          
-          <Input placeholder="Địa chỉ" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-          
-          <div className="grid grid-cols-2 gap-4">
-            <select className="crm-select w-full" value={form.sourceName} onChange={(e) => setForm({ ...form, sourceName: e.target.value })}>
-              {['Website', 'Zalo', 'Facebook', 'Email', 'Giới thiệu', 'Danh sách công ty'].map((item) => <option key={item}>{item}</option>)}
-            </select>
-            <select className="crm-select w-full" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as any })}>
-              <option value="lead">Lead</option>
-              <option value="active">Đang hoạt động</option>
-              <option value="inactive">Ngừng hoạt động</option>
-            </select>
-          </div>
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={onClose} disabled={loading}>Hủy</Button>
-            <Button onClick={handleSubmit} disabled={loading}>{loading ? 'Đang lưu...' : 'Lưu'}</Button>
-          </div>
-        </div>
       </div>
-    </>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <button type="button" onClick={() => setForm({ ...form, type: 'individual' })} className={`rounded-lg border-2 p-3 text-center ${form.type === 'individual' ? 'border-primary bg-primary/5' : 'border-input'}`}>
+            <p className="text-sm font-semibold">Cá nhân</p>
+          </button>
+          <button type="button" onClick={() => setForm({ ...form, type: 'business' })} className={`rounded-lg border-2 p-3 text-center ${form.type === 'business' ? 'border-primary bg-primary/5' : 'border-input'}`}>
+            <p className="text-sm font-semibold">Doanh nghiệp</p>
+          </button>
+        </div>
+
+        <Input placeholder={form.type === 'business' ? 'Tên doanh nghiệp *' : 'Tên khách hàng *'} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        
+        {form.type === 'business' && (
+          <div className="grid grid-cols-2 gap-4">
+            <Input placeholder="Mã số thuế" value={form.taxCode} onChange={(e) => setForm({ ...form, taxCode: e.target.value })} />
+            <Input placeholder="Lĩnh vực" value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input placeholder="Số điện thoại" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Input placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </div>
+        
+        <Input placeholder="Địa chỉ" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        
+        <div className="grid grid-cols-2 gap-4">
+          <select className="crm-select w-full" value={form.sourceName} onChange={(e) => setForm({ ...form, sourceName: e.target.value })}>
+            {['Website', 'Zalo', 'Facebook', 'Email', 'Giới thiệu', 'Danh sách công ty'].map((item) => <option key={item}>{item}</option>)}
+          </select>
+          <select className="crm-select w-full" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as any })}>
+            <option value="lead">Lead</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="inactive">Ngừng hoạt động</option>
+          </select>
+        </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} disabled={loading} className="h-9 rounded-md border px-4 text-sm hover:bg-accent">Hủy</button>
+          <SubmitButton isSaving={loading} label="Lưu" />
+        </div>
+      </form>
+    </Modal>
   );
 }

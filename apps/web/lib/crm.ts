@@ -56,16 +56,21 @@ export type StageRow = { id: string; name: string; color: string; isWon: boolean
 export type TaskRow = {
   id: string;
   title: string;
+  description?: string | null;
   dueDate: string | null;
   priority: 'low' | 'medium' | 'high';
   priorityLabel: string;
   status: 'pending' | 'done';
   done: boolean;
   assigneeName: string | null;
+  overdue: boolean;
+  dueToday: boolean;
+  dueTomorrow: boolean;
   customer: string;
-  overdue?: boolean;
-  dueToday?: boolean;
-  dueTomorrow?: boolean;
+  
+  assignedTo: string | null; 
+  relatedType: string | null; 
+  relatedId: string | null; 
 };
 
 export type ProjectFileRow = {

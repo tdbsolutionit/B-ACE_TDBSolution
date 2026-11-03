@@ -34,7 +34,6 @@ export class FilesService {
   constructor(private readonly prisma: PrismaService) {}
 
   private safePath(filename: string): string {
-    // Chỉ nhận tên file, tuyệt đối không nhận đường dẫn từ client.
     if (
       !filename ||
       filename !== path.basename(filename) ||
@@ -63,7 +62,6 @@ export class FilesService {
       const code = (error as NodeJS.ErrnoException).code;
 
       if (code !== 'ENOENT') {
-        // Ghi log để phát hiện file mồ côi và xử lý sau.
         console.error('Không thể xóa file vật lý:', code);
       }
     }
@@ -170,7 +168,6 @@ export class FilesService {
       );
     }
 
-    // Không tái sử dụng PDF preview cũ nếu file không còn là PDF hợp lệ.
     if (file.previewName) {
       const existingPreviewPath = this.safePath(file.previewName);
 
@@ -204,7 +201,6 @@ export class FilesService {
         throw new Error('LibreOffice returned an empty result');
       }
 
-      // Tên ngẫu nhiên giúp tránh ghi đè file hoặc file preview khác.
       previewName = `preview-${randomUUID()}.pdf`;
       const outputPath = this.safePath(previewName);
 
@@ -269,7 +265,6 @@ export class FilesService {
   async deleteFile(user: AuthUser, id: string) {
     const file = await this.getFileById(user, id);
 
-    // Xóa bản ghi trong đúng tenant.
     await this.prisma.withTenant(user.tenantId, async (tx) => {
       await tx.projectFile.deleteMany({
         where: {

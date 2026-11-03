@@ -37,7 +37,6 @@ export function useGotoSequence(routes: Routes, onGoto: (path: string) => void) 
       if (!waiting.current) {
         if (key === 'g') {
           waiting.current = true;
-          // Tự reset sau 1.2s nếu không nhấn gì
           timer.current = window.setTimeout(reset, 1200);
         }
         return;

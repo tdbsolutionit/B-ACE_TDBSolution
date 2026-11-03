@@ -2,15 +2,24 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { api } from '@/lib/auth';
-import { type CustomerRow, type TaskRow } from '@/lib/crm';
+import { type TaskRow } from '@/lib/crm';
 import { useRealtime } from '@/lib/realtime';
+import { CustomerSelect } from '@/components/shared/customer-select';
+import { UserSelect } from '@/components/shared/user-select';
+import { PageHeader } from '@/components/shared/page-header';
+import { EmptyState } from '@/components/shared/empty-state';
+import { Modal } from '@/components/ui/modal';
+import { SubmitButton } from '@/components/ui/submit-button';
+import { PriorityBadge } from '@/components/shared/badges';
+import { ClipboardList, Plus, Pencil } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<TaskRow[]>([]);
-  const [customers, setCustomers] = useState<CustomerRow[]>([]);
-  const [users, setUsers] = useState<Array<{ id: string; name: string }>>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [editTask, setEditTask] = useState<TaskRow | null>(null);
   const { on } = useRealtime();
 
   function load() {
@@ -19,22 +28,12 @@ export default function TasksPage() {
 
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
-    api<CustomerRow[]>('/customers').then(setCustomers).catch(() => setCustomers([]));
-    api<Array<{ id: string; name: string }>>('/users').then(setUsers).catch(() => setUsers([]));
   }, []);
 
-    // Realtime: tự động reload khi có task mới/cập nhật
   useEffect(() => {
-    const unsub1 = on('task:created', () => {
-      load().catch(() => {});
-    });
-    const unsub2 = on('task:updated', () => {
-      load().catch(() => {});
-    });
-    return () => {
-      unsub1();
-      unsub2();
-    };
+    const unsub1 = on('task:created', () => load().catch(() => {}));
+    const unsub2 = on('task:updated', () => load().catch(() => {}));
+    return () => { unsub1(); unsub2(); };
   }, [on]);
 
   async function toggle(task: TaskRow) {
@@ -42,78 +41,139 @@ export default function TasksPage() {
     await load();
   }
 
-  async function create(event: FormEvent<HTMLFormElement>) {
+  function openCreate() {
+    setEditTask(null);
+    setOpen(true);
+  }
+
+  function openEdit(task: TaskRow) {
+    setEditTask(task);
+    setOpen(true);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const customerId = String(data.get('customerId') || '');
-    await api('/tasks', {
-      method: 'POST',
-      body: JSON.stringify({
+
+    setSaving(true);
+    try {
+      const payload = {
         title: String(data.get('title') || ''),
         dueDate: String(data.get('dueDate') || ''),
         priority: String(data.get('priority') || 'medium'),
         assignedTo: String(data.get('assignedTo') || '') || undefined,
         relatedType: customerId ? 'customer' : undefined,
         relatedId: customerId || undefined,
-      }),
-    });
-    setOpen(false);
-    await load();
+      };
+
+      if (editTask) {
+        await api(`/tasks/${editTask.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+        toast.success('Đã cập nhật công việc');
+      } else {
+        await api('/tasks', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        toast.success('Đã thêm công việc');
+      }
+      setOpen(false);
+      form.reset();
+      await load();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <>
-      <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-[28px] font-bold">Công việc</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">Việc cần làm với khách hàng và nội bộ.</p>
-        </div>
-        <button type="button" onClick={() => setOpen(true)} className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">Thêm việc</button>
-      </div>
+      <PageHeader 
+        title="Công việc" 
+        description="Việc cần làm với khách hàng và nội bộ."
+        action={
+          <button type="button" onClick={openCreate} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <Plus size={16} /> Thêm việc
+          </button>
+        }
+      />
+      
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+      
       <section className="data-panel">
-        {tasks.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Chưa có công việc.</p>}
-        {tasks.map((task) => (
-          <div key={task.id} className="task-row">
-            <input type="checkbox" className="task-check" checked={task.done} onChange={() => toggle(task).catch((err: Error) => setError(err.message))} />
-            <div className="min-w-0 flex-1">
-              <p className={task.done ? 'text-[13px] font-medium text-muted-foreground line-through' : 'text-[13px] font-medium'}>{task.title}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{task.customer}{task.assigneeName ? ` · ${task.assigneeName}` : ''}</p>
+        {tasks.length === 0 ? (
+          <EmptyState 
+            icon={<ClipboardList size={40} />} 
+            title="Chưa có công việc nào" 
+            description="Bấm nút Thêm việc để tạo công việc đầu tiên." 
+          />
+        ) : (
+          tasks.map((task) => (
+            <div key={task.id} className="task-row group">
+              <input type="checkbox" className="task-check" checked={task.done} onChange={() => toggle(task).catch((err: Error) => setError(err.message))} />
+              <div className="min-w-0 flex-1">
+                <p className={task.done ? 'text-[13px] font-medium text-muted-foreground line-through' : 'text-[13px] font-medium'}>{task.title}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{task.customer}{task.assigneeName ? ` · ${task.assigneeName}` : ''}</p>
+              </div>
+              <PriorityBadge priority={task.priority} />
+              <span className="text-[11px] text-muted-foreground mr-2">{task.dueDate ? task.dueDate.slice(0, 10) : ''}{task.overdue ? ' · Quá hạn' : task.dueToday ? ' · Hôm nay' : task.dueTomorrow ? ' · Ngày mai' : ''}</span>
+              <button 
+                type="button" 
+                onClick={() => openEdit(task)} 
+                className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-primary transition-all rounded"
+                title="Sửa công việc"
+              >
+                <Pencil size={14} />
+              </button>
             </div>
-            <span className={`priority-badge ${task.priority === 'high' ? 'priority-high' : task.priority === 'low' ? 'priority-low' : 'priority-medium'}`}>{task.priorityLabel}</span>
-            <span className="text-[11px] text-muted-foreground">{task.dueDate ? task.dueDate.slice(0, 10) : ''}{task.overdue ? ' · Quá hạn' : task.dueToday ? ' · Hôm nay' : task.dueTomorrow ? ' · Ngày mai' : ''}</span>
-          </div>
-        ))}
+          ))
+        )}
       </section>
-      {open && (
-        <>
-          <div className="modal-backdrop" onClick={() => setOpen(false)} />
-          <form className="modal-card" onSubmit={(event) => create(event).catch((err: Error) => setError(err.message))}>
-            <h2 className="text-base font-semibold">Thêm công việc</h2>
-            <div className="mt-4 grid gap-3">
-              <input name="title" required className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Nội dung" />
-              <input name="dueDate" type="date" required className="h-10 rounded-md border border-input px-3 text-sm" />
-              <select name="priority" className="crm-select">
+
+      <Modal isOpen={open} onClose={() => setOpen(false)} title={editTask ? "Sửa công việc" : "Thêm công việc"}>
+        <form key={editTask?.id || 'new'} onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Nội dung công việc <span className="text-destructive">*</span></label>
+              <input name="title" defaultValue={editTask?.title} required className="h-10 w-full rounded-md border border-input px-3 text-sm" placeholder="VD: Gọi điện chăm sóc khách hàng" />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Hạn chót</label>
+              <input name="dueDate" type="date" defaultValue={editTask?.dueDate?.slice(0, 10)} required className="h-10 w-full rounded-md border border-input px-3 text-sm" />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Mức độ ưu tiên</label>
+              <select name="priority" className="crm-select h-10 w-full" defaultValue={editTask?.priority || 'medium'}>
                 <option value="high">Cao</option>
                 <option value="medium">Trung bình</option>
                 <option value="low">Thấp</option>
               </select>
-              <select name="assignedTo" className="crm-select">
-                <option value="">Người đang đăng nhập</option>
-                {users.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
-              </select>
-              <select name="customerId" className="crm-select">
-                <option value="">Nội bộ</option>
-                {customers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
-              </select>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setOpen(false)} className="h-9 rounded-md border px-4 text-sm">Hủy</button>
-                <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">Lưu</button>
-              </div>
             </div>
-          </form>
-        </>
-      )}
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Người đảm nhận</label>
+              <UserSelect name="assignedTo" defaultValue={editTask?.assignedTo || ''} defaultLabel="-- Người đang đăng nhập --" />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Liên kết khách hàng</label>
+              <CustomerSelect name="customerId" defaultValue={editTask?.relatedId || ''} defaultLabel="-- Nội bộ (Không chọn KH) --" />
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-2">
+            <button type="button" onClick={() => setOpen(false)} className="h-9 rounded-md border px-4 text-sm hover:bg-accent">Hủy</button>
+            <SubmitButton isSaving={saving} label={editTask ? "Lưu thay đổi" : "Lưu công việc"} />
+          </div>
+        </form>
+      </Modal>
     </>
   );
 }

@@ -34,18 +34,14 @@ export function ChatWidget() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
-
-  // Bảo đảm không có tin nhắn trùng ID gây lỗi duplicate key React
   const uniqueMessages = Array.from(new Map(messages.map((m) => [m.id, m])).values());
 
-  // Auto scroll xuống tin mới nhất
   useEffect(() => {
     if (open) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, open]);
 
-  // Focus input khi mở
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 100);
