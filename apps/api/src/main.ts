@@ -1,11 +1,14 @@
 import { NestFactory } from '@nestjs/core';
+import * as dotenv from 'dotenv';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express'; 
 import { join } from 'path'; 
+dotenv.config({ path: join(__dirname, '..', '.env') });
 import cookieParser from 'cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as expressBasicAuth from 'express-basic-auth';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -15,6 +18,7 @@ async function bootstrap() {
 
   const swaggerUser = process.env.SWAGGER_USER || 'admin';
   const swaggerPassword = process.env.SWAGGER_PASSWORD || 'dev-password';
+  app.useGlobalFilters(new GlobalExceptionFilter());
   
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,            

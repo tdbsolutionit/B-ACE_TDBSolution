@@ -5,9 +5,10 @@ import { CustomersCrudService } from './services/customers-crud.service';
 import { CustomersBulkService } from './services/customers-bulk.service';
 import { CustomersImportService } from './services/customers-import.service';
 import { CustomerHelperService } from './services/customer-helper.service';
-import { OdooService } from './odoo.service';
+import { IntegrationsModule } from '../integrations/integrations.module';
 
 @Module({
+  imports: [IntegrationsModule],
   controllers: [CustomersController],
   providers: [
     CustomersService,
@@ -15,7 +16,6 @@ import { OdooService } from './odoo.service';
     CustomersBulkService,
     CustomersImportService,
     CustomerHelperService,
-    OdooService,
   ],
   exports: [CustomersService]
 })

@@ -21,7 +21,7 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
     { key: 'company', label: 'Thông tin công ty' },
     { key: 'users', label: 'Người dùng & phân quyền' },
     { key: 'pipeline', label: 'Pipeline & giai đoạn' },
-    { key: 'teams', label: 'Nhóm & nhân viên' },
+    { key: 'teams', label: 'Phòng ban & Nhân viên' },
     { key: 'roles', label: 'Vai trò & quyền hạn' },
     { key: 'fields', label: 'Trường tùy chỉnh' },
     { key: 'notifications', label: 'Thông báo' },

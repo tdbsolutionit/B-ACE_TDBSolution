@@ -4,21 +4,11 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/auth';
 import { toast } from '@/components/ui/toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { PERMISSION_MODULES, ACTION_LABELS } from '@/app/(crm)/settings/_lib/permission-config';
 
 type Role = {
     id: string; name: string; description?: string | null; isSystem: boolean; permissionCodes: string[];
 };
-
-const MODULES = [
-    { key: 'CUSTOMER', label: 'Khách hàng', actions: ['read', 'create', 'update', 'delete'] },
-    { key: 'DEAL', label: 'Cơ hội (Deal)', actions: ['read', 'create', 'update', 'delete'] },
-    { key: 'QUOTE', label: 'Báo giá', actions: ['read', 'create', 'update', 'delete'] },
-    { key: 'TASK', label: 'Công việc', actions: ['read', 'create', 'update', 'delete'] },
-    { key: 'USER', label: 'Người dùng', actions: ['read', 'create', 'update', 'delete'] },
-    { key: 'SETTING', label: 'Cài đặt', actions: ['read', 'update'] },
-];
-
-const ACTION_LABELS: Record<string, string> = { read: 'Xem', create: 'Thêm', update: 'Sửa', delete: 'Xóa' };
 
 export function RolesManagement() {
     const [roles, setRoles] = useState<Role[]>([]);
@@ -130,81 +120,100 @@ export function RolesManagement() {
         }
     };
 
-    if (loading) return <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500">Đang tải danh sách vai trò…</div>;
-    if (error) return <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center"><p className="text-sm font-medium text-red-800">{error}</p><button onClick={() => location.reload()} className="mt-3 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700">Thử lại</button></div>;
+    if (loading) return <div className="rounded-xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">Đang tải danh sách vai trò…</div>;
+    
+    if (error) return (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-sm font-medium text-red-800">{error}</p>
+            <button onClick={() => location.reload()} className="mt-3 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700">Thử lại</button>
+        </div>
+    );
 
     return (
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-slate-500">Danh sách vai trò</h3>
+            <div className="rounded-xl border border-border bg-card p-4">
+                <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Danh sách vai trò</h3>
                 <ul className="space-y-1">
                     {roles.map((r) => (
                         <li key={r.id}>
-                            <button onClick={() => setSelected(r)} className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${selected?.id === r.id ? 'bg-[#0B6E78]/5 font-semibold text-[#0B6E78]' : 'text-slate-700 hover:bg-slate-100'}`}>
-                                <div className="flex items-center justify-between gap-2"><span>{r.name}</span>{r.isSystem && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-slate-500">Hệ thống</span>}</div>
-                                {r.description && <p className="mt-0.5 text-[12px] font-normal text-slate-500">{r.description}</p>}
+                            <button onClick={() => setSelected(r)} className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${selected?.id === r.id ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground hover:bg-accent'}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <span>{r.name}</span>
+                                    {r.isSystem && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">Hệ thống</span>}
+                                </div>
+                                {r.description && <p className="mt-0.5 text-[12px] font-normal text-muted-foreground">{r.description}</p>}
                             </button>
                         </li>
                     ))}
                 </ul>
-                <button onClick={() => { setCreateForm({ name: '', description: '' }); setShowCreate(true); }} className="mt-3 w-full rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-600 hover:border-[#0B6E78] hover:text-[#0B6E78]">+ Thêm vai trò mới</button>
+                <button onClick={() => { setCreateForm({ name: '', description: '' }); setShowCreate(true); }} className="mt-3 w-full rounded-lg border border-dashed border-input px-3 py-2.5 text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary">
+                    + Thêm vai trò mới
+                </button>
 
                 {showCreate && (
-                    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
                         <div className="space-y-2">
-                            <input autoFocus placeholder="Tên vai trò..." value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78]" />
-                            <input placeholder="Mô tả..." value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6E78]" />
+                            <input autoFocus placeholder="Tên vai trò..." value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                            <input placeholder="Mô tả..." value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
                         </div>
                         <div className="mt-3 flex gap-2">
-                            <button onClick={handleCreate} disabled={creating || !createForm.name.trim()} className="h-9 flex-1 rounded-md bg-[#0B6E78] px-3 text-sm font-semibold text-white hover:bg-[#095a63] disabled:opacity-50">{creating ? 'Đang tạo…' : 'Tạo'}</button>
-                            <button onClick={() => setShowCreate(false)} className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-100">Hủy</button>
+                            <button onClick={handleCreate} disabled={creating || !createForm.name.trim()} className="h-9 flex-1 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50">{creating ? 'Đang tạo…' : 'Tạo'}</button>
+                            <button onClick={() => setShowCreate(false)} className="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground hover:bg-accent">Hủy</button>
                         </div>
                     </div>
                 )}
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="rounded-xl border border-border bg-card p-6">
                 {selected ? (
                     <>
-                        <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div className="mb-5 flex items-center justify-between gap-3 border-b border-border pb-4">
                             <div>
-                                <h2 className="text-[17px] font-semibold text-slate-900">Phân quyền: {selected.name}</h2>
-                                <p className="mt-0.5 text-[13px] text-slate-500">Tick chọn quyền mà vai trò này được phép thực hiện.</p>
+                                <h2 className="text-[17px] font-semibold text-foreground">Phân quyền: {selected.name}</h2>
+                                <p className="mt-0.5 text-[13px] text-muted-foreground">Tick chọn quyền mà vai trò này được phép thực hiện.</p>
                             </div>
                             <div className="flex gap-2">
                                 {!selected.isSystem && <button onClick={() => setDeleteId(selected.id)} className="h-10 rounded-lg border border-red-200 px-4 text-sm font-semibold text-red-600 hover:bg-red-50">Xóa vai trò</button>}
-                                <button onClick={handleSave} disabled={!dirty || saving} className="h-10 rounded-lg bg-[#0B6E78] px-4 text-sm font-semibold text-white hover:bg-[#095a63] disabled:cursor-not-allowed disabled:opacity-50">{saving ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
+                                <button onClick={handleSave} disabled={!dirty || saving} className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+                                    {saving ? 'Đang lưu…' : 'Lưu thay đổi'}
+                                </button>
                             </div>
                         </div>
 
-                        <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <div className="overflow-hidden rounded-lg border border-border">
                             <table className="w-full text-sm">
-                                <thead className="bg-slate-50 text-slate-600">
+                                <thead className="bg-muted/50 text-muted-foreground">
                                     <tr>
                                         <th className="px-4 py-3 text-left font-semibold">Module</th>
-                                        {['read', 'create', 'update', 'delete'].map((a) => <th key={a} className="w-24 px-4 py-3 text-center font-semibold">{ACTION_LABELS[a]}</th>)}
+                                        {Object.keys(ACTION_LABELS).map((a) => (
+                                            <th key={a} className="w-24 px-4 py-3 text-center font-semibold">{ACTION_LABELS[a as keyof typeof ACTION_LABELS]}</th>
+                                        ))}
                                         <th className="w-20 px-4 py-3 text-center font-semibold">Tất cả</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {MODULES.map((m) => {
+                                    {PERMISSION_MODULES.map((m) => {
                                         const codes = m.actions.map((a) => `${m.key.toLowerCase()}:${a}`);
                                         const allChecked = codes.every((c) => draftCodes.includes(c));
                                         const someChecked = codes.some((c) => draftCodes.includes(c));
                                         return (
-                                            <tr key={m.key} className="border-t border-slate-100 hover:bg-slate-50/50">
-                                                <td className="px-4 py-3 font-medium text-slate-800">{m.label}</td>
-                                                {['read', 'create', 'update', 'delete'].map((a) => {
+                                            <tr key={m.key} className="border-t border-border hover:bg-muted/30">
+                                                <td className="px-4 py-3 font-medium text-foreground">{m.label}</td>
+                                                {Object.keys(ACTION_LABELS).map((a) => {
                                                     const code = `${m.key.toLowerCase()}:${a}`;
-                                                    const supported = m.actions.includes(a);
+                                                    const supported = m.actions.includes(a as any);
                                                     return (
                                                         <td key={a} className="px-4 py-3 text-center">
-                                                            {supported ? <input type="checkbox" checked={draftCodes.includes(code)} onChange={() => toggle(code)} className="h-4 w-4 cursor-pointer rounded border-slate-300 text-[#0B6E78] focus:ring-[#0B6E78]" /> : <span className="text-slate-300">—</span>}
+                                                            {supported ? (
+                                                                <input type="checkbox" checked={draftCodes.includes(code)} onChange={() => toggle(code)} className="h-4 w-4 cursor-pointer rounded border-input text-primary focus:ring-primary" />
+                                                            ) : (
+                                                                <span className="text-muted-foreground/30">—</span>
+                                                            )}
                                                         </td>
                                                     );
                                                 })}
                                                 <td className="px-4 py-3 text-center">
-                                                    <input type="checkbox" checked={allChecked} ref={(el) => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={(e) => toggleModule(m.key, m.actions, e.target.checked)} className="h-4 w-4 cursor-pointer rounded border-slate-300 text-[#0B6E78] focus:ring-[#0B6E78]" />
+                                                    <input type="checkbox" checked={allChecked} ref={(el) => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={(e) => toggleModule(m.key, m.actions, e.target.checked)} className="h-4 w-4 cursor-pointer rounded border-input text-primary focus:ring-primary" />
                                                 </td>
                                             </tr>
                                         );
@@ -212,10 +221,10 @@ export function RolesManagement() {
                                 </tbody>
                             </table>
                         </div>
-                        <p className="mt-3 text-[12px] text-slate-500">Đã chọn <span className="font-semibold text-slate-700">{draftCodes.length}</span> quyền.</p>
+                        <p className="mt-3 text-[12px] text-muted-foreground">Đã chọn <span className="font-semibold text-foreground">{draftCodes.length}</span> quyền.</p>
                     </>
                 ) : (
-                    <div className="py-16 text-center text-sm text-slate-500">Chưa có vai trò nào.</div>
+                    <div className="py-16 text-center text-sm text-muted-foreground">Chưa có vai trò nào.</div>
                 )}
             </div>
 
