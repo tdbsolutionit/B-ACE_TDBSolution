@@ -427,10 +427,10 @@ enum TicketPriority {
 }
 
 model Ticket {
-  id         String @id @default(uuid())
-  tenantId   String @map("tenant_id")
-  customerId String @map("customer_id")
-  departmentId String?  @map("department_id")
+  id           String  @id @default(uuid())
+  tenantId     String  @map("tenant_id")
+  customerId   String  @map("customer_id")
+  departmentId String? @map("department_id")
 
   code        String
   title       String
