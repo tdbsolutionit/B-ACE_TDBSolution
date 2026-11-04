@@ -1,20 +1,24 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeService } from '../../realtime/realtime.service';
 import { AuthUser, owned, scope } from '../../common/auth';
 import { logActivity } from '../../common/activity';
 import { CustomerDto, CustomerPatchDto } from '../dto/customer.dto';
 import { CustomerStatus } from '@prisma/client';
-import { IntegrationManager } from '../../integrations/integration.manager';
 import { CustomerHelperService } from './customer-helper.service';
+import { 
+  CustomerHasActiveProjectsException, 
+  DuplicateCustomerException 
+} from '../../common/exceptions/customer.exception';
 
 @Injectable()
 export class CustomersCrudService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
-    private readonly integrationManager: IntegrationManager,
     private readonly helper: CustomerHelperService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async list(user: AuthUser, q?: string, status?: string, tab?: string, page: number = 1, limit: number = 20) {
@@ -72,11 +76,44 @@ export class CustomersCrudService {
     });
   }
 
-  async create(user: AuthUser, dto: CustomerDto) {
+  async create(user: AuthUser, dto: CustomerDto & { forceCreate?: boolean }) {
     const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
+      const lastCustomer = await tx.customer.findFirst({
+        where: {
+          tenantId: user.tenantId,
+          code: { not: null, startsWith: 'KH' }
+        },
+        orderBy: { code: 'desc' },
+        select: { code: true }
+      });
+
+      if (!dto.forceCreate && (dto.phone || dto.email)) {
+        const existing = await tx.customer.findFirst({
+          where: {
+            tenantId: user.tenantId,
+            OR: [
+              dto.phone ? { phone: dto.phone } : undefined,
+              dto.email ? { email: dto.email } : undefined,
+            ].filter(Boolean) as any,
+          },
+        });
+
+        if (existing) {
+          throw new DuplicateCustomerException();
+        }
+      }
+
+
+      const match = lastCustomer?.code?.match(/KH(\d+)/);
+      const nextNumber = match ? parseInt(match[1], 10) + 1 : 1;
+      const generatedCode = `KH${nextNumber.toString().padStart(5, '0')}`;
+      const generatedShortCode = nextNumber.toString();
+
       const created = await tx.customer.create({
         data: {
           tenantId: user.tenantId,
+          code: generatedCode,
+          shortCode: generatedShortCode,
           name: dto.name.trim(),
           company: this.helper.blank(dto.company),
           phone: this.helper.blank(dto.phone),
@@ -96,6 +133,7 @@ export class CustomersCrudService {
         },
         include: { opportunities: { select: { id: true, status: true, stage: { select: { name: true } } } } },
       });
+
       await logActivity(tx, user, {
         type: 'note',
         subject: 'Tạo khách hàng',
@@ -103,17 +141,12 @@ export class CustomersCrudService {
         relatedType: 'customer',
         relatedId: created.id,
       });
+
       return { presented: this.helper.present(created, new Map([[user.sub, user.name]])), raw: created };
     });
 
-    this.realtime.emit('customer:created', { id: result.presented.id, name: result.presented.name, company: result.presented.company }, { tenantId: user.tenantId });
-
-    const odooPartnerId = await this.integrationManager.syncCustomerToAll(result.raw, user);
-    if (odooPartnerId) {
-      await this.prisma.withTenant(user.tenantId, (tx) =>
-        tx.customer.update({ where: { id: result.raw.id }, data: { odooPartnerId } }),
-      );
-    }
+    this.realtime.emit('customer:created', { id: result.presented.id, name: result.presented.name, company: result.presented.company, createdBy: user.sub }, { tenantId: user.tenantId });
+    this.eventEmitter.emit('customer.sync.odoo', { customer: result.raw, user });
 
     return result.presented;
   }
@@ -151,15 +184,10 @@ export class CustomersCrudService {
       return { presented: this.helper.present(updated, new Map([[user.sub, user.name]])), raw: updated };
     });
 
-    this.realtime.emit('customer:updated', result.presented, { tenantId: user.tenantId });
+    this.realtime.emit('customer:updated', {...result.presented, userId: user.sub}, { tenantId: user.tenantId });
 
     if (!fromOdoo) {
-      const odooPartnerId = await this.integrationManager.syncCustomerToAll(result.raw, user);
-      if (odooPartnerId && !result.raw.odooPartnerId) {
-        await this.prisma.withTenant(user.tenantId, (tx) =>
-          tx.customer.update({ where: { id: result.raw.id }, data: { odooPartnerId } }),
-        );
-      }
+      this.eventEmitter.emit('customer.sync.odoo', { customer: result.raw, user });
     }
 
     return result.presented;
@@ -227,7 +255,13 @@ export class CustomersCrudService {
 
   async remove(user: AuthUser, id: string) {
     await this.prisma.withTenant(user.tenantId, async (tx) => {
-      const current = await tx.customer.findFirstOrThrow({ where: owned(user, { id }) });
+      const current = await tx.customer.findFirstOrThrow({ 
+        where: owned(user, { id }),
+        include: { opportunities: { where: { status: 'open' } } } 
+      });
+      if (current.opportunities.length > 0) {
+        throw new CustomerHasActiveProjectsException(current.name);
+      }
       await logActivity(tx, user, {
         type: 'note',
         subject: 'Xoá khách hàng',

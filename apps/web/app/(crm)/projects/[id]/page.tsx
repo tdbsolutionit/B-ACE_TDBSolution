@@ -1,80 +1,61 @@
 'use client';
-
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { api } from '@/lib/auth';
 import { toast } from '@/components/ui/toast';
-import { type DocCard, type ProjectRow, type StageRow } from '@/lib/crm';
+import type { StageRow } from '@/lib/crm';
+
 import { ProjectHeader } from '../_components/project-header';
 import { ProjectDocs } from '../_components/project-docs';
 import { ProjectFiles } from '../_components/project-files';
 import { ProjectActivities } from '../_components/project-activities';
 import { EditProjectModal } from '../_components/edit-project-modal';
 import { LostStageModal } from '../_components/lost-stage-modal';
+import { ProjectNotFound } from './_components/project-not-found';
 
-type Detail = ProjectRow & {
-  lostReason?: string | null;
-  quotes: DocCard[];
-  activities: Array<{ id: string; subject: string; content: string | null; createdAt: string; owner: string }>;
-};
-
-type TabId = 'proposal' | 'quote' | 'po';
+import { useProjectDetail } from './_hooks/use-project-detail';
+import { projectDetailService } from './_services/project-detail.service';
+import type { ProjectTabId, UpdateProjectPayload } from './_types';
 
 export default function ProjectPage() {
   const params = useParams<{ id: string }>();
-  const [project, setProject] = useState<Detail | null>(null);
-  const [stages, setStages] = useState<StageRow[]>([]);
-  const [tab, setTab] = useState<TabId>('proposal');
+  const { project, stages, notFound, reload } = useProjectDetail(params?.id);
+
+  const [tab, setTab] = useState<ProjectTabId>('proposal');
   const [edit, setEdit] = useState(false);
   const [lostStage, setLostStage] = useState<string | null>(null);
 
-  async function load() {
-    try {
-      const row = await api<Detail>(`/opportunities/${params.id}`);
-      if (!row) throw new Error('Không tìm thấy dự án');
-      setProject(row);
-    } catch (err: any) {
-      console.error(err);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    api<StageRow[]>('/opportunities/stages').then(setStages).catch(() => setStages([]));
-  }, [params.id]);
-
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!project) return;
+
     const data = new FormData(event.currentTarget);
+    const payload: UpdateProjectPayload = {
+      name: String(data.get('name') || ''),
+      code: String(data.get('code') || ''),
+      value: Number(data.get('value') || 0),
+      probability: Number(data.get('probability') || 0),
+      expectedCloseDate: String(data.get('closeDate') || ''),
+      stageId: String(data.get('stageId') || ''),
+    };
+
     try {
-      await api(`/opportunities/${params.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          name: String(data.get('name') || ''),
-          code: String(data.get('code') || ''),
-          value: Number(data.get('value') || 0),
-          probability: Number(data.get('probability') || 0),
-          expectedCloseDate: String(data.get('closeDate') || ''),
-          stageId: String(data.get('stageId') || ''),
-        }),
-      });
+      await projectDetailService.update(project.id, payload);
       toast.success('Đã lưu thay đổi');
       setEdit(false);
-      await load();
+      await reload();
     } catch (err) {
       console.error(err);
     }
   }
 
   async function move(stageId: string, lostReason?: string) {
+    if (!project) return;
+    
     try {
-      await api(`/opportunities/${params.id}/stage`, {
-        method: 'PATCH',
-        body: JSON.stringify({ stageId, ...(lostReason ? { lostReason } : {}) }),
-      });
+      await projectDetailService.moveStage(project.id, { stageId, lostReason });
       toast.success('Đã cập nhật giai đoạn');
       setLostStage(null);
-      await load();
+      await reload();
     } catch (err) {
       console.error(err);
     }
@@ -88,7 +69,17 @@ export default function ProjectPage() {
     move(stage.id);
   }
 
-  if (!project) return <p className="p-8 text-sm text-muted-foreground text-center">Đang tải dự án…</p>;
+  if (notFound) {
+    return <ProjectNotFound />;
+  }
+
+  if (!project) {
+    return (
+      <p className="p-8 text-center text-sm text-muted-foreground">
+        Đang tải dự án…
+      </p>
+    );
+  }
 
   return (
     <div>
@@ -105,6 +96,7 @@ export default function ProjectPage() {
         tab={tab}
         setTab={setTab}
       />
+
       <div className="mt-5">
         <ProjectFiles projectId={project.id} />
       </div>
@@ -112,7 +104,7 @@ export default function ProjectPage() {
       <ProjectActivities
         projectId={project.id}
         activities={project.activities}
-        onSaved={load}
+        onSaved={reload}
       />
 
       <LostStageModal

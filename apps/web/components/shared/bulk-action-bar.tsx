@@ -86,11 +86,7 @@ export function BulkActionBar({
             <Button
               variant="ghost"
               className="h-8 gap-1.5 px-2.5 text-xs text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                if (confirm(`Bạn có chắc chắn muốn xóa ${count} khách hàng đã chọn?`)) {
-                  onDelete();
-                }
-              }}
+              onClick={onDelete}
             >
               <Trash2 size={14} /> Xóa
             </Button>

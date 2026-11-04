@@ -23,7 +23,8 @@ import { RolesModule } from './roles/roles.module';
 import { TeamsModule } from './teams/teams.module';
 import { StagesModule } from './stages/stages.module';
 import { TenantsModule } from './tenants/tenants.module';
-import { TicketsModule } from './tickets/tickets.module'
+import { TicketsModule } from './tickets/tickets.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import * as path from 'path';
 
 @Module({
@@ -37,13 +38,15 @@ import * as path from 'path';
       global: true,
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): JwtModuleOptions => ({
-        secret: configService.get<string>('JWT_SECRET') || 'fallback_secret',
-        signOptions: { 
-          expiresIn: (configService.get<string>('JWT_EXPIRES') || '8h') as any 
-        },
-      }),
-    }),
+      useFactory: (config: ConfigService): JwtModuleOptions => {
+        const secret = config.get<string>('JWT_SECRET');
+        if (!secret || secret.startsWith('change-me')) {
+          throw new Error('JWT_SECRET chưa được cấu hình an toàn');
+        }
+        return { secret, signOptions: { expiresIn: (config.get('JWT_EXPIRES') || '8h') as any } };
+      },
+    }), 
+    EventEmitterModule.forRoot(),
 
     ThrottlerModule.forRoot([{
       ttl: 60000, 
@@ -69,13 +72,12 @@ import * as path from 'path';
     StagesModule,
     TenantsModule,
     TicketsModule,
+    
   ],
   controllers: [HealthController],
   providers: [
-    { 
-      provide: APP_GUARD, 
-      useClass: JwtAuthGuard 
-    },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
 export class AppModule {}

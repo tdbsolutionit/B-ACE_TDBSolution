@@ -34,9 +34,12 @@ const TOAST_MAP: Record<string, (p: any) => string | null> = {
   'customer:created': (p) => `👤 Khách hàng mới: ${p.name}`,
   'customer:assigned': (p) => `👥 Đã gán ${p.count} khách cho ${p.assigneeName}`,
   'quote:accepted': (p) => `🎉 Báo giá "${p.quoteNumber}" đã được chốt thành công!`,
-  'message:created': () => null, 'message:updated': () => null,
-  'message:deleted': () => null, 'message:reaction': () => null,
-  'user:typing': () => null, 'room:read': () => null,
+  'message:created': () => null,
+  'message:updated': () => null,
+  'message:deleted': () => null,
+  'message:reaction': () => null,
+  'user:typing': () => null,
+  'room:read': () => null,
 };
 
 const ALL_EVENTS = Object.keys(TOAST_MAP);
@@ -106,7 +109,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     toastEnabledRef.current = value;
   }, []);
 
-  // ─── SSE Connection ──────────────────────────────────────────
   useEffect(() => {
     if (!userId) {
       esRef.current?.close();
@@ -132,9 +134,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       const handler = (event: Event) => {
         try {
           const data = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
-          if (TOAST_MAP[type]?.(data.payload)) {
+          
+          const isSelfAction = data.payload?.createdBy === userId || data.payload?.userId === userId;
+          
+          if (!isSelfAction && TOAST_MAP[type]?.(data.payload)) {
             pushToast(type, data.payload, toastEnabledRef.current);
           }
+          
           listenersRef.current.get(type)?.forEach((fn) => fn(data));
         } catch (error) {
           console.error(`Không thể xử lý realtime event "${type}"`, error);

@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsArray, IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 
 export class CustomerDto {
   @IsString()
@@ -93,10 +94,4 @@ export class BulkStatusDto {
 
   @IsIn(['lead', 'active', 'inactive'])
   status!: 'lead' | 'active' | 'inactive';
-}
-
-export class BulkDeleteDto {
-  @IsArray()
-  @IsString({ each: true })
-  ids!: string[];
 }

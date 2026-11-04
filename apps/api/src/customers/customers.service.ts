@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AuthUser } from '../common/auth';
-import { CustomerDto, CustomerPatchDto, ImportDto, BulkAssignDto, BulkStatusDto, BulkDeleteDto } from './dto/customer.dto';
+import { CustomerDto, CustomerPatchDto, ImportDto, BulkAssignDto, BulkStatusDto } from './dto/customer.dto';
+import { BulkDeleteDto } from '../common/dto/bulk-delete.dto';
 import { CustomersCrudService } from './services/customers-crud.service';
 import { CustomersBulkService } from './services/customers-bulk.service';
 import { CustomersImportService } from './services/customers-import.service';

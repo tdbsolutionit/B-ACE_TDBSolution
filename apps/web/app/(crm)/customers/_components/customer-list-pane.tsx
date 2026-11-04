@@ -3,7 +3,7 @@
 import { Pagination } from '@/components/ui/pagination';
 import { Loading } from '@/components/shared/loading';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import ExcelJS from 'exceljs';
 import { api } from '@/lib/auth';
 import { type CustomerRow, type PaginatedResponse } from '@/lib/crm';
@@ -16,6 +16,7 @@ import { toast } from '@/components/ui/toast';
 import { usePermission } from '@/hooks/use-permission';
 import { AddCustomerModal } from './add-customer-modal';
 import { CustomerToolbar } from './customer-toolbar';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 function ListPane() {
   const perm = usePermission();
@@ -27,10 +28,12 @@ function ListPane() {
   const [q, setQ] = useState(params.get('q') || '');
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
   const [open, setOpen] = useState(false);
-  const [importNote, setImportNote] = useState('');
   const [users, setUsers] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const [isExporting, setIsExporting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<any>({ total: 0, page: 1, limit: 20, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
   const limit = 20;
@@ -157,17 +160,7 @@ function ListPane() {
     e.target.value = '';
   };
 
-  const filtered = useMemo(() => {
-    return (Array.isArray(rows) ? rows : []).filter((row) => {
-      if (tab === 'lead' && row.status !== 'lead') return false;
-      if (tab === 'customer' && row.status !== 'active') return false;
-      if (tab === 'has_opp' && row.oppCount === 0) return false;
-      const blob = `${row.name} ${row.company || ''} ${row.phone || ''} ${row.email || ''} ${row.code || ''} ${row.shortCode || ''}`.toLowerCase();
-      return blob.includes(q.toLowerCase());
-    });
-  }, [rows, tab, q]);
-
-  const bulk = useBulkSelection(filtered);
+  const bulk = useBulkSelection(rows);
 
   const CUSTOMER_EXPORT_COLS = [
     { key: 'name', label: 'Tên khách hàng' }, { key: 'company', label: 'Công ty' },
@@ -178,10 +171,32 @@ function ListPane() {
     { key: 'assigneeName', label: 'Người phụ trách' },
   ];
 
-  async function exportCustomers(exportRows: CustomerRow[]) {
-    if (!exportRows.length) return toast.error('Không có dữ liệu để xuất');
-    await exportToExcel('danh-sach-khach-hang', exportRows, CUSTOMER_EXPORT_COLS);
-    toast.success(`Đã xuất ${exportRows.length} khách hàng ra file Excel`);
+  async function exportAllCustomers() {
+    try {
+      setIsExporting(true);
+      const res = await api<PaginatedResponse<CustomerRow>>(`/customers?page=1&limit=10000&q=${q}&tab=${tab}`);
+      const allData = res.data || [];
+      
+      if (!allData.length) {
+        toast.error('Không có dữ liệu để xuất');
+        return;
+      }
+      
+      await exportToExcel('danh-sach-khach-hang', allData, CUSTOMER_EXPORT_COLS);
+      toast.success(`Đã xuất ${allData.length} khách hàng ra file Excel`);
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi xuất dữ liệu');
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function exportSelectedCustomers() {
+    const selectedRows = rows.filter((r) => bulk.selected.has(r.id));
+    if (!selectedRows.length) return toast.error('Không có dữ liệu để xuất');
+    
+    await exportToExcel('danh-sach-khach-hang', selectedRows, CUSTOMER_EXPORT_COLS);
+    toast.success(`Đã xuất ${selectedRows.length} khách hàng ra file Excel`);
   }
 
   async function handleBulkAssign(targetUserId: string) {
@@ -212,16 +227,16 @@ function ListPane() {
     try {
       const selectedIds = Array.from(bulk.selected);
       await api<{ count: number }>('/customers/bulk-delete', {
-        method: 'POST', body: JSON.stringify({ ids: selectedIds }),
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds }),
       });
       setRows((prev) => prev.filter((r) => !bulk.selected.has(r.id)));
       toast.success(`Đã xóa ${selectedIds.length} khách hàng`);
       bulk.clear();
-    } catch (err: any) { toast.error(err.message || 'Lỗi khi xóa khách hàng'); }
-  }
-
-  function handleBulkExport() {
-    exportCustomers(rows.filter((r) => bulk.selected.has(r.id)));
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi xóa khách hàng');
+      throw err;
+    }
   }
 
   const tabsData = [
@@ -236,7 +251,7 @@ function ListPane() {
   return (
     <div className="flex h-full flex-col">
       <CustomerToolbar
-        totalFiltered={filtered.length}
+        totalFiltered={rows.length}
         totalMeta={meta.total}
         tab={tab}
         setTab={setTab}
@@ -245,19 +260,18 @@ function ListPane() {
         density={density}
         setDensity={setDensity}
         permHasCreate={perm.has('customer:create')}
-        onExport={() => exportCustomers(filtered)}
+        onExport={exportAllCustomers}
+        isExporting={isExporting}
         onImportClick={() => fileInputRef.current?.click()}
         onAddClick={() => setOpen(true)}
         fileInputRef={fileInputRef}
         onFileChange={handleImport}
         tabsData={tabsData}
       />
-
-      {importNote && <p className="mx-4 mt-3 rounded-md border border-primary/30 bg-secondary px-3 py-2 text-xs">{importNote}</p>}
       
       <div className="customer-list-scroll min-h-0 flex-1 overflow-auto">
         <CustomerTable
-          rows={filtered}
+          rows={rows}
           loading={loading}
           density={density}
           selected={bulk.selected}
@@ -280,14 +294,23 @@ function ListPane() {
         onClear={bulk.clear}
         onAssign={handleBulkAssign}
         onChangeStatus={handleBulkStatus}
-        onExport={handleBulkExport}
-        onDelete={handleBulkDelete}
+        onExport={exportSelectedCustomers}
+        onDelete={() => setConfirmDeleteOpen(true)}
       />
 
       <AddCustomerModal 
         open={open} 
         onClose={() => setOpen(false)} 
         onSuccess={(created) => setRows((current) => [created, ...current])}
+      />
+      
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleBulkDelete}
+        title="Xóa khách hàng"
+        description={`Bạn có chắc chắn muốn xóa ${bulk.count} khách hàng đã chọn? Hành động này không thể hoàn tác.`}
+        confirmLabel="Đồng Ý"
       />
     </div>
   );

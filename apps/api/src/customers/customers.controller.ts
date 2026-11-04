@@ -3,7 +3,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiOkResponse, ApiBody 
 import { AuthUser } from '../common/auth';
 import { CurrentUser } from '../common/current-user.decorator';
 import { CustomersService } from './customers.service';
-import { CustomerDto, CustomerPatchDto, ImportDto, BulkAssignDto, BulkStatusDto, BulkDeleteDto } from './dto/customer.dto';
+import { CustomerDto, CustomerPatchDto, ImportDto, BulkAssignDto, BulkStatusDto } from './dto/customer.dto';
+import { BulkDeleteDto } from '../common/dto/bulk-delete.dto';
 
 @ApiTags('customers')
 @ApiBearerAuth()

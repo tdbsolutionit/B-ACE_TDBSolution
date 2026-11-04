@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, FileUp, LayoutGrid, Plus, Rows, Search } from 'lucide-react';
+import { Download, Loader2, FileUp, LayoutGrid, Plus, Rows, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -15,6 +15,7 @@ interface CustomerToolbarProps {
   setDensity: (d: 'compact' | 'comfortable') => void;
   permHasCreate: boolean;
   onExport: () => void;
+  isExporting?: boolean;
   onImportClick: () => void;
   onAddClick: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -24,7 +25,7 @@ interface CustomerToolbarProps {
 
 export function CustomerToolbar({
   totalFiltered, totalMeta, tab, setTab, q, setQ, density, setDensity,
-  permHasCreate, onExport, onImportClick, onAddClick, fileInputRef, onFileChange, tabsData
+  permHasCreate, onExport, isExporting, onImportClick, onAddClick, fileInputRef, onFileChange, tabsData
 }: CustomerToolbarProps) {
   return (
     <>
@@ -35,8 +36,13 @@ export function CustomerToolbar({
           <p className="text-[11px] text-muted-foreground">{totalFiltered} / {totalMeta} khách hàng</p>
         </div>
         <div className="flex shrink-0 gap-1.5">
-          <Button variant="outline" className="h-8 px-2.5 text-xs" title="Xuất danh sách" onClick={onExport}>
-            <Download size={14} />
+          <Button variant="outline" className="h-8 px-2.5 text-xs" title="Xuất danh sách" onClick={onExport} disabled={isExporting}>
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            {isExporting ? 'Đang xuất...' : 'Export'}
           </Button>
           {permHasCreate && (
             <>

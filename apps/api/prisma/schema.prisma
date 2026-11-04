@@ -568,8 +568,6 @@ model Integration {
   provider       String   
   config         Json     
   isActive       Boolean  @default(true) @map("is_active")
-  
-  // THÊM CÁC TRƯỜNG NÀY ĐỂ LƯU TRẠNG THÁI
   lastSyncedAt   DateTime? @map("last_synced_at")
   syncStatus     String    @default("idle") @map("sync_status")
   errorMessage   String?   @map("error_message")

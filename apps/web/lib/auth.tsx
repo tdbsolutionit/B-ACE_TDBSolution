@@ -34,6 +34,18 @@ type AuthValue = {
   logout: () => void;
 };
 
+export class ApiError extends Error {
+  status: number;
+  data: unknown;
+
+  constructor(message: string, status: number, data?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
 const AuthContext = createContext<AuthValue | null>(null);
 const KEY = 'bace.session';
 
@@ -164,6 +176,32 @@ function buildApiUrl(path: string): string {
   return `${getApiBase()}${path}`;
 }
 
+async function parseApiErrorResponse(response: Response): Promise<ApiError> {
+  let errorMessage = `Yêu cầu API thất bại (HTTP ${response.status})`;
+  let errorData: unknown = null;
+
+  try {
+    const clonedResponse = response.clone();
+    errorData = await clonedResponse.json();
+
+    if (errorData && typeof errorData === 'object') {
+      const data = errorData as Record<string, unknown>;
+      
+      if (Array.isArray(data.message)) {
+        errorMessage = data.message.join(', ');
+      } else if (typeof data.message === 'string') {
+        errorMessage = data.message;
+      } else if (typeof data.error === 'string') {
+        errorMessage = data.error;
+      }
+    }
+  } catch {
+    // Trả về message mặc định nếu response không phải JSON
+  }
+
+  return new ApiError(errorMessage, response.status, errorData);
+}
+
 export function AuthProvider({
   children,
 }: {
@@ -193,17 +231,13 @@ export function AuthProvider({
         });
 
         if (!res.ok) {
-          throw new Error(
-            res.status === 401
-              ? 'Email hoặc mật khẩu không đúng'
-              : 'Không thể đăng nhập. Vui lòng thử lại.'
-          );
+          throw await parseApiErrorResponse(res);
         }
 
         next = await res.json();
 
         if (!isSession(next)) {
-          console.error("Login Response:", next);
+          console.error('Login Response:', next);
           throw new Error('Phản hồi đăng nhập không đúng định dạng');
         }
 
@@ -276,20 +310,18 @@ async function requestApi(
     throw error;
   }
 
-if (response.status === 401 && !path.includes('/auth/login')) {
-  try {
-    await fetch(buildApiUrl('/auth/refresh'), { method: 'POST', credentials: 'include' });
-    return requestApi(path, options, skipErrorToast);
-  } catch (err) {
-    forceLogout();
-    throw new Error('Unauthorized');
+  if (response.status === 401 && !path.includes('/auth/login')) {
+    try {
+      await fetch(buildApiUrl('/auth/refresh'), { method: 'POST', credentials: 'include' });
+      return requestApi(path, options, skipErrorToast);
+    } catch (err) {
+      forceLogout();
+      throw new Error('Unauthorized');
+    }
   }
-}
 
   if (!response.ok) {
-    const error = new Error(
-      `Yêu cầu API thất bại (HTTP ${response.status})`
-    );
+    const error = await parseApiErrorResponse(response);
 
     if (!skipErrorToast) handleApiError(error);
 

@@ -3,7 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeService } from '../../realtime/realtime.service';
 import { AuthUser, owned, scope } from '../../common/auth';
 import { logActivity } from '../../common/activity';
-import { BulkAssignDto, BulkStatusDto, BulkDeleteDto } from '../dto/customer.dto';
+import { BulkAssignDto, BulkStatusDto } from '../dto/customer.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 
 @Injectable()
 export class CustomersBulkService {

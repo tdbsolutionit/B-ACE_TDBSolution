@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser, scope } from '../../common/auth';
 import { logActivity } from '../../common/activity';
 import { ImportDto, ImportRow } from '../dto/customer.dto';
-import { IntegrationManager } from '../../integrations/integration.manager';
 import { CustomerHelperService } from './customer-helper.service';
 
 @Injectable()
 export class CustomersImportService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly integrationManager: IntegrationManager,
     private readonly helper: CustomerHelperService,
+    private readonly eventEmitter: EventEmitter2, // Đã thay thế IntegrationManager
   ) {}
 
   async import(user: AuthUser, dto: ImportDto) {
@@ -69,16 +69,9 @@ export class CustomersImportService {
             createdBy: user.sub,
           },
         });
-        
-        const odooPartnerId = await this.integrationManager.syncCustomerToAll(created, user);
-        if (odooPartnerId) {
-          await this.prisma.withTenant(user.tenantId, (t) =>
-            t.customer.update({
-              where: { id: created.id },
-              data: { odooPartnerId },
-            }),
-          );
-        }
+
+        // Bắn sự kiện cho từng khách hàng vừa tạo
+        this.eventEmitter.emit('customer.sync.odoo', { customer: created, user });
 
         createdCount++;
       }
