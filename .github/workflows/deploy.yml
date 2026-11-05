@@ -175,6 +175,23 @@ jobs:
       - name: Backup DB
         shell: powershell
         run: |
-          $f = "C:\backups\bace_$(Get-Date -Format yyyyMMdd_HHmm).dump"
-          & "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -Fc -f $f "${{ secrets.DATABASE_URL_PLAIN }}"
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $backupDir = "D:\backups"
+          
+          if (-not (Test-Path $backupDir)) {
+            New-Item -ItemType Directory -Path $backupDir | Out-Null
+          }
+
+          $f = "$backupDir\bace_$(Get-Date -Format yyyyMMdd_HHmm).dump"
+          
+          # Lấy chuỗi kết nối từ secret và cắt bỏ phần ?schema=... nếu có
+          $dbUrl = "${{ secrets.DATABASE_URL }}"
+          $cleanDbUrl = $dbUrl.Split('?')[0]
+          
+          & "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -Fc -f $f "$cleanDbUrl"
+          
+          if ($LASTEXITCODE -ne 0) { 
+            Write-Error "LỖI: Backup Database thất bại!"
+            exit 1 
+          }
+          
+          Write-Host "Backup thành công tại: $f"
