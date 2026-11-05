@@ -176,5 +176,5 @@ jobs:
         shell: powershell
         run: |
           $f = "C:\backups\bace_$(Get-Date -Format yyyyMMdd_HHmm).dump"
-          & "C:\Program Files\PostgreSQL\16\bin\pg_dump.exe" -Fc -f $f "${{ secrets.DATABASE_URL_PLAIN }}"
+          & "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -Fc -f $f "${{ secrets.DATABASE_URL_PLAIN }}"
           if ($LASTEXITCODE -ne 0) { exit 1 }
