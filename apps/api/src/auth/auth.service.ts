@@ -85,7 +85,7 @@ export class AuthService {
     });
 
     res.clearCookie('accessToken', this.getCookieOptions('/'));
-    res.clearCookie('refreshToken', this.getCookieOptions('/api/auth'));
+    res.clearCookie('refreshToken', this.getCookieOptions('/'));
 
     return { success: true, message: 'Đăng xuất thành công' };
   }
@@ -150,7 +150,7 @@ export class AuthService {
     });
 
     res.cookie('refreshToken', refreshToken, {
-      ...this.getCookieOptions('/api/auth'),
+      ...this.getCookieOptions('/'),
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 

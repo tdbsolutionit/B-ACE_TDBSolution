@@ -283,6 +283,8 @@ export function useAuth() {
   return value;
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
 async function requestApi(
   path: string,
   options: RequestInit = {},
@@ -312,9 +314,25 @@ async function requestApi(
 
   if (response.status === 401 && !path.includes('/auth/login')) {
     try {
-      await fetch(buildApiUrl('/auth/refresh'), { method: 'POST', credentials: 'include' });
+      if (!refreshPromise) {
+        refreshPromise = fetch(buildApiUrl('/auth/refresh'), {
+          method: 'POST',
+          credentials: 'include',
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error('Refresh failed');
+            return true;
+          })
+          .finally(() => {
+            refreshPromise = null;
+          });
+      }
+
+      await refreshPromise;
+
       return requestApi(path, options, skipErrorToast);
     } catch (err) {
+      refreshPromise = null;
       forceLogout();
       throw new Error('Unauthorized');
     }

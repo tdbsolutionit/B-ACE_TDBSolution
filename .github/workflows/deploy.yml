@@ -47,17 +47,11 @@ jobs:
             "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}",
             "JWT_EXPIRES=8h",
             "API_PORT=3001",
-            "WEB_ORIGIN=http://192.168.103.8:3000",
+            "WEB_ORIGIN=${{ secrets.WEB_ORIGIN }}",
             "NODE_ENV=production",
             "SWAGGER_USER=${{ secrets.SWAGGER_USER }}",
             "SWAGGER_PASSWORD=${{ secrets.SWAGGER_PASSWORD }}"
           )
-          [System.IO.File]::WriteAllLines("C:\apps\bace\apps\api\.env", $linesApi, (New-Object System.Text.UTF8Encoding $False))
-
-          $linesWeb = @(
-            "NEXT_PUBLIC_API_URL=http://192.168.103.8:3001/api"
-          )
-          [System.IO.File]::WriteAllLines("C:\apps\bace\apps\web\.env.production", $linesWeb, (New-Object System.Text.UTF8Encoding $False))
 
       - name: Install dependencies
         shell: powershell

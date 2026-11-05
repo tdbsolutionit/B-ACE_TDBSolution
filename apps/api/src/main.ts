@@ -32,10 +32,8 @@ async function bootstrap() {
   
   const webOrigin = process.env.WEB_ORIGIN || 'http://localhost:3000';
 
-  const allowOrigins = [
-    ...webOrigin.split(',').map(origin => origin.trim()), 
-    'http:192.168.103.8:8080',
-  ];
+  const allowOrigins = webOrigin.split(',').map(origin => origin.trim());
+  
   app.enableCors({
     origin: allowOrigins,
     credentials: true,
