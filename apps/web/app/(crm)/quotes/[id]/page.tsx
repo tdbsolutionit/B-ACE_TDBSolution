@@ -12,7 +12,8 @@ import { printQuote } from '@/lib/quote-printer';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { StatusBadge } from '@/components/shared/badges';
 
-type Line = { id?: string; moduleName: string; unit?: string; quantity: number; unitPrice: number; total?: number };
+type Line = { id?: string; moduleName: string; unit?: string; quantity: number; unitPrice: number; vat?: number; total?: number };
+type PaymentTerm = { name: string; percentage: number; condition: string };
 
 type Quote = {
   id: string;
@@ -31,6 +32,7 @@ type Quote = {
   };
   opportunity: { id: string; name: string; code?: string | null };
   items?: Line[];
+  paymentTerms?: PaymentTerm[];
 };
 
 const STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'expired'] as const;
@@ -41,6 +43,10 @@ export default function QuoteDetailPage() {
   const { session } = useAuth();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTerm[]>([
+    { name: 'Đợt 1', percentage: 50, condition: 'Thanh toán trong vòng 07 ngày khi ký hợp đồng.' },
+    { name: 'Đợt 2', percentage: 50, condition: 'Thanh toán trong vòng 07 ngày sau khi có biên bản nghiệm thu.' }
+  ]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -53,8 +59,13 @@ export default function QuoteDetailPage() {
         unit: item.unit || 'Gói',
         quantity: Number(item.quantity) || 1,
         unitPrice: Number(item.unitPrice) || 0,
+        vat: Number(item.vat) || 0,
       }));
-      setLines(items.length ? items : [{ moduleName: 'Hạng mục', quantity: 1, unitPrice: Number(row.totalCost) || 0 }]);
+      setLines(items.length ? items : [{ moduleName: 'Hạng mục', quantity: 1, unitPrice: Number(row.totalCost) || 0, vat: 0 }]);
+      
+      if ((row as any).paymentTerms) {
+        setPaymentTerms((row as any).paymentTerms);
+      }
     });
   }
 
@@ -85,19 +96,29 @@ export default function QuoteDetailPage() {
             unit: line.unit || 'Gói',
             quantity: Number(line.quantity) || 0,
             unitPrice: Number(line.unitPrice) || 0,
+            vat: Number(line.vat) || 0,
           })),
+          paymentTerms: paymentTerms
         }),
       });
       setQuote((current) => current ? { ...current, ...updated, items: updated.items } : current);
-      toast.success('Đã lưu hạng mục');
+      toast.success('Đã lưu thay đổi');
     } catch (err: any) {
-      toast.error(err.message || 'Lỗi khi lưu hạng mục');
+      toast.error(err.message || 'Lỗi khi lưu');
     } finally {
       setSaving(false);
     }
   }
 
-  const price = lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0);
+  const price = lines.reduce((sum, line) => {
+    const subTotal = (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0);
+    const vatAmount = subTotal * ((Number(line.vat) || 0) / 100);
+    return sum + subTotal + vatAmount;
+  }, 0);
+
+  const updateTerm = (index: number, field: keyof PaymentTerm, value: string | number) => {
+    setPaymentTerms(current => current.map((term, i) => i === index ? { ...term, [field]: value } : term));
+  };
 
   if (error && !quote) return <p className="text-sm text-destructive">{error}</p>;
   if (!quote) return <p className="text-sm text-muted-foreground">Đang tải báo giá…</p>;
@@ -113,7 +134,7 @@ export default function QuoteDetailPage() {
 
         <button
           type="button"
-          onClick={() => printQuote(quote, lines, session?.user).catch(console.error)}
+          onClick={() => printQuote(quote, lines, session?.user, paymentTerms).catch(console.error)}
           className="inline-flex h-9 items-center gap-2 rounded-md border border-primary/40 bg-secondary px-4 text-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
         >
           <FileDown size={16} /> Xuất PDF / In báo giá
@@ -128,23 +149,42 @@ export default function QuoteDetailPage() {
         ))}
       </div>
 
-      <section className="data-panel">
+      <section className="data-panel mb-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold">Hạng mục</h2>
-          <button type="button" onClick={() => setLines((current) => [...current, { moduleName: '', quantity: 1, unitPrice: 0 }])} className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-xs hover:bg-accent">
+          <button 
+            type="button" 
+            onClick={() => setLines((current) => [...current, { moduleName: '', quantity: 1, unitPrice: 0, vat: 0 }])} 
+            className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-xs hover:bg-accent"
+          >
             <Plus size={14} /> Thêm dòng
           </button>
         </div>
         <div className="space-y-2">
           {lines.map((line, index) => (
-            <div key={line.id || index} className="grid grid-cols-[1fr_80px_80px_140px_36px] gap-2 items-center">
+            <div key={line.id || index} className="grid grid-cols-[1fr_70px_60px_130px_70px_36px] gap-2 items-center">
               <input value={line.moduleName} onChange={(event) => updateLine(setLines, index, { moduleName: event.target.value })} className="h-10 rounded-md border border-input px-3 text-sm" placeholder="Tên hạng mục" />
               <input value={line.unit || ''} onChange={(event) => updateLine(setLines, index, { unit: event.target.value })} className="h-10 rounded-md border border-input px-3 text-sm text-center" placeholder="Đơn vị" />
-              <input type="number" min={0} value={line.quantity} onChange={(event) => updateLine(setLines, index, { quantity: Number(event.target.value) })} className="h-10 rounded-md border border-input px-3 text-sm" placeholder="SL" />
+              <input type="number" min={0} value={line.quantity} onChange={(event) => updateLine(setLines, index, { quantity: Number(event.target.value) })} className="h-10 rounded-md border border-input px-3 text-sm text-center" placeholder="SL" />
+              
               <div className="h-10">
-                <CurrencyInput key={line.id || index} name={`unitPrice-${index}`} defaultValue={line.unitPrice} onChange={(val) => updateLine(setLines, index, { unitPrice: Number(val) })} placeholder="0" />
+                <CurrencyInput key={line.id || index} name={`unitPrice-${index}`} defaultValue={line.unitPrice} onChange={(val) => updateLine(setLines, index, { unitPrice: Number(val) })} placeholder="Đơn giá" />
               </div>
-              <button type="button" className="inline-flex items-center justify-center text-muted-foreground hover:text-destructive" onClick={() => setLines((current) => current.filter((_, item) => item !== index))}>
+
+              <div className="relative">
+                <input 
+                  type="number" 
+                  min={0} 
+                  max={100} 
+                  value={line.vat || 0} 
+                  onChange={(event) => updateLine(setLines, index, { vat: Number(event.target.value) })} 
+                  className="h-10 w-full rounded-md border border-input pl-3 pr-6 text-sm" 
+                  placeholder="VAT" 
+                />
+                <span className="absolute right-2 top-3 text-xs text-muted-foreground">%</span>
+              </div>
+
+              <button type="button" className="inline-flex items-center justify-center text-muted-foreground hover:text-destructive h-10" onClick={() => setLines((current) => current.filter((_, item) => item !== index))}>
                 <Trash2 size={15} />
               </button>
             </div>
@@ -152,12 +192,63 @@ export default function QuoteDetailPage() {
         </div>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-border pt-4">
           <div className="flex w-full items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Tổng cộng:</span>
+            <span className="text-sm font-medium text-muted-foreground">Tổng cộng (Đã bao gồm VAT):</span>
             <p className="text-lg font-semibold text-primary">{vnd(price)}</p>
           </div>
         </div>
-        <div className="mt-4 flex items-center justify-end gap-3">
-          <SubmitButton isSaving={saving} label="Lưu hạng mục" onClick={saveLines} />
+      </section>
+
+      <section className="data-panel mb-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Điều khoản thanh toán</h2>
+          <button 
+            type="button" 
+            onClick={() => setPaymentTerms([...paymentTerms, { name: `Đợt ${paymentTerms.length + 1}`, percentage: 0, condition: '' }])} 
+            className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-xs hover:bg-accent"
+          >
+            <Plus size={14} /> Thêm đợt
+          </button>
+        </div>
+        <div className="space-y-3">
+          {paymentTerms.map((term, index) => (
+            <div key={index} className="flex gap-2 items-start">
+              <input 
+                value={term.name} 
+                onChange={(e) => updateTerm(index, 'name', e.target.value)} 
+                className="h-10 w-24 rounded-md border border-input px-3 text-sm font-medium" 
+                placeholder="Tên đợt" 
+              />
+              <div className="relative w-24 shrink-0">
+                <input 
+                  type="number" 
+                  min={0} 
+                  max={100} 
+                  value={term.percentage} 
+                  onChange={(e) => updateTerm(index, 'percentage', Number(e.target.value))} 
+                  className="h-10 w-full rounded-md border border-input pl-3 pr-6 text-sm" 
+                  placeholder="%" 
+                />
+                <span className="absolute right-2 top-3 text-xs text-muted-foreground">%</span>
+              </div>
+              <input 
+                value={term.condition} 
+                onChange={(e) => updateTerm(index, 'condition', e.target.value)} 
+                className="h-10 flex-1 rounded-md border border-input px-3 text-sm" 
+                placeholder="Điều kiện thanh toán (VD: Sau khi ký hợp đồng...)" 
+              />
+              <button 
+                type="button" 
+                className="inline-flex h-10 items-center justify-center text-muted-foreground hover:text-destructive px-2" 
+                onClick={() => setPaymentTerms(current => current.filter((_, i) => i !== index))}
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-4 flex items-center justify-end gap-3 border-t border-border pt-4">
+          <SubmitButton isSaving={saving} label="Lưu hạng mục & Điều khoản" onClick={saveLines} />
         </div>
       </section>
     </>

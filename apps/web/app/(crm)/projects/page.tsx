@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { toast } from '@/components/ui/toast';
 import { api } from '@/lib/auth';
 import { type ProjectRow, type StageRow } from '@/lib/crm';
 import { exportToExcel } from '@/lib/utils';
 import { BulkActionBar } from '@/components/shared/bulk-action-bar';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
+import { useSort } from '@/hooks/use-sort';
+import { useDebounce } from '@/hooks/use-debounce';
 
 import { STATUS, PROJECT_EXPORT_COLS, parseProjectFile } from './_lib/project-utils';
 import { ProjectToolbar } from './_components/project-toolbar';
@@ -21,14 +23,20 @@ export default function ProjectsPage() {
   const [q, setQ] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function load() {
-    return api<ProjectRow[]>('/opportunities').then((res: any) => {
+  const { sortBy, sortOrder, handleSort } = useSort('updatedAt', 'desc');
+  const debouncedQ = useDebounce(q, 500);
+
+  const load = useCallback(() => {
+    return api<ProjectRow[]>(`/opportunities?q=${debouncedQ}&sortBy=${sortBy}&sortOrder=${sortOrder}`).then((res: any) => {
       setRows(Array.isArray(res) ? res : (res?.data || []));
     });
-  }
+  }, [debouncedQ, sortBy, sortOrder]);
 
   useEffect(() => {
     load().catch((err) => console.error(err));
+  }, [load]);
+
+  useEffect(() => {
     api<StageRow[]>('/opportunities/stages').then(res => setStages(Array.isArray(res) ? res : [])).catch(() => setStages([]));
     api<Array<{ id: string; name: string; role?: string }>>('/users').then(res => setUsers(Array.isArray(res) ? res : [])).catch(() => setUsers([]));
   }, []);
@@ -98,12 +106,7 @@ export default function ProjectsPage() {
     }
   }
 
-  const filteredRows = (Array.isArray(rows) ? rows : []).filter(r =>
-    r.name.toLowerCase().includes(q.toLowerCase()) ||
-    (r.customer && r.customer.toLowerCase().includes(q.toLowerCase()))
-  );
-
-  const bulk = useBulkSelection(filteredRows);
+  const bulk = useBulkSelection(rows);
 
   async function handleBulkDelete() {
     try {
@@ -155,7 +158,13 @@ export default function ProjectsPage() {
         fileInputRef={fileInputRef}
         onFileChange={handleImport}
       />
-      <ProjectTable rows={filteredRows} bulk={bulk} />
+      <ProjectTable 
+        rows={rows} 
+        bulk={bulk} 
+        sortBy={sortBy} 
+        sortOrder={sortOrder} 
+        onSort={handleSort} 
+      />
       <BulkActionBar
         count={bulk.count}
         users={users}

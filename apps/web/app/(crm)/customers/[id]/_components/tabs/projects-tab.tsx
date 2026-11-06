@@ -1,10 +1,13 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
+import { useMemo } from 'react';
 import type { ProjectRow } from '@/lib/crm';
 import { compactMoney } from '@/lib/utils';
 import { usePermission } from '@/hooks/use-permission';
 import { OPPORTUNITY_STATUS_LABELS } from '../../_constants';
+import { useSort } from '@/hooks/use-sort';
+import { SortableHeader } from '@/components/shared/sortable-header';
 
 interface ProjectsTabProps {
   projects: ProjectRow[];
@@ -36,6 +39,35 @@ export function ProjectsTab({ projects, onAdd }: ProjectsTabProps) {
   const router = useRouter();
   const perm = usePermission();
   const canCreate = perm.has('deal:create');
+
+  // 1. Quản lý state sort
+  const { sortBy, sortOrder, handleSort } = useSort('updatedAt', 'desc');
+
+  // 2. Sắp xếp dữ liệu trực tiếp trên Client
+  const sortedProjects = useMemo(() => {
+    return [...projects].sort((a, b) => {
+      let valA: any = a[sortBy as keyof ProjectRow];
+      let valB: any = b[sortBy as keyof ProjectRow];
+
+      // Xử lý riêng cho các trường đặc thù không có sẵn trong object gốc
+      if (sortBy === 'stage') { valA = a.stage; valB = b.stage; }
+      if (sortBy === 'code') { valA = extractProjectCode(a) || ''; valB = extractProjectCode(b) || ''; }
+
+      // Xử lý so sánh
+      if (valA === valB) return 0;
+      if (valA == null) return 1;
+      if (valB == null) return -1;
+
+      let comparison = 0;
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        comparison = valA - valB;
+      } else {
+        comparison = String(valA).localeCompare(String(valB), 'vi');
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [projects, sortBy, sortOrder]);
 
   return (
     <>
@@ -69,17 +101,19 @@ export function ProjectsTab({ projects, onAdd }: ProjectsTabProps) {
           <table className="crm-table w-full">
             <thead>
               <tr>
-                <th className="whitespace-nowrap">MÃ DỰ ÁN</th>
-                <th>TÊN DỰ ÁN</th>
-                <th>GIAI ĐOẠN</th>
-                <th>TÌNH TRẠNG</th>
-                <th>GIÁ TRỊ</th>
-                <th>XÁC SUẤT</th>
-                <th>NGÀY DỰ KIẾN / NHẬN</th>
+                {/* 3. Thay thế thẻ th bằng SortableHeader */}
+                <SortableHeader label="MÃ DỰ ÁN" field="code" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={handleSort} className="whitespace-nowrap" />
+                <SortableHeader label="TÊN DỰ ÁN" field="name" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={handleSort} />
+                <SortableHeader label="GIAI ĐOẠN" field="stage" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={handleSort} />
+                <th>TÌNH TRẠNG</th> {/* Tình trạng phức tạp nên tạm ẩn sort */}
+                <SortableHeader label="GIÁ TRỊ" field="value" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={handleSort} />
+                <SortableHeader label="XÁC SUẤT" field="probability" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={handleSort} />
+                <SortableHeader label="NGÀY DỰ KIẾN / NHẬN" field="closeDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
-              {projects.map((project) => {
+              {/* 4. Dùng mảng đã sort */}
+              {sortedProjects.map((project) => {
                 const code = extractProjectCode(project);
                 const statusText = extractStatusText(project);
                 return (
@@ -88,7 +122,8 @@ export function ProjectsTab({ projects, onAdd }: ProjectsTabProps) {
                     className="cursor-pointer hover:bg-muted/40 transition-colors"
                     onClick={() => {
                       if (project.id) {
-                        window.location.href = `/projects/${project.id}`;
+                        // 5. Dùng router.push thay vì window.location.href
+                        router.push(`/projects/${project.id}`);
                       }
                     }}
                   >

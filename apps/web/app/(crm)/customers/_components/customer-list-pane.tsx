@@ -17,6 +17,8 @@ import { usePermission } from '@/hooks/use-permission';
 import { AddCustomerModal } from './add-customer-modal';
 import { CustomerToolbar } from './customer-toolbar';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useSort } from '@/hooks/use-sort';
+import { type SortOrder } from '@/hooks/use-sort'; 
 
 function ListPane() {
   const perm = usePermission();
@@ -37,21 +39,21 @@ function ListPane() {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<any>({ total: 0, page: 1, limit: 20, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
   const limit = 20;
-
+  const { sortBy, sortOrder, handleSort } = useSort('createdAt', 'desc');
   const { on } = useRealtime();
 
   useEffect(() => { setPage(1); }, [tab, q]);
   
   useEffect(() => {
     setLoading(true);
-    api<PaginatedResponse<CustomerRow>>(`/customers?page=${page}&limit=${limit}&q=${q}&tab=${tab}`)
+    api<PaginatedResponse<CustomerRow>>(`/customers?page=${page}&limit=${limit}&q=${q}&tab=${tab}&sortBy=${sortBy}&sortOrder=${sortOrder}`)
       .then((res) => {
         setRows(res.data || []); 
         setMeta(res.meta || { total: 0, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
       })
       .catch((err: Error) => console.error(err))
       .finally(() => setLoading(false));
-  }, [page, q, limit, tab]);
+  }, [page, q, limit, tab, sortBy, sortOrder]);
 
   useEffect(() => {
     const handleLocalChange = (e: Event) => {
@@ -174,7 +176,7 @@ function ListPane() {
   async function exportAllCustomers() {
     try {
       setIsExporting(true);
-      const res = await api<PaginatedResponse<CustomerRow>>(`/customers?page=1&limit=10000&q=${q}&tab=${tab}`);
+      const res = await api<PaginatedResponse<CustomerRow>>(`/customers?page=1&limit=10000&q=${q}&tab=${tab}&sortBy=${sortBy}&sortOrder=${sortOrder}`);
       const allData = res.data || [];
       
       if (!allData.length) {
@@ -270,6 +272,7 @@ function ListPane() {
       />
       
       <div className="customer-list-scroll min-h-0 flex-1 overflow-auto">
+        {/* TRUYỀN SORT PROPS XUỐNG BẢNG */}
         <CustomerTable
           rows={rows}
           loading={loading}
@@ -281,6 +284,9 @@ function ListPane() {
           isAllSelected={bulk.isAllSelected}
           isPartial={bulk.isPartial}
           activeId={activeId}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
       </div>
 

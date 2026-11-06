@@ -1,7 +1,7 @@
 import { api } from '@/lib/auth';
 import { convertNumberToVietnameseWords, vnd } from '@/lib/utils';
 
-type LineData = { moduleName: string; quantity: number; unitPrice: number; unit?: string; };
+type LineData = { moduleName: string; quantity: number; unitPrice: number; unit?: string; vat?: number };
 type QuoteData = {
   quoteNumber: string;
   customer?: {
@@ -19,11 +19,13 @@ type QuoteData = {
 };
 
 type UserData = { name?: string | null; email?: string | null; phone?: string | null; };
+type PaymentTerm = { name: string; percentage: number; condition: string };
 
 export async function printQuote(
   quote: QuoteData, 
   lines: LineData[], 
-  currentUser?: UserData | null
+  currentUser?: UserData | null,
+  paymentTerms?: PaymentTerm[]
 ) {
   let tenant: any = {};
   try {
@@ -36,16 +38,22 @@ export async function printQuote(
   const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
   
   let subtotal = 0;
+  let totalVat = 0;
 
   const creatorName = currentUser?.name || 'Người lập báo giá';
   const creatorPhone = currentUser?.phone || '';
   const creatorEmail = currentUser?.email || '';
 
-  const directorName = tenant.directorName || 'Giám đốc';
+  const defaultTerms: PaymentTerm[] = [
+    { name: 'Đợt 1', percentage: 50, condition: 'Thanh toán trong vòng 07 ngày khi ký hợp đồng.' },
+    { name: 'Đợt 2', percentage: 50, condition: 'Thanh toán trong vòng 07 ngày sau khi có biên bản nghiệm thu.' }
+  ];
   
-  const defaultTerms = `Thanh toán lần 1: 50% giá trị đơn hàng trong vòng 07 ngày khi ký hợp đồng.\nThanh toán lần 2: 50% giá trị đơn hàng trong vòng 07 ngày sau khi có biên bản nghiệm thu.`;
-  const termsText = tenant.quoteTerms || defaultTerms;
-  const termsHtml = termsText.replace(/\n/g, '<br>');
+  const activeTerms = (paymentTerms && paymentTerms.length > 0) ? paymentTerms : defaultTerms;
+  
+  const termsHtml = activeTerms.map((term, idx) => 
+    `<div style="margin-bottom: 4px;">- <strong>${term.name}:</strong> ${term.percentage}% giá trị đơn hàng. ${term.condition}</div>`
+  ).join('');
 
   const defaultNotes = `Báo giá này có hiệu lực trong vòng 15 ngày, được tính từ ngày phát hành.`;
   const notesText = tenant.quoteNotes || defaultNotes;
@@ -56,7 +64,7 @@ export async function printQuote(
     const match = quote.customer.code.match(/\d+/);
     if (match) customerCodeStr = match[0].slice(-2).padStart(2, '0');
   }
-  if (!customerCodeStr) customerCodeStr = '00'; // Fallback
+  if (!customerCodeStr) customerCodeStr = '00';
 
   let projectCodeStr = '0000';
   const searchString = quote.opportunity?.code || quote.opportunity?.name || '';
@@ -72,8 +80,15 @@ export async function printQuote(
   const rows = lines.map((line, idx) => {
     const sellUnit = Number(line.unitPrice) || 0;
     const qty = Number(line.quantity) || 1;
-    const lineTotal = sellUnit * qty;
-    subtotal += lineTotal;
+    const itemVatRate = Number(line.vat) || 0;
+    
+    const lineSubtotal = sellUnit * qty;
+    const lineVatAmount = Math.round(lineSubtotal * (itemVatRate / 100));
+    const lineTotal = lineSubtotal + lineVatAmount;
+
+    subtotal += lineSubtotal;
+    totalVat += lineVatAmount;
+
     const itemSeq = String(idx + 1).padStart(3, '0');
     const code = `T${projectCodeStr}${itemSeq}`; 
     return `
@@ -84,13 +99,13 @@ export async function printQuote(
         <td style="text-align:center;">${escapeHtml(line.unit || defaultUnit)}</td>
         <td style="text-align:right;">${vnd(sellUnit)}</td>
         <td style="text-align:center;">${String(qty).padStart(2, '0')}</td>
+        <td style="text-align:center;">${itemVatRate}%</td>
         <td style="text-align:right;font-weight:600;">${vnd(lineTotal)}</td>
       </tr>
     `;
   }).join('');
 
-  const vat = Math.round(subtotal * 0.08);
-  const grandTotal = subtotal + vat;
+  const grandTotal = subtotal + totalVat;
   const inWords = convertNumberToVietnameseWords(grandTotal);
 
   const customerName = quote.customer?.contactName || quote.customer?.name || '';
@@ -114,7 +129,6 @@ export async function printQuote(
     @page { size: A4; margin: 15mm; }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Times New Roman", serif; color: #1f2937; margin: 0; padding: 20px; font-size: 13px; line-height: 1.5; background: #fff; }
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
     .company-title { font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 4px; text-transform: uppercase; }
     .company-info { font-size: 11.5px; color: #475569; line-height: 1.4; }
     .divider { height: 2px; background: #C9A961; margin: 10px 0 16px; }
@@ -132,6 +146,7 @@ export async function printQuote(
     .in-words { font-weight: 600; font-style: italic; margin: 10px 0 16px; font-size: 12.5px; }
     .terms-section { font-size: 11.5px; line-height: 1.5; margin-bottom: 20px; }
     .terms-title { font-weight: bold; margin-top: 8px; margin-bottom: 2px; }
+    .payment-method { margin-top: 8px; } /* Sửa lỗi dính dòng */
     .bank-box { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 8px 12px; margin: 4px 0 8px; }
     .signatures-table { width: 100%; border-collapse: collapse; margin-top: 30px; page-break-inside: avoid; }
     .signatures-table td { text-align: center; vertical-align: top; width: 33.33%; font-size: 12px; }
@@ -186,23 +201,24 @@ export async function printQuote(
         <th style="width: 100px;">Mã sản phẩm<br><span class="sub-th">(Products Code)</span></th>
         <th>Mô tả sản phẩm<br><span class="sub-th">(Product Descriptions)</span></th>
         <th style="width: 60px;">Đơn vị<br><span class="sub-th">(Unit)</span></th>
-        <th style="width: 110px;">Đơn giá (VND)<br><span class="sub-th">(Unit Price)</span></th>
-        <th style="width: 50px;">Số lượng<br><span class="sub-th">(Qty)</span></th>
-        <th style="width: 120px;">Thành tiền<br><span class="sub-th">(Amount)</span></th>
+        <th style="width: 100px;">Đơn giá (VND)<br><span class="sub-th">(Unit Price)</span></th>
+        <th style="width: 50px;">SL<br><span class="sub-th">(Qty)</span></th>
+        <th style="width: 50px;">VAT<br><span class="sub-th">(%)</span></th>
+        <th style="width: 110px;">Thành tiền<br><span class="sub-th">(Amount)</span></th>
       </tr>
     </thead>
     <tbody>
       ${rows}
       <tr class="total-row">
-        <td colspan="6" style="text-align:right;">Tổng (Total):</td>
+        <td colspan="7" style="text-align:right;">Tổng tiền hàng (Subtotal):</td>
         <td style="text-align:right;">${vnd(subtotal)}</td>
       </tr>
       <tr class="total-row">
-        <td colspan="6" style="text-align:right;">Thuế GTGT (VAT Amount) 8%:</td>
-        <td style="text-align:right;">${vnd(vat)}</td>
+        <td colspan="7" style="text-align:right;">Tổng thuế GTGT (Total VAT):</td>
+        <td style="text-align:right;">${vnd(totalVat)}</td>
       </tr>
       <tr class="total-row" style="background:#fefce8;">
-        <td colspan="6" style="text-align:right;font-size:13px;color:#0f172a;">Tổng cộng (Equivalent amount paid):</td>
+        <td colspan="7" style="text-align:right;font-size:13px;color:#0f172a;">Tổng cộng (Equivalent amount paid):</td>
         <td style="text-align:right;font-size:13px;color:#b45309;font-weight:bold;">${vnd(grandTotal)}</td>
       </tr>
     </tbody>
@@ -219,7 +235,10 @@ export async function printQuote(
     <div class="terms-title">2. Điều khoản và phương thức thanh toán:</div>
     <div style="padding-left: 12px;">
       ${termsHtml}
-      <strong>Phương thức & thông tin thanh toán:</strong> Chuyển khoản<br>
+      
+      <div class="payment-method">
+        <strong>Phương thức & thông tin thanh toán:</strong> Chuyển khoản
+      </div>
       
       ${bankName || bankAccount ? `
       <div class="bank-box">
@@ -241,7 +260,6 @@ export async function printQuote(
       <td>
         <div class="sig-title">Giám đốc</div>
         <div class="sig-sub">(Director)</div>
-        <div class="sig-name">${escapeHtml(directorName)}</div>
       </td>
       <td>
         <div class="sig-title">Người báo giá</div>
@@ -253,7 +271,6 @@ export async function printQuote(
       <td>
         <div class="sig-title">Khách hàng</div>
         <div class="sig-sub">(Customer)</div>
-        <div class="sig-name">${escapeHtml(customerName)}</div>
       </td>
     </tr>
   </table>

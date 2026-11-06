@@ -4,14 +4,25 @@ import { useRouter } from 'next/navigation';
 import { type ProjectRow } from '@/lib/crm';
 import { compactMoney } from '@/lib/utils';
 import { StatusBadge } from '@/components/shared/badges';
+import { SortableHeader } from '@/components/shared/sortable-header';
+import { type SortOrder } from '@/hooks/use-sort';
 
 interface ProjectTableProps {
   rows: ProjectRow[];
   bulk: any; 
+  sortBy: string;
+  sortOrder: SortOrder;
+  onSort: (field: string) => void;
 }
 
-export function ProjectTable({ rows, bulk }: ProjectTableProps) {
+export function ProjectTable({ rows, bulk, sortBy, sortOrder, onSort }: ProjectTableProps) {
   const router = useRouter();
+
+  const sortProps = {
+    currentSortBy: sortBy,
+    currentSortOrder: sortOrder,
+    onSort: onSort
+  };
 
   return (
     <section className="data-panel overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
@@ -26,12 +37,12 @@ export function ProjectTable({ rows, bulk }: ProjectTableProps) {
                 onChange={bulk.isAllSelected ? bulk.clear : bulk.selectAll}
               />
             </th>
-            <th className="px-4 py-3 font-semibold">Mã dự án</th>
-            <th className="px-4 py-3 font-semibold">Tên dự án</th>
+            <SortableHeader label="Mã dự án" field="code" {...sortProps} />
+            <SortableHeader label="Tên dự án" field="name" {...sortProps} />
             <th className="px-4 py-3 font-semibold">Khách hàng</th>
-            <th className="px-4 py-3 font-semibold text-center">Trạng thái</th>
-            <th className="px-4 py-3 font-semibold text-right">Giá trị</th>
-            <th className="px-4 py-3 font-semibold text-right">Ngày chốt</th>
+            <SortableHeader label="Trạng thái" field="status" {...sortProps} className="text-center" />
+            <SortableHeader label="Giá trị" field="value" {...sortProps} className="text-right" />
+            <SortableHeader label="Ngày chốt" field="expectedCloseDate" {...sortProps} className="text-right" />
           </tr>
         </thead>
         <tbody className="divide-y divide-border">

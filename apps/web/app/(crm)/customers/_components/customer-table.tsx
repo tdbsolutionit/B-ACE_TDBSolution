@@ -1,16 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { type CustomerRow } from '@/lib/crm';
 import { initials } from '@/lib/utils';
 import { Loading } from '@/components/shared/loading';
 import { StatusBadge } from '@/components/shared/badges';
+import { type SortOrder } from '@/hooks/use-sort';
+import { SortableHeader } from '@/components/shared/sortable-header';
 
-export function CustomerTable({
-  rows, loading, density, selected, onToggle, onSelectAll, onClearSelection,
-  isAllSelected, isPartial, activeId, onSort, sortConfig,
-}: {
+interface CustomerTableProps {
   rows: CustomerRow[];
   loading?: boolean;
   density: 'compact' | 'comfortable';
@@ -21,14 +19,37 @@ export function CustomerTable({
   isAllSelected: boolean;
   isPartial: boolean;
   activeId?: string;
-  onSort?: (key: string) => void;
-  sortConfig?: { key: string; direction: 'asc' | 'desc' } | null;
-}) {
+  sortBy?: string;
+  sortOrder?: SortOrder;
+  onSort?: (field: string) => void;
+}
+
+export function CustomerTable({
+  rows, 
+  loading, 
+  density, 
+  selected, 
+  onToggle, 
+  onSelectAll, 
+  onClearSelection,
+  isAllSelected, 
+  isPartial, 
+  activeId, 
+  sortBy,       // <-- THÊM VÀO ĐÂY
+  sortOrder,    // <-- THÊM VÀO ĐÂY
+  onSort,
+}: CustomerTableProps) {
   const router = useRouter();
 
   if (loading) return <Loading text="Đang tải danh sách..." />;
 
   const rowPadding = density === 'compact' ? 'py-2' : 'py-3.5';
+
+  const sortProps = {
+    currentSortBy: sortBy || '',
+    currentSortOrder: sortOrder || 'asc',
+    onSort: onSort || (() => { })
+  };
 
   return (
     <table className="w-full text-left whitespace-nowrap">
@@ -43,42 +64,21 @@ export function CustomerTable({
               onChange={(e) => { if (e.target.checked) onSelectAll(); else onClearSelection(); }}
             />
           </th>
-          <th className="px-2 py-3 font-semibold">Mã KH</th>
-          <th className="px-4 py-3 font-semibold">
-            <button type="button" onClick={() => onSort?.('name')} className="inline-flex items-center gap-1 hover:text-foreground">
-              Khách hàng
-              {(!sortConfig || sortConfig.key !== 'name') && <ArrowUpDown size={12} className="opacity-40" />}
-              {sortConfig?.key === 'name' && sortConfig.direction === 'asc' && <ArrowUp size={12} />}
-              {sortConfig?.key === 'name' && sortConfig.direction === 'desc' && <ArrowDown size={12} />}
-            </button>
-          </th>
+          <SortableHeader label="MÃ KH" field="code" {...sortProps} />
+          <SortableHeader label="Khách hàng" field="name" {...sortProps} />
           <th className="px-4 py-3 font-semibold">Liên hệ</th>
           <th className="px-4 py-3 font-semibold">Nguồn</th>
-          <th className="px-4 py-3 font-semibold">Trạng thái</th>
-          <th className="px-4 py-3 font-semibold text-center">
-            <button type="button" onClick={() => onSort?.('oppCount')} className="inline-flex items-center gap-1 hover:text-foreground">
-              Cơ hội
-              {(!sortConfig || sortConfig.key !== 'oppCount') && <ArrowUpDown size={12} className="opacity-40" />}
-              {sortConfig?.key === 'oppCount' && sortConfig.direction === 'asc' && <ArrowUp size={12} />}
-              {sortConfig?.key === 'oppCount' && sortConfig.direction === 'desc' && <ArrowDown size={12} />}
-            </button>
-          </th>
-          <th className="px-4 py-3 font-semibold">Phụ trách</th>
-          <th className="px-4 py-3 font-semibold">
-            <button type="button" onClick={() => onSort?.('createdAt')} className="inline-flex items-center gap-1 hover:text-foreground">
-              Ngày tạo
-              {(!sortConfig || sortConfig.key !== 'createdAt') && <ArrowUpDown size={12} className="opacity-40" />}
-              {sortConfig?.key === 'createdAt' && sortConfig.direction === 'asc' && <ArrowUp size={12} />}
-              {sortConfig?.key === 'createdAt' && sortConfig.direction === 'desc' && <ArrowDown size={12} />}
-            </button>
-          </th>
+          <SortableHeader label="Trạng Thái" field="status" {...sortProps} />
+          <SortableHeader label="Cơ hội" field="oppCount" {...sortProps} className="text-center" />
+          <SortableHeader label="Người phụ trách" field="assigneeName" {...sortProps} />
+          <SortableHeader label="Ngày tạo" field="createdAt" {...sortProps} />
         </tr>
       </thead>
       <tbody className="divide-y divide-border text-[13px]">
         {rows.map((row) => {
           const isSelected = selected.has(row.id);
           const isActive = activeId === row.id;
-          
+
           return (
             <tr
               key={row.id}
