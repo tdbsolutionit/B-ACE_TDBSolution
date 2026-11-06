@@ -26,11 +26,15 @@ export class CustomersController {
     @Query('tab') tab?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,     
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
   ) {
     return this.customersService.list(
       user, q, status, tab, 
       page ? parseInt(page) : 1, 
-      limit ? parseInt(limit) : 20
+      limit ? parseInt(limit) : 20,
+      sortBy || 'createdAt',
+      sortOrder || 'desc'
     );
   }
 

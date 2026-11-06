@@ -14,9 +14,19 @@ export class CustomersService {
     private readonly importService: CustomersImportService,
   ) {}
 
-  list(user: AuthUser, q?: string, status?: string, tab?: string, page?: number, limit?: number) {
-    return this.crudService.list(user, q, status, tab, page, limit);
+  list(
+    user: AuthUser, 
+    q?: string, 
+    status?: string, 
+    tab?: string, 
+    page?: number, 
+    limit?: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc'
+  ) {
+    return this.crudService.list(user, q, status, tab, page, limit, sortBy, sortOrder);
   }
+
 
   get(user: AuthUser, id: string) {
     return this.crudService.get(user, id);

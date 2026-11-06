@@ -21,7 +21,7 @@ export class CustomersCrudService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async list(user: AuthUser, q?: string, status?: string, tab?: string, page: number = 1, limit: number = 20) {
+  async list(user: AuthUser, q?: string, status?: string, tab?: string, page: number = 1, limit: number = 20, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc') {
     return this.prisma.withTenant(user.tenantId, async (tx) => {
       const conditions: any[] = [];
       if (status) conditions.push({ status: status as CustomerStatus }); 
@@ -46,12 +46,22 @@ export class CustomersCrudService {
         ...(tab === 'has_opp' ? { opportunities: { some: {} } } : {}),
       };
 
+      let orderByClause: any = {};
+      
+      if (sortBy === 'oppCount') {
+        orderByClause.opportunities = { _count: sortOrder };
+      } else {
+        const allowedFields = ['name', 'code', 'status', 'createdAt', 'company', 'email', 'phone'];
+        const safeSortBy = allowedFields.includes(sortBy) ? sortBy : 'createdAt';
+        orderByClause[safeSortBy] = sortOrder;
+      }
+
       const [rows, totalCount, leadCount, activeCount, hasOppCount] = await Promise.all([
         tx.customer.findMany({
           where: { ...baseWhere, ...tabWhere },
-          skip: (page - 1) * limit,
-          take: limit,
-          orderBy: { createdAt: 'desc' },
+          skip: (Number(page) - 1) * Number(limit),
+          take: Number(limit),
+          orderBy: orderByClause,
           include: { opportunities: { select: { id: true, status: true, stage: { select: { name: true } } } } },
         }),
         tx.customer.count({ where: baseWhere }),
@@ -102,7 +112,6 @@ export class CustomersCrudService {
           throw new DuplicateCustomerException();
         }
       }
-
 
       const match = lastCustomer?.code?.match(/KH(\d+)/);
       const nextNumber = match ? parseInt(match[1], 10) + 1 : 1;

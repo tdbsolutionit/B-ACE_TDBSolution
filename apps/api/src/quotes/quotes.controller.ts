@@ -13,11 +13,19 @@ export class QuotesController {
   constructor(private readonly quotesService: QuotesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lấy danh sách báo giá / đề xuất' })
-  @ApiQuery({ name: 'q', required: false, description: 'Từ khóa tìm kiếm', example: 'Báo giá ERP' })
-  @ApiQuery({ name: 'opportunityId', required: false, description: 'Lọc theo ID dự án', example: '123e4567-e89b-12d3-a456-426614174000' })
-  list(@CurrentUser() user: AuthUser, @Query('q') q?: string, @Query('opportunityId') opportunityId?: string) {
-    return this.quotesService.list(user, q, opportunityId);
+  @ApiOperation({ summary: 'Lấy danh sách báo giá (Hỗ trợ lọc & sắp xếp)' })
+  @ApiQuery({ name: 'q', required: false, description: 'Tìm theo số báo giá hoặc tiêu đề' })
+  @ApiQuery({ name: 'status', required: false, description: 'Lọc theo trạng thái', enum: ['draft', 'sent', 'accepted', 'rejected', 'expired'] })
+  @ApiQuery({ name: 'sortBy', required: false, description: 'Trường sắp xếp', example: 'createdAt' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'], description: 'Chiều sắp xếp' })
+  list(
+    @CurrentUser() user: AuthUser,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ) {
+    return this.quotesService.list(user, q, status, sortBy, sortOrder);
   }
 
   @Get(':id')
@@ -61,6 +69,6 @@ export class QuotesController {
   @ApiOperation({ summary: 'Xóa hàng loạt báo giá' })
   @ApiBody({ type: BulkDeleteDto })
   bulkDelete(@CurrentUser() user: AuthUser, @Body() dto: BulkDeleteDto) {
-  return this.quotesService.bulkDelete(user, dto.ids);
+    return this.quotesService.bulkDelete(user, dto.ids);
   }
 }

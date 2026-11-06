@@ -16,12 +16,22 @@ export class QuotesService {
     return Number(value);
   }
 
-  async list(user: AuthUser, q?: string, opportunityId?: string) {
-    const rows = await this.prisma.withTenant(user.tenantId, (tx) =>
-      tx.quote.findMany({
+  async list(
+    user: AuthUser, 
+    q?: string, 
+    status?: string, 
+    sortBy: string = 'createdAt', 
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ) {
+    const allowedFields = ['quoteNumber', 'title', 'status', 'kind', 'sellingPrice', 'createdAt'];
+    const safeSortBy = allowedFields.includes(sortBy) ? sortBy : 'createdAt';
+    const safeSortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
+
+    const rows: any[] = await this.prisma.withTenant(user.tenantId, async (tx) => {
+      return tx.quote.findMany({
         where: scope(user.tenantId, {
           ...(user.role === 'sales' ? { opportunity: { assignedTo: user.sub } } : {}),
-          ...(opportunityId ? { opportunityId } : {}),
+          ...(status ? { status: status as any } : {}),
           ...(q
             ? {
                 OR: [
@@ -32,11 +42,11 @@ export class QuotesService {
             : {}),
         }),
         include: { customer: true, opportunity: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-    );
+        orderBy: { [safeSortBy]: safeSortOrder },
+      });
+    });
     
-    return rows.map((row) => ({
+    return rows.map((row: any) => ({
       ...row,
       freelanceRate: this.money(row.freelanceRate),
       personnelCost: this.money(row.personnelCost),
@@ -48,15 +58,16 @@ export class QuotesService {
   }
 
   async get(user: AuthUser, id: string) {
-    const row = await this.prisma.withTenant(user.tenantId, (tx) =>
-      tx.quote.findFirst({
+    const row: any = await this.prisma.withTenant(user.tenantId, async (tx) => {
+      return tx.quote.findFirst({
         where: scope(user.tenantId, {
           id,
           ...(user.role === 'sales' ? { opportunity: { assignedTo: user.sub } } : {}),
         }),
         include: { customer: true, opportunity: true, items: true },
-      }),
-    );
+      });
+    });
+    
     if (!row) return null;
     
     return {
@@ -67,7 +78,7 @@ export class QuotesService {
       totalCost: this.money(row.totalCost),
       sellingPrice: this.money(row.sellingPrice),
       profitMargin: Number(row.profitMargin),
-      items: row.items.map((item) => ({
+      items: row.items.map((item: any) => ({
         ...item,
         unitPrice: this.money(item.unitPrice),
         total: this.money(item.total),
@@ -101,7 +112,7 @@ export class QuotesService {
       
       const quoteNumber = `${prefix}-${String(nextSeq).padStart(4, '0')}`;
       
-      const quote = await tx.quote.create({
+      const quote: any = await tx.quote.create({
         data: {
           tenantId: user.tenantId,
           opportunityId: opportunity.id,
@@ -160,6 +171,11 @@ export class QuotesService {
         .map((item, index) => {
           const quantity = Math.max(0, item.quantity);
           const unitPrice = Math.round(Math.max(0, item.unitPrice));
+          const vat = Math.max(0, item.vat || 0);
+          const subTotal = quantity * unitPrice;
+          const vatAmount = subTotal * (vat / 100);
+          const total = subTotal + vatAmount;
+
           return {
             tenantId: user.tenantId,
             quoteId: quote.id,
@@ -168,7 +184,8 @@ export class QuotesService {
             unit: item.unit || 'Gói',
             quantity,
             unitPrice,
-            total: quantity * unitPrice,
+            vat,
+            total,
             sortOrder: index + 1,
           };
         })
@@ -179,7 +196,7 @@ export class QuotesService {
       await tx.quoteItem.deleteMany({ where: { quoteId: quote.id, tenantId: user.tenantId } });
       await tx.quoteItem.createMany({ data: clean });
       
-      const updated = await tx.quote.update({
+      const updated: any = await tx.quote.update({
         where: { id: quote.id },
         data: {
           personnelCost: totalCost,
@@ -188,6 +205,7 @@ export class QuotesService {
           profitMargin: 0,
           sellingPrice: totalCost,
           scenario: 'custom',
+          paymentTerms: (dto.paymentTerms || []) as any,
         },
         include: { items: { orderBy: { sortOrder: 'asc' } } },
       });
@@ -205,11 +223,13 @@ export class QuotesService {
         totalCost: Number(updated.totalCost),
         sellingPrice: Number(updated.sellingPrice),
         profitMargin: Number(updated.profitMargin),
-        items: updated.items.map((item) => ({
+        paymentTerms: updated.paymentTerms,
+        items: updated.items.map((item: any) => ({
           id: item.id,
           moduleName: item.moduleName,
           quantity: item.quantity,
           unitPrice: Number(item.unitPrice),
+          vat: item.vat,
           total: Number(item.total),
         })),
       };
@@ -217,7 +237,7 @@ export class QuotesService {
   }
 
   async setStatus(user: AuthUser, id: string, dto: StatusDto) {
-    const updated = await this.prisma.withTenant(user.tenantId, async (tx) => {
+    const updated: any = await this.prisma.withTenant(user.tenantId, async (tx) => {
       const quote = await tx.quote.findFirstOrThrow({
         where: scope(user.tenantId, {
           id,
@@ -225,7 +245,7 @@ export class QuotesService {
         }),
       });
       
-      const res = await tx.quote.update({ where: { id }, data: { status: dto.status } });
+      const res: any = await tx.quote.update({ where: { id }, data: { status: dto.status } });
       
       await logActivity(tx, user, {
         type: 'note',
