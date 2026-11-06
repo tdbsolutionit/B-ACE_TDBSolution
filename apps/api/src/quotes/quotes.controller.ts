@@ -4,7 +4,7 @@ import { AuthUser } from '../common/auth';
 import { CurrentUser } from '../common/current-user.decorator';
 import { QuotesService } from './quotes.service';
 import { QuoteDto, QuoteItemsDto, StatusDto } from './dto/quotes.dto';
-import { BulkDeleteDto } from './dto/quotes.dto';
+import { BulkDeleteDto } from '../common/dto/bulk-delete.dto';
 
 @ApiTags('quotes')
 @ApiBearerAuth()
@@ -56,10 +56,11 @@ export class QuotesController {
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.quotesService.remove(user, id);
   }
+  
   @Post('bulk-delete')
   @ApiOperation({ summary: 'Xóa hàng loạt báo giá' })
   @ApiBody({ type: BulkDeleteDto })
   bulkDelete(@CurrentUser() user: AuthUser, @Body() dto: BulkDeleteDto) {
-    return this.quotesService.bulkDelete(user, dto.ids);
+  return this.quotesService.bulkDelete(user, dto.ids);
   }
 }

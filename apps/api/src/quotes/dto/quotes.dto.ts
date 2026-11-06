@@ -8,7 +8,6 @@ import {
   ValidateNested 
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class QuoteDto {
   @IsString()
@@ -59,10 +58,4 @@ export class QuoteItemsDto {
 export class StatusDto {
   @IsIn(['draft', 'sent', 'accepted', 'rejected', 'expired'])
   status!: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
-}
-
-export class BulkDeleteDto {
-  @ApiProperty({ example: ['uuid-1', 'uuid-2'] })
-  @IsArray()
-  ids!: string[];
 }
