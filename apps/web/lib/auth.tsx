@@ -92,64 +92,14 @@ export function getApiBase(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
   if (configuredUrl) {
-    let url: URL;
-
-    try {
-      url = new URL(configuredUrl);
-    } catch {
-      throw new Error('NEXT_PUBLIC_API_URL không phải URL hợp lệ');
-    }
-
-    const isPrivateIp =
-      url.hostname.startsWith('192.168.') ||
-      url.hostname.startsWith('10.') ||
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(url.hostname);
-
-    const isLocal =
-      url.hostname === 'localhost' ||
-      url.hostname === '127.0.0.1' ||
-      url.hostname === '::1' ||
-      isPrivateIp;
-
-    if (
-      typeof window !== 'undefined' &&
-      window.location.protocol === 'https:' &&
-      url.protocol !== 'https:' &&
-      !isLocal
-    ) {
-      throw new Error('API production phải sử dụng HTTPS');
-    }
-
-    if (url.protocol !== 'https:' && !isLocal) {
-      throw new Error('API phải sử dụng HTTPS ngoài môi trường local/LAN');
-    }
-
-    return url.toString().replace(/\/+$/, '');
+    return configuredUrl;
   }
 
   if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location;
-    const isPrivateIp =
-      hostname.startsWith('192.168.') ||
-      hostname.startsWith('10.') ||
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname);
-
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || isPrivateIp) {
-      return `${protocol}//${hostname}:3001/api`;
-    }
-
-    if (protocol === 'https:') {
-      throw new Error(
-        'Thiếu NEXT_PUBLIC_API_URL. Không thể gọi API qua HTTP từ website HTTPS.'
-      );
-    }
-
-    throw new Error(
-      'Chưa cấu hình NEXT_PUBLIC_API_URL cho môi trường triển khai.'
-    );
+    return `${window.location.protocol}//${window.location.hostname}:3001/api`;
   }
-
-  throw new Error('Chưa cấu hình NEXT_PUBLIC_API_URL');
+  
+  return 'http://localhost:3001/api';
 }
 
 function forceLogout() {

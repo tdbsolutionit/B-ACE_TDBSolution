@@ -52,6 +52,12 @@ jobs:
             "SWAGGER_USER=${{ secrets.SWAGGER_USER }}",
             "SWAGGER_PASSWORD=${{ secrets.SWAGGER_PASSWORD }}"
           )
+          [System.IO.File]::WriteAllLines("C:\apps\bace\apps\api\.env", $linesApi, (New-Object System.Text.UTF8Encoding $False))
+          $linesWeb = @(
+            "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}",
+            "API_INTERNAL_URL=${{ secrets.API_INTERNAL_URL }}"
+          )
+          [System.IO.File]::WriteAllLines("C:\apps\bace\apps\web\.env.production", $linesWeb, (New-Object System.Text.UTF8Encoding $False))
 
       - name: Install dependencies
         shell: powershell
