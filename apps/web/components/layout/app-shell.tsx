@@ -103,19 +103,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <ShortcutsHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <Celebration open={!!celebration} data={celebration} onClose={() => setCelebration(null)} />
-      
-      <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
-        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} user={user} tenantLogo={tenantLogo} onOpenHelp={() => setHelp(true)} onLogout={handleLogout} />
 
+      <div className={collapsed ? 'sidebar-collapsed app-shell' : 'app-shell'}>
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} tenantLogo={tenantLogo} onOpenHelp={() => setHelp(true)} onLogout={handleLogout} />
         <div className="app-main">
-        <Header 
-          user={user} 
-          label={label} 
-          connected={connected} 
-          on={on} 
-          onOpenShortcuts={() => setShowShortcuts(true)} 
-          onLogout={handleLogout}
-        />          
+          <Header
+            user={user}
+            label={label}
+            connected={connected}
+            on={on}
+            onOpenShortcuts={() => setShowShortcuts(true)}
+            onLogout={handleLogout}
+          />
           <main className={`page-content ${pathname.startsWith('customers') ? 'split-view-active' : ''}`}>
             {children}
           </main>
