@@ -46,6 +46,21 @@ export class QuoteItemDto {
 
   @IsNumber()
   unitPrice!: number;
+
+  @IsOptional()
+  @IsNumber()
+  vat?: number;
+}
+
+export class PaymentTermDto {
+  @IsString()
+  name!: string;
+
+  @IsNumber()
+  percentage!: number;
+
+  @IsString()
+  condition!: string;
 }
 
 export class QuoteItemsDto {
@@ -53,6 +68,12 @@ export class QuoteItemsDto {
   @ValidateNested({ each: true })
   @Type(() => QuoteItemDto)
   items!: QuoteItemDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentTermDto)
+  paymentTerms?: PaymentTermDto[];
 }
 
 export class StatusDto {

@@ -20,13 +20,17 @@ export class OpportunitiesController {
   @Get()
   @ApiOperation({ summary: 'Lấy danh sách cơ hội / dự án' })
   @ApiQuery({ name: 'q', required: false, description: 'Từ khóa tìm kiếm', example: 'Dự án ERP' })
-  @ApiQuery({ name: 'customerId', required: false, description: 'Lọc theo ID khách hàng', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiQuery({ name: 'customerId', required: false, description: 'Lọc theo ID khách hàng' })
+  @ApiQuery({ name: 'sortBy', required: false, description: 'Trường sắp xếp', example: 'createdAt' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'], description: 'Chiều sắp xếp' })
   findAll(
     @CurrentUser() user: AuthUser,
     @Query('q') q?: string,
-    @Query('customerId') customerId?: string
+    @Query('customerId') customerId?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc'
   ) {
-    return this.opportunitiesService.findAll(user, q, customerId);
+    return this.opportunitiesService.findAll(user, q, customerId, sortBy, sortOrder);
   }
 
   @Get(':id')
@@ -82,44 +86,21 @@ export class OpportunitiesController {
 
   @Post('bulk-delete')
   @ApiOperation({ summary: 'Xóa hàng loạt cơ hội / dự án' })
-  @ApiBody({ 
-    schema: { 
-      type: 'object', 
-      properties: { 
-        ids: { type: 'array', items: { type: 'string' }, example: ['uuid-1', 'uuid-2'] } 
-      } 
-    } 
-  })
+  @ApiBody({ schema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' } } } } })
   bulkDelete(@CurrentUser() user: AuthUser, @Body() body: { ids: string[] }) {
     return this.opportunitiesService.bulkDelete(user, body.ids);
   }
 
   @Post('bulk-status')
   @ApiOperation({ summary: 'Cập nhật trạng thái hàng loạt' })
-  @ApiBody({ 
-    schema: { 
-      type: 'object', 
-      properties: { 
-        ids: { type: 'array', items: { type: 'string' }, example: ['uuid-1', 'uuid-2'] },
-        status: { type: 'string', enum: ['open', 'won', 'lost'], example: 'won' }
-      } 
-    } 
-  })
+  @ApiBody({ schema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' } }, status: { type: 'string', enum: ['open', 'won', 'lost'] } } } })
   bulkStatus(@CurrentUser() user: AuthUser, @Body() body: { ids: string[]; status: 'open' | 'won' | 'lost' }) {
     return this.opportunitiesService.bulkStatus(user, body.ids, body.status);
   }
 
   @Post('bulk-assign')
   @ApiOperation({ summary: 'Gán hàng loạt cơ hội / dự án cho nhân viên' })
-  @ApiBody({ 
-    schema: { 
-      type: 'object', 
-      properties: { 
-        ids: { type: 'array', items: { type: 'string' }, example: ['uuid-1', 'uuid-2'] },
-        assignedTo: { type: 'string', description: 'ID của nhân viên', example: 'user-uuid' }
-      } 
-    } 
-  })
+  @ApiBody({ schema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' } }, assignedTo: { type: 'string' } } } })
   bulkAssign(@CurrentUser() user: AuthUser, @Body() body: { ids: string[]; assignedTo: string }) {
     return this.opportunitiesService.bulkAssign(user, body.ids, body.assignedTo);
   }

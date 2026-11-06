@@ -22,15 +22,24 @@ export class OpportunitiesService {
     );
   }
 
-  async findAll(user: AuthUser, q?: string, customerId?: string) {
+  async findAll(user: AuthUser, q?: string, customerId?: string, sortBy: string = 'updatedAt', sortOrder: 'asc' | 'desc' = 'desc') {
+    const allowedFields = ['name', 'code', 'value', 'probability', 'status', 'expectedCloseDate', 'updatedAt', 'createdAt'];
+    const safeSortBy = allowedFields.includes(sortBy) ? sortBy : 'updatedAt';
+    const safeSortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
+
     return this.prisma.withTenant(user.tenantId, async (tx) => {
       const rows = await tx.opportunity.findMany({
         where: owned(user, {
           ...(customerId ? { customerId } : {}),
-          ...(q ? { name: { contains: q, mode: 'insensitive' as const } } : {}),
+          ...(q ? {
+            OR: [
+              { name: { contains: q, mode: 'insensitive' as const } },
+              { code: { contains: q, mode: 'insensitive' as const } },
+            ]
+          } : {}),
         }),
         include: { customer: true, stage: true },
-        orderBy: { updatedAt: 'desc' },
+        orderBy: { [safeSortBy]: safeSortOrder },
       });
       const names = await this.names(tx, user.tenantId);
       return rows.map((row) => this.present(row, names));
@@ -76,18 +85,18 @@ export class OpportunitiesService {
 
   async create(user: AuthUser, dto: OpportunityDto) {
     const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
-      const customer = await tx.customer.findFirstOrThrow({ 
-        where: scope(user.tenantId, { id: dto.customerId }) 
+      const customer = await tx.customer.findFirstOrThrow({
+        where: scope(user.tenantId, { id: dto.customerId })
       });
       const stage = dto.stageId
         ? await tx.stage.findFirstOrThrow({ where: scope(user.tenantId, { id: dto.stageId }) })
         : await tx.stage.findFirstOrThrow({ where: scope(user.tenantId), orderBy: { orderIndex: 'asc' } });
 
-      let finalCode = dto.code?.trim(); 
-      
+      let finalCode = dto.code?.trim();
+
       if (!finalCode) {
         const today = new Date();
-        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); 
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
         const customerCode = customer.shortCode || customer.name.substring(0, 4).toUpperCase();
         const startOfYear = new Date(today.getFullYear(), 0, 1);
         const projectCount = await tx.opportunity.count({
@@ -123,7 +132,7 @@ export class OpportunitiesService {
         relatedType: 'opportunity',
         relatedId: created.id,
       });
-      
+
       return this.present(created, new Map([[user.sub, user.name]]));
     });
 
@@ -226,7 +235,7 @@ export class OpportunitiesService {
           const created = await tx.opportunity.create({
             data: {
               tenantId: user.tenantId,
-              code: row.code || null, 
+              code: row.code || null,
               name: String(row.name).trim(),
               customerId: customer.id,
               stageId: stage.id,

@@ -234,6 +234,7 @@ model Quote {
   status        QuoteStatus   @default(draft)
   validUntil    DateTime?     @map("valid_until") @db.Date
   notes         String?
+  paymentTerms  Json?
   createdBy     String?       @map("created_by")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
@@ -262,6 +263,7 @@ model QuoteItem {
   unit       String @default("")
   quantity   Int    @default(1)
   unitPrice  BigInt @default(0) @map("unit_price")
+  vat        Float    @default(0)
   total      BigInt @default(0)
   sortOrder  Int    @default(0) @map("sort_order")
   quote      Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
