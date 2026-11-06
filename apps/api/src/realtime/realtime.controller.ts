@@ -1,8 +1,9 @@
-import { Controller, Get, Req, Res } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Controller, Sse, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { RealtimeService } from './realtime.service';
 import { Public } from '../common/auth';
+import { Observable } from 'rxjs';
 
 @ApiTags('realtime')
 @Controller('realtime')
@@ -10,11 +11,11 @@ export class RealtimeController {
   constructor(private readonly realtimeService: RealtimeService) {}
 
   @Public()
-  @Get('stream')
+  @Sse('stream')
   @ApiOperation({ summary: 'Kết nối Server-Sent Events (SSE) để nhận thông báo realtime' })
   @ApiCookieAuth('accessToken')
-  async stream(@Req() req: Request, @Res() res: Response) {
+  stream(@Req() req: Request): Promise<Observable<MessageEvent>> {
     const token = req.cookies['accessToken'];
-    await this.realtimeService.handleStreamConnection(token, req, res);
+    return this.realtimeService.getStream(token);
   }
 }
