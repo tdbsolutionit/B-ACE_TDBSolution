@@ -74,6 +74,10 @@ export class QuoteItemsDto {
   @ValidateNested({ each: true })
   @Type(() => PaymentTermDto)
   paymentTerms?: PaymentTermDto[];
+
+  @IsOptional()
+  @IsString()
+  productInfo?: string;
 }
 
 export class StatusDto {

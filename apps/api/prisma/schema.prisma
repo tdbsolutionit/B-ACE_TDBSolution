@@ -223,25 +223,16 @@ model Quote {
   kind          QuoteKind     @default(quote)
   title         String
   scenario      QuoteScenario @default(mid)
-  workingDays   Int           @default(98) @map("working_days")
-  freelancers   Int           @default(2)
-  freelanceRate BigInt        @default(1000000) @map("freelance_rate")
-  personnelCost BigInt        @default(0) @map("personnel_cost")
-  otherCost     BigInt        @default(0) @map("other_cost")
-  totalCost     BigInt        @default(0) @map("total_cost")
-  profitMargin  Decimal       @default(50) @map("profit_margin") @db.Decimal(5, 2)
-  sellingPrice  BigInt        @default(0) @map("selling_price")
+  
+  productInfo   String?       @db.Text
   status        QuoteStatus   @default(draft)
   validUntil    DateTime?     @map("valid_until") @db.Date
   notes         String?
   paymentTerms  Json?
+  
   createdBy     String?       @map("created_by")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  prospectName  String? @map("prospect_name")
-  prospectPhone String? @map("prospect_phone")
-  prospectEmail String? @map("prospect_email")
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)

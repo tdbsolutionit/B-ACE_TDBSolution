@@ -11,6 +11,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { printQuote } from '@/lib/quote-printer';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { StatusBadge } from '@/components/shared/badges';
+import { RichTextEditor } from '@/components/shared/rich-text-editor';
 
 type Line = { id?: string; moduleName: string; unit?: string; quantity: number; unitPrice: number; vat?: number; total?: number };
 type PaymentTerm = { name: string; percentage: number; condition: string };
@@ -21,11 +22,8 @@ type Quote = {
   title: string;
   status: string;
   createdAt?: string;
-  profitMargin: number;
-  personnelCost: number;
-  otherCost: number;
-  totalCost: number;
-  sellingPrice: number;
+  totalAmount: number;
+  productInfo?: string;
   customer: {
     name: string; code?: string | null; shortCode?: string | null; company?: string | null; address?: string | null;
     contactName?: string | null; contactPhone?: string | null; contactEmail?: string | null; phone?: string | null; email?: string | null; taxCode?: string | null;
@@ -43,6 +41,7 @@ export default function QuoteDetailPage() {
   const { session } = useAuth();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
+  const [productInfo, setProductInfo] = useState('');
   const [paymentTerms, setPaymentTerms] = useState<PaymentTerm[]>([
     { name: 'Đợt 1', percentage: 50, condition: 'Thanh toán trong vòng 07 ngày khi ký hợp đồng.' },
     { name: 'Đợt 2', percentage: 50, condition: 'Thanh toán trong vòng 07 ngày sau khi có biên bản nghiệm thu.' }
@@ -53,6 +52,7 @@ export default function QuoteDetailPage() {
   function load() {
     return api<Quote>(`/quotes/${params.id}`).then((row) => {
       setQuote(row);
+      setProductInfo(row.productInfo || '');
       const items = (row.items || []).map((item) => ({
         id: item.id,
         moduleName: item.moduleName,
@@ -61,7 +61,7 @@ export default function QuoteDetailPage() {
         unitPrice: Number(item.unitPrice) || 0,
         vat: Number(item.vat) || 0,
       }));
-      setLines(items.length ? items : [{ moduleName: 'Hạng mục', quantity: 1, unitPrice: Number(row.totalCost) || 0, vat: 0 }]);
+      setLines(items.length ? items : [{ moduleName: 'Hạng mục', quantity: 1, unitPrice: Number(row.totalAmount) || 0, vat: 0 }]);
       
       if ((row as any).paymentTerms) {
         setPaymentTerms((row as any).paymentTerms);
@@ -98,10 +98,16 @@ export default function QuoteDetailPage() {
             unitPrice: Number(line.unitPrice) || 0,
             vat: Number(line.vat) || 0,
           })),
-          paymentTerms: paymentTerms
+          paymentTerms: paymentTerms,
+          productInfo: productInfo,
         }),
       });
       setQuote((current) => current ? { ...current, ...updated, items: updated.items } : current);
+
+      setProductInfo(updated.productInfo || '');
+      if (updated.paymentTerms) {
+        setPaymentTerms(updated.paymentTerms);
+      }
       toast.success('Đã lưu thay đổi');
     } catch (err: any) {
       toast.error(err.message || 'Lỗi khi lưu');
@@ -195,6 +201,20 @@ export default function QuoteDetailPage() {
             <span className="text-sm font-medium text-muted-foreground">Tổng cộng (Đã bao gồm VAT):</span>
             <p className="text-lg font-semibold text-primary">{vnd(price)}</p>
           </div>
+        </div>
+      </section>
+
+      <section className="data-panel mb-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Thông tin sản phẩm (Hiển thị trên báo giá)</h2>
+        </div>
+        <RichTextEditor 
+          value={productInfo} 
+          onChange={setProductInfo} 
+          placeholder="Nhập mô tả chi tiết về giải pháp, phạm vi công việc..." 
+        />
+        <div className="mt-4 flex justify-end">
+          <SubmitButton isSaving={saving} label="Lưu thông tin" onClick={saveLines} />
         </div>
       </section>
 

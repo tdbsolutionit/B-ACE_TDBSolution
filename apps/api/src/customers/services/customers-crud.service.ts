@@ -166,6 +166,8 @@ export class CustomersCrudService {
       const updated = await tx.customer.update({
         where: { id },
         data: {
+          ...(dto.code !== undefined ? { code: this.helper.blank(dto.code) } : {}),
+          ...(dto.shortCode !== undefined ? { shortCode: this.helper.blank(dto.shortCode) } : {}),
           ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
           ...(dto.company !== undefined ? { company: this.helper.blank(dto.company) } : {}),
           ...(dto.phone !== undefined ? { phone: this.helper.blank(dto.phone) } : {}),

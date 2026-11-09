@@ -29,6 +29,8 @@ export class CustomerDto {
 }
 
 export class CustomerPatchDto {
+  @IsOptional() @IsString() code?: string;
+  @IsOptional() @IsString() shortCode?: string;
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() company?: string;
   @IsOptional() @IsString() phone?: string;

@@ -12,10 +12,6 @@ export class QuotesService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  private money(value: bigint | number) {
-    return Number(value);
-  }
-
   async list(
     user: AuthUser, 
     q?: string, 
@@ -23,7 +19,7 @@ export class QuotesService {
     sortBy: string = 'createdAt', 
     sortOrder: 'asc' | 'desc' = 'desc'
   ) {
-    const allowedFields = ['quoteNumber', 'title', 'status', 'kind', 'sellingPrice', 'createdAt'];
+    const allowedFields = ['quoteNumber', 'title', 'status', 'kind', 'createdAt'];
     const safeSortBy = allowedFields.includes(sortBy) ? sortBy : 'createdAt';
     const safeSortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
 
@@ -41,20 +37,23 @@ export class QuotesService {
               }
             : {}),
         }),
-        include: { customer: true, opportunity: true },
+        include: { 
+          customer: true, 
+          opportunity: true,
+          items: { select: { total: true } } 
+        },
         orderBy: { [safeSortBy]: safeSortOrder },
       });
     });
     
-    return rows.map((row: any) => ({
-      ...row,
-      freelanceRate: this.money(row.freelanceRate),
-      personnelCost: this.money(row.personnelCost),
-      otherCost: this.money(row.otherCost),
-      totalCost: this.money(row.totalCost),
-      sellingPrice: this.money(row.sellingPrice),
-      profitMargin: Number(row.profitMargin),
-    }));
+    return rows.map((row: any) => {
+      const calculatedTotal = row.items.reduce((sum: number, item: any) => sum + Number(item.total), 0);
+      const { items, ...quoteData } = row;
+      return {
+        ...quoteData,
+        totalAmount: calculatedTotal,
+      };
+    });
   }
 
   async get(user: AuthUser, id: string) {
@@ -70,18 +69,15 @@ export class QuotesService {
     
     if (!row) return null;
     
+    const calculatedTotal = row.items.reduce((sum: number, item: any) => sum + Number(item.total), 0);
+
     return {
       ...row,
-      freelanceRate: this.money(row.freelanceRate),
-      personnelCost: this.money(row.personnelCost),
-      otherCost: this.money(row.otherCost),
-      totalCost: this.money(row.totalCost),
-      sellingPrice: this.money(row.sellingPrice),
-      profitMargin: Number(row.profitMargin),
+      totalAmount: calculatedTotal,
       items: row.items.map((item: any) => ({
         ...item,
-        unitPrice: this.money(item.unitPrice),
-        total: this.money(item.total),
+        unitPrice: Number(item.unitPrice),
+        total: Number(item.total),
       })),
     };
   }
@@ -121,14 +117,6 @@ export class QuotesService {
           kind,
           title: dto.title,
           scenario: dto.scenario ?? 'mid',
-          workingDays: 0,
-          freelancers: 0,
-          freelanceRate: 0,
-          personnelCost: 0,
-          otherCost: 0,
-          totalCost: 0,
-          profitMargin: 0,
-          sellingPrice: 0,
           validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
           notes: dto.notes,
           createdBy: user.sub,
@@ -150,7 +138,7 @@ export class QuotesService {
         kind: quote.kind,
         title: quote.title,
         status: quote.status,
-        sellingPrice: Number(quote.sellingPrice),
+        totalAmount: 0,
       };
     });
   }
@@ -191,7 +179,7 @@ export class QuotesService {
         })
         .filter((item) => item.moduleName);
         
-      const totalCost = clean.reduce((sum, item) => sum + item.total, 0);
+      const totalAmount = clean.reduce((sum, item) => sum + item.total, 0);
       
       await tx.quoteItem.deleteMany({ where: { quoteId: quote.id, tenantId: user.tenantId } });
       await tx.quoteItem.createMany({ data: clean });
@@ -199,13 +187,9 @@ export class QuotesService {
       const updated: any = await tx.quote.update({
         where: { id: quote.id },
         data: {
-          personnelCost: totalCost,
-          otherCost: 0,
-          totalCost: totalCost,
-          profitMargin: 0,
-          sellingPrice: totalCost,
           scenario: 'custom',
           paymentTerms: (dto.paymentTerms || []) as any,
+          productInfo: dto.productInfo || '',
         },
         include: { items: { orderBy: { sortOrder: 'asc' } } },
       });
@@ -220,10 +204,9 @@ export class QuotesService {
       
       return {
         id: updated.id,
-        totalCost: Number(updated.totalCost),
-        sellingPrice: Number(updated.sellingPrice),
-        profitMargin: Number(updated.profitMargin),
+        totalAmount: totalAmount,
         paymentTerms: updated.paymentTerms,
+        productInfo: updated.productInfo,
         items: updated.items.map((item: any) => ({
           id: item.id,
           moduleName: item.moduleName,
@@ -260,7 +243,6 @@ export class QuotesService {
         quoteNumber: res.quoteNumber,
         title: res.title,
         status: res.status,
-        sellingPrice: Number(res.sellingPrice),
       };
     });
 
@@ -271,7 +253,6 @@ export class QuotesService {
           id: updated.id,
           quoteNumber: updated.quoteNumber,
           title: updated.title,
-          price: updated.sellingPrice,
         },
         { tenantId: user.tenantId },
       );

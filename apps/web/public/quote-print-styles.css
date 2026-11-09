@@ -1,0 +1,109 @@
+@page { 
+  size: A4; 
+  margin: 0; 
+}
+
+* { 
+  box-sizing: border-box; 
+}
+
+body { 
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Times New Roman", serif; 
+  color: #1f2937; 
+  margin: 0; 
+  padding: 15mm 15mm 20mm 15mm; 
+  font-size: 13px; 
+  line-height: 1.5; 
+  background: #fff; 
+  position: relative;
+}
+
+.company-title { font-size: 16px; font-weight: bold; color: #0f172a; margin-bottom: 4px; text-transform: uppercase; }
+.company-info { font-size: 12px; color: #475569; line-height: 1.4; }
+.divider { height: 2px; background: #C9A961; margin: 12px 0 16px 0; }
+.quote-title { text-align: center; font-size: 22px; font-weight: bold; color: #0f172a; margin: 15px 0 8px 0; letter-spacing: 0.5px; }
+.quote-meta { text-align: right; font-size: 13px; margin-bottom: 15px; }
+
+.customer-box { margin-bottom: 16px; font-size: 13px; }
+.customer-box table { width: 100%; border-collapse: collapse; }
+.customer-box td { padding: 2px 0; vertical-align: top; }
+.intro-text { font-style: italic; font-size: 13px; color: #475569; margin-bottom: 12px; }
+
+/* BẢNG SẢN PHẨM */
+.items-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-bottom: 12px; 
+}
+
+.items-table th, .items-table td { 
+  border: 1px solid #cbd5e1; 
+  padding: 8px 6px; 
+  font-size: 12px; 
+  vertical-align: top;
+}
+
+.items-table th { 
+  background: #f8fafc; 
+  font-weight: 600; 
+  text-align: center; 
+}
+
+/* Chỉnh lại độ rộng cột để không bị rớt chữ STT */
+.items-table th:nth-child(1) { width: 45px; }
+.items-table th:nth-child(2) { width: 110px; }
+.items-table th:nth-child(3) { width: auto; } /* Cột mô tả chiếm phần còn lại */
+.items-table th:nth-child(4) { width: 60px; }
+.items-table th:nth-child(5) { width: 100px; }
+.items-table th:nth-child(6) { width: 50px; }
+.items-table th:nth-child(7) { width: 50px; }
+.items-table th:nth-child(8) { width: 110px; }
+
+.sub-th { font-size: 10px; font-weight: normal; color: #64748b; font-style: italic; }
+.total-row td { font-weight: 600; padding: 8px 6px; }
+
+.in-words { font-weight: 600; font-style: italic; margin: 12px 0 15px 0; font-size: 13px; }
+
+.terms-section { font-size: 12px; line-height: 1.5; margin-bottom: 20px; }
+.terms-title { font-weight: bold; margin-top: 10px; margin-bottom: 4px; font-size: 13px; }
+.payment-method { margin-top: 8px; }
+.bank-box { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 8px 12px; margin: 6px 0 8px 0; }
+
+/* KHỐI CHỮ KÝ */
+.signatures-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-top: 20px; /* Giảm khoảng cách từ nội dung lên chữ ký */
+  page-break-inside: avoid; /* Tránh cắt ngang chữ ký */
+}
+
+.signatures-table td { 
+  text-align: center; 
+  vertical-align: top; 
+  width: 33.33%; 
+  font-size: 13px; 
+}
+
+.sig-title { font-weight: bold; }
+.sig-sub { 
+  font-size: 11px; 
+  color: #64748b; 
+  font-style: italic; 
+  margin-bottom: 50px; /* Giảm khoảng trống để ký xuống (từ 70px -> 50px) */
+}
+.sig-name { font-weight: 600; font-size: 13px; }
+
+/* SỐ TRANG */
+.print-footer { 
+  position: fixed; 
+  bottom: 10mm; 
+  left: 0; 
+  right: 0; 
+  text-align: center; 
+  font-size: 11px; 
+  color: #64748b; 
+}
+
+@media print { 
+  body { padding: 15mm; } 
+}

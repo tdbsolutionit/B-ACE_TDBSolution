@@ -23,6 +23,7 @@ export class DashboardService {
         }),
         tx.quote.findMany({
           where: scope(user.tenantId, user.role === 'sales' ? { opportunity: { assignedTo: user.sub } } : {}),
+          include: { items: true },
         }),
         tx.stage.findMany({ where: tenantWhere, orderBy: { orderIndex: 'asc' } }),
         tx.user.findMany({ where: tenantWhere, select: { id: true, name: true } }),
@@ -48,12 +49,18 @@ export class DashboardService {
         date.setDate(1);
         date.setMonth(date.getMonth() - (5 - index));
         const name = `T${date.getMonth() + 1}`;
+        
         const actual = quotes
           .filter((quote) => quote.status === 'accepted' && sameMonth(quote.createdAt, date))
-          .reduce((sum, quote) => sum + Number(quote.sellingPrice), 0);
+          .reduce((sum, quote) => {
+            const quoteTotal = quote.items?.reduce((itemSum, item) => itemSum + Number(item.total), 0) || 0;
+            return sum + quoteTotal;
+          }, 0);
+          
         const expected = opportunities
           .filter((item) => sameMonth(item.createdAt, date))
           .reduce((sum, item) => sum + Number(item.value), 0);
+          
         return { name, actual: Math.round(actual / 1_000_000), expected: Math.round(expected / 1_000_000) };
       });
 

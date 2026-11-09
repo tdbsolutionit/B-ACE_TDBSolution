@@ -4,6 +4,7 @@ import { convertNumberToVietnameseWords, vnd } from '@/lib/utils';
 type LineData = { moduleName: string; quantity: number; unitPrice: number; unit?: string; vat?: number };
 type QuoteData = {
   quoteNumber: string;
+  productInfo?: string | null;
   customer?: {
     name?: string | null;
     code?: string | null;      
@@ -31,7 +32,17 @@ export async function printQuote(
   try {
     tenant = await api('/tenants/me');
   } catch (error) {
-    console.warn('Không lấy được thông tin công ty, dùng giá trị mặc định');
+    console.warn('Không lấy được thông tin công ty');
+  }
+
+  let printCss = '';
+  try {
+    const res = await fetch('/quote-print-styles.css');
+    if (res.ok) {
+      printCss = await res.text();
+    }
+  } catch (error) {
+    console.warn('Không thể tải file CSS in ấn');
   }
 
   const today = new Date();
@@ -51,7 +62,7 @@ export async function printQuote(
   
   const activeTerms = (paymentTerms && paymentTerms.length > 0) ? paymentTerms : defaultTerms;
   
-  const termsHtml = activeTerms.map((term, idx) => 
+  const termsHtml = activeTerms.map((term) => 
     `<div style="margin-bottom: 4px;">- <strong>${term.name}:</strong> ${term.percentage}% giá trị đơn hàng. ${term.condition}</div>`
   ).join('');
 
@@ -126,34 +137,7 @@ export async function printQuote(
   <meta charset="utf-8" />
   <title>BÁO GIÁ - ${escapeHtml(quote.quoteNumber)}</title>
   <style>
-    @page { size: A4; margin: 15mm; }
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Times New Roman", serif; color: #1f2937; margin: 0; padding: 20px; font-size: 13px; line-height: 1.5; background: #fff; }
-    .company-title { font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 4px; text-transform: uppercase; }
-    .company-info { font-size: 11.5px; color: #475569; line-height: 1.4; }
-    .divider { height: 2px; background: #C9A961; margin: 10px 0 16px; }
-    .quote-title { text-align: center; font-size: 20px; font-weight: bold; color: #0f172a; margin: 12px 0 4px; }
-    .quote-meta { text-align: right; font-size: 12px; margin-bottom: 12px; }
-    .customer-box { margin-bottom: 16px; font-size: 12.5px; }
-    .customer-box table { width: 100%; border-collapse: collapse; }
-    .customer-box td { padding: 2px 0; }
-    .intro-text { font-style: italic; font-size: 12px; color: #475569; margin-bottom: 10px; }
-    .items-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-    .items-table th, .items-table td { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 12px; }
-    .items-table th { background: #f8fafc; font-weight: 600; text-align: center; }
-    .sub-th { font-size: 10px; font-weight: normal; color: #64748b; font-style: italic; }
-    .total-row td { font-weight: 600; border: 1px solid #cbd5e1; }
-    .in-words { font-weight: 600; font-style: italic; margin: 10px 0 16px; font-size: 12.5px; }
-    .terms-section { font-size: 11.5px; line-height: 1.5; margin-bottom: 20px; }
-    .terms-title { font-weight: bold; margin-top: 8px; margin-bottom: 2px; }
-    .payment-method { margin-top: 8px; } /* Sửa lỗi dính dòng */
-    .bank-box { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 8px 12px; margin: 4px 0 8px; }
-    .signatures-table { width: 100%; border-collapse: collapse; margin-top: 30px; page-break-inside: avoid; }
-    .signatures-table td { text-align: center; vertical-align: top; width: 33.33%; font-size: 12px; }
-    .sig-title { font-weight: bold; }
-    .sig-sub { font-size: 10.5px; color: #64748b; font-style: italic; margin-bottom: 60px; }
-    .sig-name { font-weight: 600; }
-    @media print { body { padding: 0; } .no-print { display: none; } }
+    ${printCss}
   </style>
 </head>
 <body>
@@ -229,9 +213,13 @@ export async function printQuote(
   </div>
 
   <div class="terms-section">
-    <div class="terms-title">1. Thông tin sản phẩm:</div>
-    <div>Cung cấp giải pháp, module và triển khai kỹ thuật theo phạm vi mô tả chi tiết từng hạng mục ở trên.</div>
-
+    ${quote.productInfo ? `
+      <div class="terms-title">1. Thông tin sản phẩm:</div>
+      <div style="padding-left: 12px;">
+        ${quote.productInfo}
+      </div>
+    ` : ''}
+    
     <div class="terms-title">2. Điều khoản và phương thức thanh toán:</div>
     <div style="padding-left: 12px;">
       ${termsHtml}
@@ -274,6 +262,11 @@ export async function printQuote(
       </td>
     </tr>
   </table>
+
+  <div class="print-footer">
+    Trang 1
+  </div>
+
 </body>
 </html>`;
 

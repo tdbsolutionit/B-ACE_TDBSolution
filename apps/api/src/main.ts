@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express'; 
 import { join } from 'path'; 
-dotenv.config({ path: join(__dirname, '..', '.env') });
+dotenv.config({ path: join(process.cwd(), '.env') });
 import cookieParser from 'cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';

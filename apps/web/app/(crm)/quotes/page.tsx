@@ -15,7 +15,7 @@ type QuoteRow = {
   quoteNumber: string;
   title: string;
   status: string;
-  sellingPrice: number;
+  totalAmount: number;
   customer?: { name: string };
   opportunity?: { name: string };
 };
@@ -107,7 +107,7 @@ export default function QuotesPage() {
                 <th className="px-4 py-3 font-semibold">Tiêu đề</th>
                 <th className="px-4 py-3 font-semibold">Khách hàng</th>
                 <th className="px-4 py-3 font-semibold">Dự án</th>
-                <th className="px-4 py-3 font-semibold text-right">Giá bán</th>
+                <th className="px-4 py-3 font-semibold text-right">Tổng tiền</th>
                 <th className="px-4 py-3 font-semibold text-center">Trạng thái</th>
               </tr>
             </thead>
@@ -131,7 +131,7 @@ export default function QuotesPage() {
                   <td className="px-4 py-3 font-medium">{quote.title}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{quote.customer?.name || '—'}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{quote.opportunity?.name || '—'}</td>
-                  <td className="px-4 py-3 text-right font-medium">{compactMoney(quote.sellingPrice)}</td>
+                  <td className="px-4 py-3 text-right font-medium">{compactMoney(quote.totalAmount)}</td>
                   <td className="px-4 py-3 text-center">
                     <StatusBadge status={quote.status} />
                   </td>

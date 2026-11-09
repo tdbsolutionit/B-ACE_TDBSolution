@@ -16,6 +16,7 @@ export interface CustomerDetail extends CustomerRow {
 
 export interface UpdateCustomerPayload {
   code: string;
+  shortCode: string;
   name: string;
   company: string;
   phone: string;

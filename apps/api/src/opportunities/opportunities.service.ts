@@ -50,7 +50,14 @@ export class OpportunitiesService {
     return this.prisma.withTenant(user.tenantId, async (tx) => {
       const row = await tx.opportunity.findFirst({
         where: owned(user, { id }),
-        include: { customer: true, stage: true, quotes: { orderBy: { createdAt: 'desc' } } },
+        include: { 
+          customer: true, 
+          stage: true, 
+          quotes: { 
+            orderBy: { createdAt: 'desc' },
+            include: { items: true }
+          } 
+        },
       });
       if (!row) return null;
 
@@ -69,7 +76,7 @@ export class OpportunitiesService {
           number: quote.quoteNumber,
           title: quote.title,
           status: quote.status,
-          price: Number(quote.sellingPrice),
+          price: quote.items?.reduce((sum, item) => sum + Number(item.total), 0) || 0,
           date: quote.createdAt.toISOString().slice(0, 10),
         })),
         activities: activities.map((item) => ({

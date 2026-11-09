@@ -15,7 +15,8 @@ export function EditCustomerModal({ customer, onClose, onSubmit }: EditCustomerM
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const payload: UpdateCustomerPayload = {
-      code: String(data.get('code') || ''),
+      code: String(data.get('code') || ''), 
+      shortCode: String(data.get('shortCode') || ''),
       name: String(data.get('name') || ''),
       company: String(data.get('company') || ''),
       phone: String(data.get('phone') || ''),
@@ -50,6 +51,7 @@ export function EditCustomerModal({ customer, onClose, onSubmit }: EditCustomerM
             <label className="text-sm font-medium">Mã khách hàng</label>
             <input
               name="code"
+              disabled
               className="h-10 rounded-md border border-input px-3 text-sm"
               defaultValue={customer.code || ''}
               placeholder="VD: KH00001"
