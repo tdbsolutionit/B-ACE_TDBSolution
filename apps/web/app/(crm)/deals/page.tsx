@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -13,6 +12,7 @@ import { KanbanBoard } from './_components/kanban-board';
 import { toast } from '@/components/ui/toast';
 import { Search, Plus } from 'lucide-react';
 import { CustomerSelect } from '@/components/shared/customer-select';
+import { LostStageModal } from '@/app/(crm)/projects/_components/lost-stage-modal';
 
 type ApiList<T> = T[] | {
   data?: T[] | { items?: T[] };
@@ -55,6 +55,8 @@ export default function OpportunitiesPage() {
   const [selectedStageId, setSelectedStageId] = useState('');
   const [q, setQ] = useState('');
 
+  const [lostDeal, setLostDeal] = useState<{ id: string; stageId: string } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -88,6 +90,13 @@ export default function OpportunitiesPage() {
   }, []);
 
   async function handleMove(dealId: string, stageId: string) {
+    const targetStage = stages.find((s) => s.id === stageId);
+
+    if (targetStage?.isLost) {
+      setLostDeal({ id: dealId, stageId });
+      return;
+    }
+
     try {
       const updated = await api<ProjectRow>(`/opportunities/${dealId}/stage`, {
         method: 'PATCH',
@@ -95,6 +104,25 @@ export default function OpportunitiesPage() {
       });
       setRows((prev) => prev.map((r) => (r.id === dealId ? { ...r, ...updated } : r)));
       toast.success(`Đã chuyển giai đoạn "${updated.name}" → ${updated.stage}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi chuyển giai đoạn');
+    }
+  }
+
+  async function handleConfirmLost(reason: string) {
+    if (!lostDeal) return;
+
+    try {
+      const updated = await api<ProjectRow>(`/opportunities/${lostDeal.id}/stage`, {
+        method: 'PATCH',
+        body: JSON.stringify({ 
+          stageId: lostDeal.stageId,
+          lostReason: reason 
+        }),
+      });
+      setRows((prev) => prev.map((r) => (r.id === lostDeal.id ? { ...r, ...updated } : r)));
+      toast.success(`Đã chuyển giai đoạn "${updated.name}" → ${updated.stage}`);
+      setLostDeal(null);
     } catch (err: any) {
       toast.error(err.message || 'Lỗi khi chuyển giai đoạn');
     }
@@ -117,7 +145,6 @@ export default function OpportunitiesPage() {
     router.push(`/projects/${created.id}`);
   }
 
-  // Tính tổng giá trị các deal chưa chốt (đang mở)
   const totalPipelineValue = rows
     .filter(r => r.status === 'open')
     .reduce((sum, r) => sum + (Number(r.value) || 0), 0);
@@ -129,16 +156,13 @@ export default function OpportunitiesPage() {
 
   return (
     <>
-      {/* HEADER: Căn chỉnh lại toàn bộ khu vực tiêu đề, tìm kiếm và nút thêm mới */}
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-        {/* Bên trái: Tiêu đề và Tổng Pipeline */}
         <div>
           <h1 className="font-display text-2xl font-bold">Cơ hội bán hàng</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Theo dõi tiến độ các thương vụ và dự báo doanh thu.
           </p>
           
-          {/* Khối hiển thị tổng Pipeline gọn gàng */}
           <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Tổng Pipeline (Đang mở):
@@ -149,7 +173,6 @@ export default function OpportunitiesPage() {
           </div>
         </div>
 
-        {/* Bên phải: Tìm kiếm và Nút Tạo */}
         <div className="flex items-center gap-3">
           <div className="relative w-[260px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
@@ -175,7 +198,6 @@ export default function OpportunitiesPage() {
 
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
-      {/* Kanban Board */}
       <KanbanBoard
         rows={filteredRows}
         stages={stages}
@@ -186,7 +208,12 @@ export default function OpportunitiesPage() {
         }}
       />
 
-      {/* Modal Thêm Cơ Hội (Giữ nguyên) */}
+      <LostStageModal
+        open={!!lostDeal}
+        onClose={() => setLostDeal(null)}
+        onSubmit={handleConfirmLost}
+      />
+
       {open && (
         <>
           <div className="modal-backdrop" onClick={() => setOpen(false)} />

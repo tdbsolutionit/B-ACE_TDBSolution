@@ -1,4 +1,3 @@
-'use client';
 import { useCallback, useEffect, useState } from 'react';
 import type { StageRow } from '@/lib/crm';
 import { projectDetailService } from '../_services/project-detail.service';
@@ -8,29 +7,29 @@ export function useProjectDetail(projectId: string | undefined) {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [stages, setStages] = useState<StageRow[]>([]);
   const [notFound, setNotFound] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Thêm state loading
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const reload = useCallback(async () => {
-    // 1. Reset trạng thái mỗi khi bắt đầu load
-    setNotFound(false);
-    setIsLoading(true);
+    if (!projectId) return;
 
-    if (!projectId) {
-      setIsLoading(false);
-      return;
-    }
+    setIsLoading(true);
+    setNotFound(false);
+    setErrorMsg('');
 
     try {
       const row = await projectDetailService.get(projectId);
       if (!row) {
         setNotFound(true);
-        return;
+      } else {
+        setProject(row);
       }
-      setProject(row);
     } catch (err: any) {
-      console.error(err);
-      if (err?.status === 404 || err?.message?.includes('404') || err?.message?.includes('tìm thấy')) {
+      console.error("Lỗi tải dự án:", err);
+      if (err?.status === 404) {
         setNotFound(true);
+      } else {
+        setErrorMsg(err?.message || 'Lỗi kết nối đến máy chủ');
       }
     } finally {
       setIsLoading(false);
@@ -42,5 +41,5 @@ export function useProjectDetail(projectId: string | undefined) {
     projectDetailService.getStages().then(setStages).catch(() => setStages([]));
   }, [reload]);
 
-  return { project, stages, notFound, isLoading, reload };
+  return { project, stages, notFound, isLoading, errorMsg, reload };
 }

@@ -15,7 +15,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
   const searchParams = useSearchParams();
   
   const isFullMode = searchParams.get('full') === '1';
-  
   const hasDetail = /^\/customers\/[^/]+/.test(pathname);
   
   const [isNarrow, setIsNarrow] = useState(false);
@@ -36,30 +35,21 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
       const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) return;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
       if (document.querySelector('.modal-backdrop')) return;
-
       if (hasDetail) router.push('/customers');
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [hasDetail, router]);
 
-  // Drag handlers
-  const onMouseDown = useCallback(() => {
-    setDragging(true);
-  }, []);
+  const onMouseDown = useCallback(() => setDragging(true), []);
 
   const onMouseMove = useCallback((e: MouseEvent) => {
     if (!dragging || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const pct = ((e.clientX - rect.left) / rect.width) * 100;
-    const clamped = Math.min(MAX_PCT, Math.max(MIN_PCT, pct));
-    setLeftPct(clamped);
+    setLeftPct(Math.min(MAX_PCT, Math.max(MIN_PCT, pct)));
   }, [dragging]);
 
   const onMouseUp = useCallback(() => {
@@ -68,7 +58,6 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
     localStorage.setItem(STORAGE_KEY, String(leftPct));
   }, [dragging, leftPct]);
 
-  // Global listeners khi đang drag
   useEffect(() => {
     if (!dragging) return;
     document.body.style.cursor = 'col-resize';
@@ -86,16 +75,15 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
   if (isFullMode) {
     return (
       <div className="h-full w-full">
-        <div className="subtle-scrollbar h-full overflow-auto">
-          {children}
-        </div>
+        <div className="subtle-scrollbar h-full overflow-auto">{children}</div>
       </div>
     );
   }
 
+  // CHỖ NÀY QUAN TRỌNG NHẤT: Nếu chưa chọn khách hàng, chỉ hiện danh sách
   if (!hasDetail) {
     return (
-      <div className="h-full w-full">
+      <div className="h-full w-full" key={pathname}>
         <CustomerListPane />
       </div>
     );
@@ -103,26 +91,24 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
 
   if (isNarrow) {
     return (
-      <div className="h-full w-full">
-        <div className="subtle-scrollbar h-full overflow-auto">
-          {children}
-        </div>
+      <div className="h-full w-full" key={pathname}>
+        <div className="subtle-scrollbar h-full overflow-auto">{children}</div>
       </div>
     );
   }
 
+  // Nếu đã chọn khách hàng (hasDetail = true), mới chia đôi màn hình
   return (
     <div
+      key={pathname}
       ref={containerRef}
       className="grid h-full w-full"
       style={{ gridTemplateColumns: `${leftPct}% 4px 1fr` }}
     >
-      {/* List pane */}
       <div className="overflow-hidden">
         <CustomerListPane />
       </div>
 
-      {/* Draggable divider */}
       <div
         onMouseDown={onMouseDown}
         className={`relative h-full cursor-col-resize transition-colors ${
@@ -130,12 +116,8 @@ export default function KhachHangLayout({ children }: { children: React.ReactNod
         }`}
       >
         <div className="absolute inset-y-0 -left-1 -right-1" />
-        <div className={`absolute left-1/2 top-1/2 h-8 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors ${
-          dragging ? 'bg-primary' : 'bg-border/0 group-hover:bg-primary/60'
-        }`} />
       </div>
 
-      {/* Detail pane */}
       <div className="overflow-hidden bg-background">
         <div className="subtle-scrollbar h-full overflow-auto">
           {children}

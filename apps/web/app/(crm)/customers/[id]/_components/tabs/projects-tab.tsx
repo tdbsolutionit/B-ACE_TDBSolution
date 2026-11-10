@@ -115,7 +115,7 @@ export function ProjectsTab({ projects, onAdd }: ProjectsTabProps) {
                     className="cursor-pointer hover:bg-muted/40 transition-colors"
                     onClick={() => {
                       if (project.id) {
-                        router.push(`/projects/${project.id}`);
+                        window.location.href = `/projects/${project.id}`;
                       }
                     }}
                   >

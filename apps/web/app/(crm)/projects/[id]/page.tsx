@@ -1,4 +1,5 @@
 'use client';
+
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
@@ -18,7 +19,7 @@ import type { ProjectTabId, UpdateProjectPayload } from './_types';
 
 export default function ProjectPage() {
   const params = useParams<{ id: string }>();
-  const { project, stages, notFound, reload } = useProjectDetail(params?.id);
+  const { project, stages, notFound, isLoading, errorMsg, reload } = useProjectDetail(params?.id);
 
   const [tab, setTab] = useState<ProjectTabId>('proposal');
   const [edit, setEdit] = useState(false);
@@ -50,7 +51,7 @@ export default function ProjectPage() {
 
   async function move(stageId: string, lostReason?: string) {
     if (!project) return;
-    
+
     try {
       await projectDetailService.moveStage(project.id, { stageId, lostReason });
       toast.success('Đã cập nhật giai đoạn');
@@ -69,15 +70,22 @@ export default function ProjectPage() {
     move(stage.id);
   }
 
-  if (notFound) {
-    return <ProjectNotFound />;
+  if (isLoading) {
+    return <div className="p-8 text-center text-muted-foreground">Đang tải dự án…</div>;
   }
 
-  if (!project) {
+  if (notFound || !project) {
+    return <ProjectNotFound />;
+  }
+  if (errorMsg || !project) {
     return (
-      <p className="p-8 text-center text-sm text-muted-foreground">
-        Đang tải dự án…
-      </p>
+      <div className="flex flex-col items-center justify-center p-8 text-center h-[50vh]">
+        <h2 className="text-lg font-bold text-destructive">Không thể tải dự án</h2>
+        <p className="text-sm text-muted-foreground mt-2">{errorMsg || 'Dữ liệu không hợp lệ'}</p>
+        <button onClick={() => reload()} className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">
+          Thử lại
+        </button>
+      </div>
     );
   }
 

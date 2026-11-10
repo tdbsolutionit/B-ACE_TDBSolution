@@ -4,10 +4,8 @@ import { Pagination } from '@/components/ui/pagination';
 import { Loading } from '@/components/shared/loading';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, Suspense } from 'react';
-import ExcelJS from 'exceljs';
 import { api } from '@/lib/auth';
 import { type CustomerRow, type PaginatedResponse } from '@/lib/crm';
-import { exportToExcel } from '@/lib/utils';
 import { useRealtime } from '@/lib/realtime';
 import { CustomerTable } from './customer-table';
 import { BulkActionBar } from '@/components/shared/bulk-action-bar';
@@ -18,7 +16,8 @@ import { AddCustomerModal } from './add-customer-modal';
 import { CustomerToolbar } from './customer-toolbar';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useSort } from '@/hooks/use-sort';
-import { type SortOrder } from '@/hooks/use-sort'; 
+import { useCustomerImport } from '../_hooks/use-customer-import';
+import { useCustomerExport } from '../_hooks/use-customer-export';
 
 function ListPane() {
   const perm = usePermission();
@@ -33,18 +32,17 @@ function ListPane() {
   const [users, setUsers] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [isExporting, setIsExporting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<any>({ total: 0, page: 1, limit: 20, totalPages: 1, stats: { lead: 0, active: 0, hasOpp: 0 } });
+  
   const limit = 20;
   const { sortBy, sortOrder, handleSort } = useSort('createdAt', 'desc');
   const { on } = useRealtime();
+  const { isImporting, handleImport } = useCustomerImport(() => loadData());
+  const { isExporting, exportAllCustomers, exportSelectedCustomers } = useCustomerExport();
 
-  useEffect(() => { setPage(1); }, [tab, q]);
-  
-  useEffect(() => {
+  function loadData() {
     setLoading(true);
     api<PaginatedResponse<CustomerRow>>(`/customers?page=${page}&limit=${limit}&q=${q}&tab=${tab}&sortBy=${sortBy}&sortOrder=${sortOrder}`)
       .then((res) => {
@@ -53,7 +51,16 @@ function ListPane() {
       })
       .catch((err: Error) => console.error(err))
       .finally(() => setLoading(false));
-  }, [page, q, limit, tab, sortBy, sortOrder]);
+  }
+
+  useEffect(() => { setPage(1); }, [tab, q]);
+  useEffect(() => { loadData(); }, [page, q, limit, tab, sortBy, sortOrder]);
+
+  useEffect(() => {
+    api<Array<{ id: string; name: string; role?: string }>>('/users')
+      .then((res) => setUsers(Array.isArray(res) ? res : []))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const handleLocalChange = (e: Event) => {
@@ -85,121 +92,7 @@ function ListPane() {
     };
   }, [on]);
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-    if (!isExcel) {
-      toast.error('Vui lòng chọn file Excel (.xlsx hoặc .xls)');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const buffer = event.target?.result as ArrayBuffer;
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(buffer);
-        
-        const worksheet = workbook.getWorksheet(1);
-        if (!worksheet) throw new Error('File không có dữ liệu');
-
-        const headerMap: Record<string, number> = {};
-        worksheet.getRow(1).eachCell((cell, colNumber) => {
-          if (cell.value) headerMap[String(cell.value).trim().toLowerCase()] = colNumber;
-        });
-
-        const getCellValue = (row: ExcelJS.Row, possibleNames: string[]) => {
-          for (const name of possibleNames) {
-            const colNumber = headerMap[name.toLowerCase()];
-            if (colNumber) {
-              const val = row.getCell(colNumber).text;
-              if (val && val.trim() !== 'N/A') return val.trim();
-            }
-          }
-          return '';
-        };
-
-        const formattedRows: any[] = [];
-        worksheet.eachRow((row, rowNumber) => {
-          if (rowNumber === 1) return;
-          const name = getCellValue(row, ['Tên khách hàng', 'Tên KH', 'Tên']);
-          if (!name) return;
-
-          let code = getCellValue(row, ['Mã', 'Mã khách hàng', 'Mã KH', 'code']);
-          let shortCode = getCellValue(row, ['Mã số ( Code)', 'Mã số', 'shortCode']);
-          if (shortCode && shortCode.startsWith('KH')) shortCode = shortCode.replace('KH', '').replace(/^0+/, '');
-
-          formattedRows.push({
-            name, code: code || undefined, shortCode: shortCode || undefined,
-            company: getCellValue(row, ['Thông tin khách hàng', 'Công ty']) || name,
-            taxCode: getCellValue(row, ['MST', 'Mã số thuế']), address: getCellValue(row, ['Địa chỉ']),
-            website: getCellValue(row, ['WEBSITE', 'Website']), industry: getCellValue(row, ['Lĩnh vực', 'Ngành nghề']),
-            phone: getCellValue(row, ['Số điện thoại']), email: getCellValue(row, ['Email']),
-            type: 'business', status: 'active', sourceName: 'Import File',
-          });
-        });
-
-        if (!formattedRows.length) {
-          toast.error('Không tìm thấy dữ liệu khách hàng hợp lệ trong file.');
-          return;
-        }
-
-        const result = await api<{ created: number; skipped: Array<{ name: string; reason: string }> }>('/customers/import', {
-          method: 'POST', body: JSON.stringify({ rows: formattedRows }),
-        });
-
-        const fresh = await api<{data: CustomerRow[]}>('/customers');
-        setRows(fresh.data || []);
-        toast.success(`Đã import thành công ${result.created} khách hàng!`);
-        if (result.skipped.length > 0) toast.error(`Bỏ qua ${result.skipped.length} dòng do trùng SĐT/Email.`);
-      } catch (err: any) {
-        toast.error(err.message || 'Lỗi khi đọc file Excel');
-      }
-    };
-    reader.readAsArrayBuffer(file);
-    e.target.value = '';
-  };
-
   const bulk = useBulkSelection(rows);
-
-  const CUSTOMER_EXPORT_COLS = [
-    { key: 'name', label: 'Tên khách hàng' }, { key: 'company', label: 'Công ty' },
-    { key: 'phone', label: 'Số điện thoại' }, { key: 'email', label: 'Email' },
-    { key: 'address', label: 'Địa chỉ' }, { key: 'taxCode', label: 'Mã số thuế' },
-    { key: 'industry', label: 'Ngành nghề' }, { key: 'type', label: 'Loại khách' },
-    { key: 'status', label: 'Trạng thái' }, { key: 'sourceName', label: 'Nguồn' },
-    { key: 'assigneeName', label: 'Người phụ trách' },
-  ];
-
-  async function exportAllCustomers() {
-    try {
-      setIsExporting(true);
-      const res = await api<PaginatedResponse<CustomerRow>>(`/customers?page=1&limit=10000&q=${q}&tab=${tab}&sortBy=${sortBy}&sortOrder=${sortOrder}`);
-      const allData = res.data || [];
-      
-      if (!allData.length) {
-        toast.error('Không có dữ liệu để xuất');
-        return;
-      }
-      
-      await exportToExcel('danh-sach-khach-hang', allData, CUSTOMER_EXPORT_COLS);
-      toast.success(`Đã xuất ${allData.length} khách hàng ra file Excel`);
-    } catch (err: any) {
-      toast.error(err.message || 'Lỗi khi xuất dữ liệu');
-    } finally {
-      setIsExporting(false);
-    }
-  }
-
-  async function exportSelectedCustomers() {
-    const selectedRows = rows.filter((r) => bulk.selected.has(r.id));
-    if (!selectedRows.length) return toast.error('Không có dữ liệu để xuất');
-    
-    await exportToExcel('danh-sach-khach-hang', selectedRows, CUSTOMER_EXPORT_COLS);
-    toast.success(`Đã xuất ${selectedRows.length} khách hàng ra file Excel`);
-  }
 
   async function handleBulkAssign(targetUserId: string) {
     try {
@@ -262,7 +155,7 @@ function ListPane() {
         density={density}
         setDensity={setDensity}
         permHasCreate={perm.has('customer:create')}
-        onExport={exportAllCustomers}
+        onExport={() => exportAllCustomers(q, tab, sortBy, sortOrder)}
         isExporting={isExporting}
         onImportClick={() => fileInputRef.current?.click()}
         onAddClick={() => setOpen(true)}
@@ -272,7 +165,6 @@ function ListPane() {
       />
       
       <div className="customer-list-scroll min-h-0 flex-1 overflow-auto">
-        {/* TRUYỀN SORT PROPS XUỐNG BẢNG */}
         <CustomerTable
           rows={rows}
           loading={loading}
@@ -300,7 +192,7 @@ function ListPane() {
         onClear={bulk.clear}
         onAssign={handleBulkAssign}
         onChangeStatus={handleBulkStatus}
-        onExport={exportSelectedCustomers}
+        onExport={() => exportSelectedCustomers(rows, bulk.selected)}
         onDelete={() => setConfirmDeleteOpen(true)}
       />
 
