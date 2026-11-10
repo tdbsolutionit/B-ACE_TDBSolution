@@ -61,6 +61,7 @@ model User {
   passwordHash       String        @map("password_hash")
   hashedRefreshToken String?       @map("hashed_refresh_token")
   role               UserRole      @default(sales)
+  odooUserId         String?       @unique @map("odoo_user_id")
   phone              String?
   status             UserStatus    @default(active)
   createdAt          DateTime      @default(now()) @map("created_at")
@@ -580,6 +581,7 @@ model IntegrationLog {
   action        String
   status        String
   message       String?
+  recordId      String?  @map("record_id")
   createdAt     DateTime @default(now()) @map("created_at")
 
   integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CustomerHelperService {
@@ -29,6 +30,25 @@ export class CustomerHelperService {
     const a = (left || '').trim().toLowerCase();
     const b = (right || '').trim().toLowerCase();
     return a.includes('@') && a === b;
+  }
+
+  async generateNextCode(tx: Prisma.TransactionClient, tenantId: string): Promise<{ code: string, shortCode: string }> {
+    const lastCustomer = await tx.customer.findFirst({
+      where: {
+        tenantId,
+        code: { not: null, startsWith: 'KH' }
+      },
+      orderBy: { code: 'desc' },
+      select: { code: true }
+    });
+
+    const match = lastCustomer?.code?.match(/KH(\d+)/);
+    const nextNumber = match ? parseInt(match[1], 10) + 1 : 1;
+
+    return {
+      code: `KH${nextNumber.toString().padStart(5, '0')}`,
+      shortCode: nextNumber.toString()
+    };
   }
 
   present(row: any, names: Map<string, string>) {

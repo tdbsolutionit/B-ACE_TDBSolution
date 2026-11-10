@@ -88,15 +88,6 @@ export class CustomersCrudService {
 
   async create(user: AuthUser, dto: CustomerDto & { forceCreate?: boolean }) {
     const result = await this.prisma.withTenant(user.tenantId, async (tx) => {
-      const lastCustomer = await tx.customer.findFirst({
-        where: {
-          tenantId: user.tenantId,
-          code: { not: null, startsWith: 'KH' }
-        },
-        orderBy: { code: 'desc' },
-        select: { code: true }
-      });
-
       if (!dto.forceCreate && (dto.phone || dto.email)) {
         const existing = await tx.customer.findFirst({
           where: {
@@ -113,16 +104,13 @@ export class CustomersCrudService {
         }
       }
 
-      const match = lastCustomer?.code?.match(/KH(\d+)/);
-      const nextNumber = match ? parseInt(match[1], 10) + 1 : 1;
-      const generatedCode = `KH${nextNumber.toString().padStart(5, '0')}`;
-      const generatedShortCode = nextNumber.toString();
+      const { code, shortCode } = await this.helper.generateNextCode(tx, user.tenantId);
 
       const created = await tx.customer.create({
         data: {
           tenantId: user.tenantId,
-          code: generatedCode,
-          shortCode: generatedShortCode,
+          code,
+          shortCode,
           name: dto.name.trim(),
           company: this.helper.blank(dto.company),
           phone: this.helper.blank(dto.phone),

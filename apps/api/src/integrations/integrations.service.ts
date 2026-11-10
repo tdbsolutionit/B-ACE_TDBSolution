@@ -47,15 +47,32 @@ export class IntegrationsService {
   }
 
   async saveOdooConfig(user: AuthUser, dto: UpdateOdooConfigDto) {
-    const config = { url: dto.url, db: dto.db, username: dto.username, password: dto.password };
-    
-    return this.prisma.withTenant(user.tenantId, (tx) =>
-      tx.integration.upsert({
+    return this.prisma.withTenant(user.tenantId, async (tx) => {
+      const existing = await tx.integration.findUnique({
+        where: { tenantId_provider: { tenantId: user.tenantId, provider: 'odoo' } }
+      });
+
+      let finalPassword = dto.password;
+
+      if (!finalPassword || finalPassword.trim() === '') {
+        if (existing && existing.config) {
+          finalPassword = (existing.config as any).password;
+        }
+      }
+
+      const config = { 
+        url: dto.url, 
+        db: dto.db, 
+        username: dto.username, 
+        password: finalPassword 
+      };
+      
+      return tx.integration.upsert({
         where: { tenantId_provider: { tenantId: user.tenantId, provider: 'odoo' } },
         update: { config, isActive: dto.isActive ?? true },
         create: { tenantId: user.tenantId, provider: 'odoo', config, isActive: dto.isActive ?? true },
-      }),
-    );
+      });
+    });
   }
 
   async testOdooConnection(dto: UpdateOdooConfigDto) {

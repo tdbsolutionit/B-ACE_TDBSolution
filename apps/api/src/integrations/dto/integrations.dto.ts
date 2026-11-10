@@ -19,7 +19,7 @@ export class UpdateOdooConfigDto {
 
   @ApiProperty({ example: 'password123' })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   password!: string;
 
   @ApiPropertyOptional({ example: true })

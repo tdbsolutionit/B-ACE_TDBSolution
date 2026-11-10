@@ -25,6 +25,7 @@ import { StagesModule } from './stages/stages.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import * as path from 'path';
 
 @Module({
@@ -72,7 +73,7 @@ import * as path from 'path';
     StagesModule,
     TenantsModule,
     TicketsModule,
-    
+    ScheduleModule.forRoot(),
   ],
   controllers: [HealthController],
   providers: [
