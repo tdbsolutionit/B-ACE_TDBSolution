@@ -201,9 +201,18 @@ export function AuthProvider({
     []
   );
 
-  const logout = useCallback(() => {
-    forceLogout();
-    setSession(null);
+  const logout = useCallback(async () => {
+    try {
+      await fetch(buildApiUrl('/auth/logout'), {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Lỗi khi gọi API logout:', error);
+    } finally {
+      forceLogout();
+      setSession(null);
+    }
   }, []);
 
   const contextValue = useMemo(

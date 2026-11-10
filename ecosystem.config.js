@@ -25,6 +25,7 @@ module.exports = {
       time: true,
       autorestart: true,
       max_memory_restart: '1G',
+      pmx: false,
     },
     {
       name: 'bace-web',
